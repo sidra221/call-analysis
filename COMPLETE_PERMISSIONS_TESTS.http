@@ -1,0 +1,160 @@
+### ============================================
+### Complete Permissions System Tests
+### استخدم REST Client extension في VS Code
+### ============================================
+
+@baseUrl = http://localhost:8000
+@contentType = application/json
+
+### ============================================
+### 1. PUBLIC ENDPOINTS - تسجيل مستخدمين
+### ============================================
+
+### ✅ تسجيل مستخدم Manager
+POST {{baseUrl}}/api/auth/register/
+Content-Type: {{contentType}}
+
+{
+  "username": "manager_test",
+  "email": "manager_test@test.com",
+  "password": "password123",
+  "role": "manager"
+}
+
+### ✅ تسجيل مستخدم QA
+POST {{baseUrl}}/api/auth/register/
+Content-Type: {{contentType}}
+
+{
+  "username": "qa_test",
+  "email": "qa_test@test.com",
+  "password": "password123",
+  "role": "qa"
+}
+
+### ============================================
+### 2. PUBLIC ENDPOINTS - تسجيل دخول
+### ============================================
+
+### ✅ Login كـ Manager - انسخ الـ access token ↓
+POST {{baseUrl}}/api/auth/login/
+Content-Type: {{contentType}}
+
+{
+  "username": "manager_test",
+  "password": "password123"
+}
+
+### ⚠️ ضع الـ access token هنا ↓
+@managerToken = YOUR_MANAGER_ACCESS_TOKEN_HERE
+
+### ✅ Login كـ QA - انسخ الـ access token ↓
+POST {{baseUrl}}/api/auth/login/
+Content-Type: {{contentType}}
+
+{
+  "username": "qa_test",
+  "password": "password123"
+}
+
+### ⚠️ ضع الـ access token هنا ↓
+@qaToken = YOUR_QA_ACCESS_TOKEN_HERE
+
+### ✅ تحديث Token
+POST {{baseUrl}}/api/auth/token/refresh/
+Content-Type: {{contentType}}
+
+{
+  "refresh": "YOUR_REFRESH_TOKEN_HERE"
+}
+
+### ============================================
+### 3. PROTECTED ENDPOINTS - بدون Token (يجب أن تفشل)
+### ============================================
+
+### ❌ GET /me/ بدون Token - متوقع: 401
+GET {{baseUrl}}/api/auth/me/
+
+### ❌ GET /manager-only/ بدون Token - متوقع: 401
+GET {{baseUrl}}/api/auth/manager-only/
+
+### ❌ GET /qa-only/ بدون Token - متوقع: 401
+GET {{baseUrl}}/api/auth/qa-only/
+
+### ❌ GET /manager-or-qa/ بدون Token - متوقع: 401
+GET {{baseUrl}}/api/auth/manager-or-qa/
+
+### ============================================
+### 4. PROTECTED ENDPOINTS - مع Manager Token
+### ============================================
+
+### ✅ GET /me/ مع Manager Token - متوقع: 200
+GET {{baseUrl}}/api/auth/me/
+Authorization: Bearer {{managerToken}}
+
+### ✅ GET /manager-only/ مع Manager Token - متوقع: 200
+GET {{baseUrl}}/api/auth/manager-only/
+Authorization: Bearer {{managerToken}}
+
+### ❌ GET /qa-only/ مع Manager Token - متوقع: 403
+GET {{baseUrl}}/api/auth/qa-only/
+Authorization: Bearer {{managerToken}}
+
+### ✅ GET /manager-or-qa/ مع Manager Token - متوقع: 200
+GET {{baseUrl}}/api/auth/manager-or-qa/
+Authorization: Bearer {{managerToken}}
+
+### ============================================
+### 5. PROTECTED ENDPOINTS - مع QA Token
+### ============================================
+
+### ✅ GET /me/ مع QA Token - متوقع: 200
+GET {{baseUrl}}/api/auth/me/
+Authorization: Bearer {{qaToken}}
+
+### ❌ GET /manager-only/ مع QA Token - متوقع: 403
+GET {{baseUrl}}/api/auth/manager-only/
+Authorization: Bearer {{qaToken}}
+
+### ✅ GET /qa-only/ مع QA Token - متوقع: 200
+GET {{baseUrl}}/api/auth/qa-only/
+Authorization: Bearer {{qaToken}}
+
+### ✅ GET /manager-or-qa/ مع QA Token - متوقع: 200
+GET {{baseUrl}}/api/auth/manager-or-qa/
+Authorization: Bearer {{qaToken}}
+
+### ============================================
+### 6. حالات Token غير صحيح
+### ============================================
+
+### ❌ Token غير موجود - متوقع: 401
+GET {{baseUrl}}/api/auth/me/
+Authorization: Bearer 
+
+### ❌ Token غير صحيح - متوقع: 401
+GET {{baseUrl}}/api/auth/me/
+Authorization: Bearer invalid_token_here_12345
+
+### ❌ استخدام Refresh Token بدل Access Token - متوقع: 401
+GET {{baseUrl}}/api/auth/me/
+Authorization: Bearer YOUR_REFRESH_TOKEN_HERE
+
+### ❌ Header غير موجود - متوقع: 401
+GET {{baseUrl}}/api/auth/me/
+
+### ❌ Bearer غير موجود في Header - متوقع: 401
+GET {{baseUrl}}/api/auth/me/
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### ============================================
+### ملاحظات:
+### 1. ابدأ من الأعلى للأسفل
+### 2. انسخ الـ tokens من responses وضعهما في المتغيرات
+### 3. النتائج المتوقعة:
+###    - بدون token: 401 Unauthorized
+###    - Manager في QA-only: 403 Forbidden
+###    - QA في Manager-only: 403 Forbidden
+###    - مع token صحيح: 200 OK
+### ============================================
+
