@@ -1,0 +1,859 @@
+{
+	"info": {
+		"_postman_id": "api-testing-collection",
+		"name": "Backend API Collection",
+		"description": "Complete API testing collection for Authentication and Calls endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register - Manager",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    pm.test(\"Status code is 201\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"manager_test\",\n  \"email\": \"manager_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"manager\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register - QA",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    pm.test(\"Status code is 201\", function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"qa_test\",\n  \"email\": \"qa_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"qa\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login - Manager",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"managerAccessToken\", jsonData.access);",
+									"    pm.environment.set(\"managerRefreshToken\", jsonData.refresh);",
+									"    pm.test(\"Status code is 200\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test(\"Response has access token\", function () {",
+									"        pm.expect(jsonData).to.have.property('access');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"manager_test\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login - QA",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"qaAccessToken\", jsonData.access);",
+									"    pm.environment.set(\"qaRefreshToken\", jsonData.refresh);",
+									"    pm.test(\"Status code is 200\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test(\"Response has access token\", function () {",
+									"        pm.expect(jsonData).to.have.property('access');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"qa_test\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Token Refresh",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh\": \"{{managerRefreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/token/refresh/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"token",
+								"refresh",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Me",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/me/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Manager Only",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/manager-only/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"manager-only",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "QA Only",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{qaAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/qa-only/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"qa-only",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Manager or QA",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/manager-or-qa/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"manager-or-qa",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Calls",
+			"item": [
+				{
+					"name": "List Calls",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?sentiment=positive&status=completed&user=manager_test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "sentiment",
+									"value": "positive",
+									"description": "Filter by sentiment: positive, negative, neutral",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "completed",
+									"description": "Filter by status: pending, analyzing, completed",
+									"disabled": true
+								},
+								{
+									"key": "user",
+									"value": "manager_test",
+									"description": "Filter by username",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Call",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "audio_file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Call Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"callId\", jsonData.id);",
+									"    pm.test(\"Status code is 200\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"{{callId}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Call",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"analyzing\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"{{callId}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Call",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"{{callId}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Download Call Audio",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/{{callId}}/download/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"{{callId}}",
+								"download",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Positive Calls",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/positive/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"positive",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Negative Calls",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/negative/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"negative",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Neutral Calls",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/neutral/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								"neutral",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Sentiment - Positive",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?sentiment=positive",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "sentiment",
+									"value": "positive"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Sentiment - Negative",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?sentiment=negative",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "sentiment",
+									"value": "negative"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Sentiment - Neutral",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?sentiment=neutral",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "sentiment",
+									"value": "neutral"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Status - Pending",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?status=pending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Status - Analyzing",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?status=analyzing",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "analyzing"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Status - Completed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?status=completed",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "completed"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{managerAccessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/calls/?user=manager_test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"calls",
+								""
+							],
+							"query": [
+								{
+									"key": "user",
+									"value": "manager_test"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "managerAccessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "qaAccessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "managerRefreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "qaRefreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "callId",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}

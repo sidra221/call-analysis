@@ -88,7 +88,7 @@ class CallViewSet(viewsets.ModelViewSet):
         عرض الملفات الصوتية الإيجابية
         """
         calls = self.get_queryset().filter(
-            callanalysis__sentiment='positive'
+            analysis__sentiment='positive'
         ).distinct()
         
         serializer = CallListSerializer(calls, many=True)
@@ -100,7 +100,7 @@ class CallViewSet(viewsets.ModelViewSet):
         عرض الملفات الصوتية السلبية
         """
         calls = self.get_queryset().filter(
-            callanalysis__sentiment='negative'
+            analysis__sentiment='negative'
         ).distinct()
         
         serializer = CallListSerializer(calls, many=True)
@@ -112,7 +112,7 @@ class CallViewSet(viewsets.ModelViewSet):
         عرض الملفات الصوتية المحايدة
         """
         calls = self.get_queryset().filter(
-            callanalysis__sentiment='neutral'
+            analysis__sentiment='neutral'
         ).distinct()
         
         serializer = CallListSerializer(calls, many=True)

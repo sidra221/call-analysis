@@ -70,7 +70,7 @@ class ManagerOrQAView(APIView):
     permission_classes = [IsAuthenticated, IsManagerOrQA]
     
     def get(self, request):
-        from users.models import UserProfile
+        from .models import UserProfile
         user_profile = UserProfile.objects.get(user=request.user)
         return Response({
             "message": "This endpoint is accessible to Managers and QAs",
@@ -86,7 +86,7 @@ class AuthenticatedUserView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        from users.models import UserProfile
+        from .models import UserProfile
         try:
             user_profile = UserProfile.objects.get(user=request.user)
             role = user_profile.role

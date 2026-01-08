@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from users.models import UserProfile
+from .models import UserProfile
 
 
 class IsQA(permissions.BasePermission):

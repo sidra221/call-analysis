@@ -13,11 +13,14 @@ class CallSerializer(serializers.ModelSerializer):
             'uploaded_by',
             'uploaded_by_username',
             'audio_file',
+            'file_path',
             'status',
+            'duration',
             'created_at',
+            'updated_at',
             'analysis'
         ]
-        read_only_fields = ['uploaded_by', 'status', 'created_at']
+        read_only_fields = ['uploaded_by', 'status', 'created_at', 'updated_at']
 
     def get_analysis(self, obj):
         try:
@@ -47,32 +50,37 @@ class CallAnalysisSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'call_id',
+            'main_issue',
+            'sentiment_score',
+            'keywords',
+            'priority',
+            'needs_followup',
             'transcript',
             'sentiment',
-            'sentiment_score',
-            'main_issue',
-            'keywords',
-            'needs_follow_up',
-            'priority',
-            'analyzed_at'
+            'created_at',
+            'updated_at'
         ]
-        read_only_fields = ['analyzed_at']
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class FollowUpSerializer(serializers.ModelSerializer):
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    assigned_to_username = serializers.CharField(source='assigned_to.username', read_only=True)
+    call_id = serializers.IntegerField(source='call.id', read_only=True)
 
     class Meta:
         model = FollowUp
         fields = [
             'id',
             'call',
-            'note',
-            'created_by',
-            'created_by_username',
-            'created_at'
+            'call_id',
+            'assigned_to',
+            'assigned_to_username',
+            'notes',
+            'status',
+            'created_at',
+            'updated_at'
         ]
-        read_only_fields = ['created_by', 'created_at']
+        read_only_fields = ['assigned_to', 'created_at', 'updated_at']
 
 
 class CallListSerializer(serializers.ModelSerializer):
@@ -85,9 +93,12 @@ class CallListSerializer(serializers.ModelSerializer):
             'id',
             'uploaded_by_username',
             'audio_file',
+            'file_path',
             'status',
+            'duration',
             'sentiment',
-            'created_at'
+            'created_at',
+            'updated_at'
         ]
 
     def get_sentiment(self, obj):
