@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "api-testing-collection",
-		"name": "Backend API Collection",
-		"description": "Complete API testing collection for Authentication and Calls endpoints",
+		"name": "Backend API Collection - Complete",
+		"description": "Complete API testing collection for Authentication, Calls, and Dashboard endpoints with all test cases including error scenarios",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -10,322 +10,875 @@
 			"name": "Authentication",
 			"item": [
 				{
-					"name": "Register - Manager",
-					"event": [
+					"name": "1. Register",
+					"item": [
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    pm.test(\"Status code is 201\", function () {",
-									"        pm.response.to.have.status(201);",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"username\": \"manager_test\",\n  \"email\": \"manager_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"manager\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/register/",
-							"host": [
-								"{{baseUrl}}"
+							"name": "Register - Manager",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    pm.test(\"Status code is 201\", function () {",
+											"        pm.response.to.have.status(201);",
+											"    });",
+											"    pm.test(\"Response has success message\", function () {",
+											"        var jsonData = pm.response.json();",
+											"        pm.expect(jsonData).to.have.property('message');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"register",
-								""
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Register - QA",
-					"event": [
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"manager_test\",\n  \"email\": \"manager_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"manager\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register",
+										""
+									]
+								}
+							},
+							"response": []
+						},
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    pm.test(\"Status code is 201\", function () {",
-									"        pm.response.to.have.status(201);",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"username\": \"qa_test\",\n  \"email\": \"qa_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"qa\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/register/",
-							"host": [
-								"{{baseUrl}}"
+							"name": "Register - QA",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    pm.test(\"Status code is 201\", function () {",
+											"        pm.response.to.have.status(201);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"register",
-								""
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login - Manager",
-					"event": [
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"qa_test\",\n  \"email\": \"qa_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"qa\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register",
+										""
+									]
+								}
+							},
+							"response": []
+						},
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.environment.set(\"managerAccessToken\", jsonData.access);",
-									"    pm.environment.set(\"managerRefreshToken\", jsonData.refresh);",
-									"    pm.test(\"Status code is 200\", function () {",
-									"        pm.response.to.have.status(200);",
-									"    });",
-									"    pm.test(\"Response has access token\", function () {",
-									"        pm.expect(jsonData).to.have.property('access');",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"username\": \"manager_test\",\n  \"password\": \"password123\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/login/",
-							"host": [
-								"{{baseUrl}}"
+							"name": "Register - Error: Missing Fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"login",
-								""
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login - QA",
-					"event": [
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"test_user\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register",
+										""
+									]
+								}
+							},
+							"response": []
+						},
 						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.environment.set(\"qaAccessToken\", jsonData.access);",
-									"    pm.environment.set(\"qaRefreshToken\", jsonData.refresh);",
-									"    pm.test(\"Status code is 200\", function () {",
-									"        pm.response.to.have.status(200);",
-									"    });",
-									"    pm.test(\"Response has access token\", function () {",
-									"        pm.expect(jsonData).to.have.property('access');",
-									"    });",
-									"}"
+							"name": "Register - Error: Invalid Role",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
 								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"username\": \"qa_test\",\n  \"password\": \"password123\"\n}"
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"test_user\",\n  \"email\": \"test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"invalid_role\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register",
+										""
+									]
+								}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/login/",
-							"host": [
-								"{{baseUrl}}"
+						{
+							"name": "Register - Error: Duplicate Email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"login",
-								""
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Token Refresh",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"refresh\": \"{{managerRefreshToken}}\"\n}"
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"duplicate_user\",\n  \"email\": \"manager_test@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"manager\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register",
+										""
+									]
+								}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/token/refresh/",
-							"host": [
-								"{{baseUrl}}"
+						{
+							"name": "Register - Error: Short Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"token",
-								"refresh",
-								""
-							]
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"test_user\",\n  \"email\": \"test2@test.com\",\n  \"password\": \"123\",\n  \"role\": \"manager\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register",
+										""
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "Get Me",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/me/",
-							"host": [
-								"{{baseUrl}}"
+					"name": "2. Login",
+					"item": [
+						{
+							"name": "Login - Manager",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.environment.set(\"managerAccessToken\", jsonData.access);",
+											"    pm.environment.set(\"managerRefreshToken\", jsonData.refresh);",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Response has access token\", function () {",
+											"        pm.expect(jsonData).to.have.property('access');",
+											"    });",
+											"    pm.test(\"Response has refresh token\", function () {",
+											"        pm.expect(jsonData).to.have.property('refresh');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"me",
-								""
-							]
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"manager_test\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/login/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login - QA",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.environment.set(\"qaAccessToken\", jsonData.access);",
+											"    pm.environment.set(\"qaRefreshToken\", jsonData.refresh);",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"qa_test\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/login/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login - Error: Wrong Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"manager_test\",\n  \"password\": \"wrong_password\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/login/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login - Error: User Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"nonexistent_user\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/login/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login - Error: Missing Fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"manager_test\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/login/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login",
+										""
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "Manager Only",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/manager-only/",
-							"host": [
-								"{{baseUrl}}"
+					"name": "3. Token Management",
+					"item": [
+						{
+							"name": "Token Refresh",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Response has new access token\", function () {",
+											"        pm.expect(jsonData).to.have.property('access');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"manager-only",
-								""
-							]
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refresh\": \"{{managerRefreshToken}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/token/refresh/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"token",
+										"refresh",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Token Refresh - Error: Invalid Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refresh\": \"invalid_refresh_token\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/token/refresh/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"token",
+										"refresh",
+										""
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "QA Only",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{qaAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/qa-only/",
-							"host": [
-								"{{baseUrl}}"
+					"name": "4. Protected Endpoints",
+					"item": [
+						{
+							"name": "Get Me",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Response has user info\", function () {",
+											"        pm.expect(jsonData).to.have.property('user');",
+											"        pm.expect(jsonData).to.have.property('role');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"qa-only",
-								""
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Manager or QA",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/manager-or-qa/",
-							"host": [
-								"{{baseUrl}}"
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/me/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"me",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Me - Error: No Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"auth",
-								"manager-or-qa",
-								""
-							]
+							"request": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/me/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"me",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Manager Only",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/manager-only/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"manager-only",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Manager Only - Error: QA Access",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 403\", function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{qaAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/manager-only/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"manager-only",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "QA Only",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{qaAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/qa-only/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"qa-only",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "QA Only - Error: Manager Access",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 403\", function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/qa-only/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"qa-only",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Manager or QA",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/manager-or-qa/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"manager-or-qa",
+										""
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				}
 			]
 		},
@@ -333,85 +886,1151 @@
 			"name": "Calls",
 			"item": [
 				{
-					"name": "List Calls",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?sentiment=positive&status=completed&user=manager_test",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
+					"name": "1. List & Filter",
+					"item": [
+						{
+							"name": "List Calls",
+							"event": [
 								{
-									"key": "sentiment",
-									"value": "positive",
-									"description": "Filter by sentiment: positive, negative, neutral",
-									"disabled": true
-								},
-								{
-									"key": "status",
-									"value": "completed",
-									"description": "Filter by status: pending, analyzing, completed",
-									"disabled": true
-								},
-								{
-									"key": "user",
-									"value": "manager_test",
-									"description": "Filter by username",
-									"disabled": true
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Response is array\", function () {",
+											"        var jsonData = pm.response.json();",
+											"        pm.expect(jsonData).to.be.an('array');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
 								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Call",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "audio_file",
-									"type": "file",
-									"src": []
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									]
 								}
-							]
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/",
-							"host": [
-								"{{baseUrl}}"
+						{
+							"name": "List Calls - Filter by Sentiment (Positive)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?sentiment=positive",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "sentiment",
+											"value": "positive"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by Sentiment (Negative)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?sentiment=negative",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "sentiment",
+											"value": "negative"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by Sentiment (Neutral)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?sentiment=neutral",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "sentiment",
+											"value": "neutral"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by Status (Pending)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?status=pending",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "pending"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by Status (Completed)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?status=completed",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "completed"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by User",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?user=manager_test",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "user",
+											"value": "manager_test"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Search (Transcript/Keywords/Main Issue)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?search=internet",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "search",
+											"value": "internet"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by Reviewed (true)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?reviewed=true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "reviewed",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Filter by Reviewed (false)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?reviewed=false",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "reviewed",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Multiple Filters",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?sentiment=positive&status=completed&user=manager_test",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "sentiment",
+											"value": "positive",
+											"disabled": true
+										},
+										{
+											"key": "status",
+											"value": "completed",
+											"disabled": true
+										},
+										{
+											"key": "user",
+											"value": "manager_test",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Calls - Error: No Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
 							],
-							"path": [
-								"api",
-								"calls",
-								""
-							]
+							"request": {
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "Get Call Details",
+					"name": "2. Sentiment Endpoints",
+					"item": [
+						{
+							"name": "Get Positive Calls",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/positive/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"positive",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Negative Calls",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/negative/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"negative",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Neutral Calls",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/neutral/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"neutral",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "3. CRUD Operations",
+					"item": [
+						{
+							"name": "Create Call",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.environment.set(\"callId\", jsonData.id);",
+											"    pm.test(\"Status code is 201\", function () {",
+											"        pm.response.to.have.status(201);",
+											"    });",
+											"    pm.test(\"Response has call ID\", function () {",
+											"        pm.expect(jsonData).to.have.property('id');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "audio_file",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Call - Error: No File",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": []
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Call Details",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Response has call data\", function () {",
+											"        pm.expect(jsonData).to.have.property('id');",
+											"        pm.expect(jsonData).to.have.property('status');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Call Details - Error: Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/99999/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"99999",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Call",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"analyzing\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Call - Error: Invalid Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"invalid_status\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Call",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 204) {",
+											"    pm.test(\"Status code is 204\", function () {",
+											"        pm.response.to.have.status(204);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "4. Download",
+					"item": [
+						{
+							"name": "Download Call Audio",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Content-Type is audio\", function () {",
+											"        pm.expect(pm.response.headers.get('Content-Type')).to.include('audio');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/download/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"download",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Download Call Audio - Error: No File",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/download/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"download",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "5. Processing & Review",
+					"item": [
+						{
+							"name": "Start Processing (Celery)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/process/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"process",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mark Reviewed (Manager)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Review status updated\", function () {",
+											"        pm.expect(jsonData.success).to.eql(true);",
+											"        pm.expect(jsonData.data.is_reviewed).to.eql(true);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/mark-reviewed/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"mark-reviewed",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mark Reviewed - Error: QA Forbidden",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 403\", function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{qaAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/mark-reviewed/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"mark-reviewed",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "6. Follow-ups",
+					"item": [
+						{
+							"name": "Create Follow-up (Manager)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.test(\"Status code is 201\", function () {",
+											"        pm.response.to.have.status(201);",
+											"    });",
+											"    pm.test(\"Envelope success\", function () {",
+											"        pm.expect(jsonData.success).to.eql(true);",
+											"        pm.expect(jsonData.data).to.have.property('id');",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"call_id\": {{callId}},\n  \"assigned_to\": 2,\n  \"notes\": \"Manual follow-up needed\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Follow-ups",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.test(\"Status code is 200\", function () {",
+											"        pm.response.to.have.status(200);",
+											"    });",
+											"    pm.test(\"Envelope success\", function () {",
+											"        pm.expect(jsonData.success).to.eql(true);",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Follow-up Status",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"done\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/1/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										"1",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Get Overview",
 					"event": [
 						{
 							"listen": "test",
@@ -419,9 +2038,17 @@
 								"exec": [
 									"if (pm.response.code === 200) {",
 									"    var jsonData = pm.response.json();",
-									"    pm.environment.set(\"callId\", jsonData.id);",
 									"    pm.test(\"Status code is 200\", function () {",
 									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test(\"Envelope success true and has core metrics\", function () {",
+									"        pm.expect(jsonData.success).to.eql(true);",
+									"        pm.expect(jsonData.data).to.have.property('total_calls');",
+									"        pm.expect(jsonData.data).to.have.property('completed_calls');",
+									"        pm.expect(jsonData.data).to.have.property('failed_calls');",
+									"        pm.expect(jsonData.data).to.have.property('pending_calls');",
+									"        pm.expect(jsonData.data).to.have.property('average_sentiment_score');",
+									"        pm.expect(jsonData.data).to.have.property('top_keywords');",
 									"    });",
 									"}"
 								],
@@ -438,14 +2065,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+							"raw": "{{baseUrl}}/api/dashboard/",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"calls",
-								"{{callId}}",
+								"dashboard",
 								""
 							]
 						}
@@ -453,57 +2079,30 @@
 					"response": []
 				},
 				{
-					"name": "Update Call",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
+					"name": "Get Overview - Error: No Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
 							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"status\": \"analyzing\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/{{callId}}/",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								"{{callId}}",
-								""
-							]
 						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Call",
+					],
 					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
+						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/calls/{{callId}}/",
+							"raw": "{{baseUrl}}/api/dashboard/",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"calls",
-								"{{callId}}",
+								"dashboard",
 								""
 							]
 						}
@@ -511,7 +2110,28 @@
 					"response": []
 				},
 				{
-					"name": "Download Call Audio",
+					"name": "Get Live",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.test(\"Status code is 200\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test(\"Envelope success true and has latest_calls\", function () {",
+									"        pm.expect(jsonData.success).to.eql(true);",
+									"        pm.expect(jsonData.data).to.have.property('latest_calls');",
+									"        pm.expect(jsonData.data.latest_calls).to.be.an('array');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -521,15 +2141,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/calls/{{callId}}/download/",
+							"raw": "{{baseUrl}}/api/dashboard/live/",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"calls",
-								"{{callId}}",
-								"download",
+								"dashboard",
+								"live",
 								""
 							]
 						}
@@ -537,7 +2156,60 @@
 					"response": []
 				},
 				{
-					"name": "Get Positive Calls",
+					"name": "Get Live - Error: No Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/live/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"dashboard",
+								"live",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Summary",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.test(\"Status code is 200\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test(\"Response has overview\", function () {",
+									"        pm.expect(jsonData).to.have.property('overview');",
+									"        pm.expect(jsonData).to.have.property('sentiment');",
+									"        pm.expect(jsonData).to.have.property('priority');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -547,14 +2219,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/calls/positive/",
+							"raw": "{{baseUrl}}/api/dashboard/summary/",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"calls",
-								"positive",
+								"dashboard",
+								"summary",
 								""
 							]
 						}
@@ -562,7 +2234,59 @@
 					"response": []
 				},
 				{
-					"name": "Get Negative Calls",
+					"name": "Get Summary - Error: No Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/summary/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"dashboard",
+								"summary",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Topics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.test(\"Status code is 200\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test(\"Response has topics\", function () {",
+									"        pm.expect(jsonData).to.have.property('top_topics');",
+									"        pm.expect(jsonData).to.have.property('top_keywords');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -572,14 +2296,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/calls/negative/",
+							"raw": "{{baseUrl}}/api/dashboard/topics/",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"calls",
-								"negative",
+								"dashboard",
+								"topics",
 								""
 							]
 						}
@@ -587,235 +2311,38 @@
 					"response": []
 				},
 				{
-					"name": "Get Neutral Calls",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
+					"name": "Get Topics - Error: Invalid Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
 							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/neutral/",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								"neutral",
-								""
-							]
 						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Sentiment - Positive",
+					],
 					"request": {
 						"method": "GET",
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
+								"value": "Bearer invalid_token_here"
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/calls/?sentiment=positive",
+							"raw": "{{baseUrl}}/api/dashboard/topics/",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"calls",
+								"dashboard",
+								"topics",
 								""
-							],
-							"query": [
-								{
-									"key": "sentiment",
-									"value": "positive"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Sentiment - Negative",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?sentiment=negative",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
-								{
-									"key": "sentiment",
-									"value": "negative"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Sentiment - Neutral",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?sentiment=neutral",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
-								{
-									"key": "sentiment",
-									"value": "neutral"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Status - Pending",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?status=pending",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
-								{
-									"key": "status",
-									"value": "pending"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Status - Analyzing",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?status=analyzing",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
-								{
-									"key": "status",
-									"value": "analyzing"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Status - Completed",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?status=completed",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
-								{
-									"key": "status",
-									"value": "completed"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by User",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{managerAccessToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/calls/?user=manager_test",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"calls",
-								""
-							],
-							"query": [
-								{
-									"key": "user",
-									"value": "manager_test"
-								}
 							]
 						}
 					},

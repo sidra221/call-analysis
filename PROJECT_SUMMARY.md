@@ -5,27 +5,35 @@
 
 ## 📋 نظرة عامة على المشروع
 
-**Call Analysis System** هو نظام شامل لإدارة وتحليل المكالمات الصوتية باستخدام Django REST Framework. يتضمن النظام:
+**Call Analysis System** 
+هو نظام شامل لإدارة وتحليل المكالمات الصوتية باستخدام Django REST Framework. 
+يتضمن النظام:
 - نظام مصادقة كامل باستخدام JWT
 - نظام صلاحيات متقدم (Manager/QA)
 - إدارة المكالمات الصوتية (رفع، تحميل، تحليل)
-- Dashboard إحصائي شامل
+- Dashboard إحصائي شامل مع تحديثات بلحظتها عبر WebSockets (Django Channels)
 - نظام متابعات وتقارير
+- معالجة خلفية باستخدام Celery + Redis
+- تكامل خدمة ذكاء اصطناعي خارجية لتحليل الصوت/النص
 
 ---
+
 
 ## ✅ التاسكات المنجزة
 
 ### 1. 🐳 Docker & Infrastructure
 
-- ✅ **Docker Compose** - إعداد كامل مع 3 services:
-  - `web` (call_analysis_backend) - Django Backend على port 8000
+- ✅ **Docker Compose** - إعداد كامل مع 6 services:
+  - `web` (call_analysis_backend) - Daphne ASGI على port 8000
   - `db` (call_analysis_db) - PostgreSQL 15 على port 5433
   - `pgadmin` (call_analysis_pgadmin) - pgAdmin 4 على port 5050
+  - `redis` (call_analysis_redis) - Redis 7 لقنوات WebSocket وCelery
+  - `celery_worker` - Celery worker لمعالجة المهام
+  - `celery_beat` - Celery beat للمهام المجدولة (اختياري)
 - ✅ **Dockerfile** - Python 3.12-slim مع dependencies
 - ✅ **.env** - Environment variables configuration
 - ✅ **Port Configuration:**
-  - Django: 8000
+  - API/ASGI: 8000
   - PostgreSQL: 5433 (تجنب conflict مع PostgreSQL محلي)
   - pgAdmin: 5050
 - ✅ **Volumes** - Persistent storage للـ PostgreSQL data
@@ -34,6 +42,7 @@
   - Django SECRET_KEY
   - DEBUG mode
   - ALLOWED_HOSTS
+  - Celery/Redis/AI service مفاتيح الربط
 
 ---
 
@@ -45,6 +54,9 @@
 - ✅ **CORS Configuration** - CORS_ALLOW_ALL_ORIGINS للـ development
 - ✅ **Media Files** - Configuration للـ file uploads (MEDIA_URL, MEDIA_ROOT)
 - ✅ **Settings Configuration** - قراءة من .env باستخدام python-dotenv
+- ✅ **Channels** - مفعّل في INSTALLED_APPS مع ASGI_APPLICATION وRedis channel layer
+- ✅ **Celery** - إعداد كامل مع broker/backend (Redis) وautodiscover
+- ✅ **AI Service Config** - مفاتيح الربط والمهلة عبر المتغيرات: `AI_SERVICE_URL`, `AI_SERVICE_API_KEY`, `AI_SERVICE_TIMEOUT`
 - ✅ **JWT Settings:**
   - ACCESS_TOKEN_LIFETIME: 60 minutes
   - REFRESH_TOKEN_LIFETIME: 1 day
@@ -52,12 +64,13 @@
 - ✅ **REST Framework Settings:**
   - Default Authentication: JWTAuthentication
   - Default Permission: IsAuthenticated
+  - Exception Handler موحد: `config.exceptions.custom_exception_handler`
 
 ---
 
-### 3. 👥 Users & Authentication System
+### 3. 👥 Authentication & Users System
 
-- ✅ **UserProfile Model** - Roles (Manager, QA)
+- ✅ **UserProfile Model** - في `accounts` app (Roles: Manager, QA)
 - ✅ **JWT Authentication** - djangorestframework-simplejwt
 - ✅ **Register Endpoint** - POST /api/auth/register/
 - ✅ **Login Endpoint** - POST /api/auth/login/
@@ -65,6 +78,7 @@
 - ✅ **User Info** - GET /api/auth/me/
 - ✅ **Custom Serializers** - RegisterSerializer مع validation
 - ✅ **Email & Username Validation** - منع التكرار
+- ✅ **Merged Structure** - `users` app تم دمجه مع `accounts` app
 
 ---
 
@@ -83,13 +97,14 @@
 
 ---
 
-### 5. 📞 Calls Management System
+### 5. 📞 Calls & Reports Management System
 
 - ✅ **Call Model** - المكالمات الصوتية
 - ✅ **CallAnalysis Model** - تحليل المكالمات
 - ✅ **FollowUp Model** - المتابعات
-- ✅ **Report Model** - التقارير
+- ✅ **Report Model** - التقارير (في `calls` app)
 - ✅ **Migrations** - جميع الـ migrations تم إنشاؤها وتطبيقها
+- ✅ **Merged Structure** - `reports` app تم دمجه مع `calls` app
 
 ---
 
@@ -101,7 +116,7 @@
   - Auto-assign: `uploaded_by` = current user
   - Auto-set: `status` = 'pending'
 - ✅ **List Calls** - GET /api/calls/ (مع فلترة)
-  - Query params: `sentiment`, `status`, `user`
+  - Query params: `sentiment`, `status`, `user`, `search`, `reviewed`
   - Ordered by: `-created_at`
 - ✅ **Call Details** - GET /api/calls/{id}/
   - Includes: analysis data, uploaded_by_username
@@ -110,6 +125,12 @@
 - ✅ **Download Audio** - GET /api/calls/{id}/download/
   - Returns: FileResponse with audio file
   - Content-Type: audio/mpeg
+- ✅ **Process (Background Analysis)** - POST /api/calls/{id}/process/
+  - يشغّل مهمة Celery لتحليل المكالمة وربطها بخدمة الـ AI
+  - Response (202): `{ "success": true, "data": { "task_id": "...", "call_id": ..., "status": "queued" }, "error": null }`
+- ✅ **Mark Reviewed (Manager only)** - POST /api/calls/{id}/mark-reviewed/
+  - يحدّث `CallAnalysis.is_reviewed = true`
+  - Permissions: `IsManager`
 - ✅ **Filter by Sentiment (Custom Actions):**
   - GET /api/calls/positive/ - مكالمات إيجابية
   - GET /api/calls/negative/ - مكالمات سلبية
@@ -118,13 +139,36 @@
   - `sentiment`: positive, negative, neutral
   - `status`: pending, analyzing, completed
   - `user`: username filter
+  - `search`: بحث داخل `transcript`, `keywords`, `main_issue`
+  - `reviewed`: true/false
 - ✅ **Serializers:**
   - `CallSerializer` - Full call details with analysis
-  - `CallListSerializer` - List view with sentiment
+  - `CallListSerializer` - List view with sentiment + `is_reviewed`
   - `CallCreateSerializer` - Create only (audio_file)
-  - `CallAnalysisSerializer` - Analysis details
+  - `CallAnalysisSerializer` - Analysis details + `is_reviewed`
 - ✅ **ViewSet** - CallViewSet مع custom actions
   - Permissions: IsAuthenticated, IsManagerOrQA
+  - ردود موحّدة success/error عبر `config.responses`
+
+#### 🔌 WebSocket (Real-time)
+- ✅ Endpoint: `ws/calls/<call_id>/`
+  - Events:
+    - `analysis_started`
+    - `analysis_completed`
+    - `analysis_failed`
+  - يُبثّ من مهمة Celery عبر Channels group: `call_<call_id>`
+
+---
+
+### 7.1. 🔁 Follow-ups API
+
+- ✅ **Create Follow-up (Manager)** - POST /api/followups/
+  - Body: `call_id`, `assigned_to`, `notes`
+- ✅ **List Follow-ups** - GET /api/followups/
+- ✅ **Update Follow-up Status** - PATCH /api/followups/{id}/
+- ✅ **Permissions**
+  - Create: Manager only
+  - List/Update: Manager أو QA
 
 ---
 
@@ -156,6 +200,14 @@
   - **Negative Issues:** أعلى 5 مشاكل سلبية
   - **Positive Issues:** أعلى 5 مواضيع إيجابية
 - ✅ **Permissions:** IsAuthenticated, IsManagerOrQA
+  
+- ✅ **Overview Endpoint (جديد)** - GET /api/dashboard/
+  - يعيد: `total_calls`, `completed_calls`, `failed_calls`, `pending_calls`, `average_sentiment_score`, `top_keywords (top 10)`
+  - باستخدام SQL مُحسّن لاستخراج `keywords` من JSONB
+
+- ✅ **Live Demo Endpoint (جديد)** - GET /api/dashboard/live/
+  - آخر 5 مكالمات مع: `id, status, sentiment, created_at`
+  - ليساعد في العرض الحي قبل تجهيز الواجهة
 
 ---
 
@@ -219,7 +271,7 @@
 
 ### 11. 🗄️ Database Models
 
-#### UserProfile
+#### UserProfile (في accounts app)
 - ✅ OneToOne مع User (CASCADE on delete)
 - ✅ Role choices: `manager`, `qa`
 - ✅ Fields:
@@ -268,7 +320,7 @@
   - `created_at` (DateTimeField, auto_now_add)
   - `updated_at` (DateTimeField, auto_now)
 
-#### Report
+#### Report (في calls app)
 - ✅ ForeignKey مع User (created_by, SET_NULL)
 - ✅ Fields:
   - `created_by` (ForeignKey to User, null=True)
@@ -284,11 +336,11 @@
 
 ### 12. 🔧 Admin Configuration
 
-- ✅ **UserProfileAdmin** - إدارة UserProfile
-- ✅ **CallAdmin** - إدارة Calls
-- ✅ **CallAnalysisAdmin** - إدارة التحليلات
-- ✅ **FollowUpAdmin** - إدارة المتابعات
-- ✅ **ReportAdmin** - إدارة التقارير
+- ✅ **UserProfileAdmin** (في accounts app) - إدارة UserProfile
+- ✅ **CallAdmin** (في calls app) - إدارة Calls
+- ✅ **CallAnalysisAdmin** (في calls app) - إدارة التحليلات
+- ✅ **FollowUpAdmin** (في calls app) - إدارة المتابعات
+- ✅ **ReportAdmin** (في calls app) - إدارة التقارير
 
 ---
 
@@ -313,12 +365,21 @@
 - ✅ GET `/api/calls/positive/` - مكالمات إيجابية
 - ✅ GET `/api/calls/negative/` - مكالمات سلبية
 - ✅ GET `/api/calls/neutral/` - مكالمات محايدة
+- ✅ POST `/api/calls/{id}/process/` - تشغيل تحليل خلفي (Celery)
+- ✅ POST `/api/calls/{id}/mark-reviewed/` - تعيين التحليل كمُراجع (Manager)
 - ✅ PUT/PATCH `/api/calls/{id}/` - تحديث مكالمة
 - ✅ DELETE `/api/calls/{id}/` - حذف مكالمة
+
+#### Follow-ups (Protected)
+- ✅ POST `/api/followups/` - إنشاء Follow-up
+- ✅ GET `/api/followups/` - عرض Follow-ups
+- ✅ PATCH `/api/followups/{id}/` - تحديث الحالة/الملاحظات
 
 #### Dashboard (Protected)
 - ✅ GET `/api/dashboard/summary/` - ملخص إحصائيات
 - ✅ GET `/api/dashboard/topics/` - المواضيع الرئيسية
+- ✅ GET `/api/dashboard/` - نظرة عامة موحّدة (overview)
+- ✅ GET `/api/dashboard/live/` - آخر 5 مكالمات (عرض حي)
 
 ---
 
@@ -349,35 +410,36 @@
 ```
 back-end/
 ├── backend/
-│   ├── accounts/          # Authentication & Permissions
-│   │   ├── models.py      # (no models, uses User)
+│   ├── accounts/          # Authentication, Permissions & User Profiles
+│   │   ├── models.py      # UserProfile
 │   │   ├── views.py       # Register, Login, Token, Permissions views
 │   │   ├── serializers.py # RegisterSerializer
 │   │   ├── permissions.py # IsQA, IsManager, IsManagerOrQA
 │   │   ├── urls.py        # Authentication endpoints
-│   │   └── admin.py
-│   ├── calls/             # Calls Management
-│   │   ├── models.py      # Call, CallAnalysis, FollowUp
+│   │   └── admin.py       # UserProfileAdmin
+│   ├── calls/             # Calls & Reports Management
+│   │   ├── models.py      # Call, CallAnalysis, FollowUp, Report
 │   │   ├── views.py       # CallViewSet
 │   │   ├── serializers.py # Call serializers
 │   │   ├── urls.py        # Calls endpoints
-│   │   ├── admin.py
+│   │   ├── followup_urls.py # Follow-ups endpoints
+│   │   ├── consumers.py   # WebSocket consumer (real-time call updates)
+│   │   ├── routing.py     # WebSocket routing (ws/calls/<call_id>/)
+│   │   ├── ai_client.py   # HTTP client to AI service
+│   │   ├── admin.py       # CallAdmin, CallAnalysisAdmin, FollowUpAdmin, ReportAdmin
 │   │   └── management/commands/
 │   │       └── import_calls_data.py
 │   ├── dashboard/         # Dashboard API
 │   │   ├── views.py       # DashboardSummaryView, DashboardTopicsView
 │   │   └── urls.py        # Dashboard endpoints
-│   ├── users/             # User Profiles
-│   │   ├── models.py      # UserProfile
-│   │   └── admin.py
-│   ├── reports/           # Reports Management
-│   │   ├── models.py      # Report
-│   │   └── admin.py
 │   ├── config/            # Django Settings
 │   │   ├── settings.py
 │   │   ├── urls.py        # Main URL configuration
 │   │   ├── wsgi.py
-│   │   └── asgi.py
+│   │   ├── asgi.py
+│   │   ├── celery.py      # Celery app configuration
+│   │   ├── responses.py   # Unified success/error response helpers
+│   │   └── exceptions.py  # DRF custom exception handler
 │   ├── media/             # Uploaded files
 │   │   └── calls/         # Audio files
 │   └── manage.py
@@ -386,7 +448,7 @@ back-end/
 ├── requirements.txt       # Python dependencies
 ├── .env                   # Environment variables
 ├── .gitignore
-├── Postman_Collection.json # Postman API collection
+├── Postman_Collection.json # Complete Postman API collection (50+ requests)
 └── Documentation files    # .md files
 ```
 
@@ -396,7 +458,7 @@ back-end/
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| Docker Setup | ✅ | 3 services (web, db, pgadmin) |
+| Docker Setup | ✅ | 6 services (web via Daphne, db, pgadmin, redis, celery_worker, celery_beat) |
 | Database (PostgreSQL) | ✅ | PostgreSQL 15 with persistent volumes |
 | Authentication (JWT) | ✅ | djangorestframework-simplejwt |
 | Permissions System | ✅ | Role-based (Manager/QA) |
@@ -404,7 +466,10 @@ back-end/
 | File Download | ✅ | FileResponse with proper headers |
 | Sentiment Analysis | ✅ | Positive, Negative, Neutral |
 | Filtering | ✅ | By sentiment, status, user |
-| Dashboard Statistics | ✅ | Summary & Topics endpoints |
+| Search & Review Filters | ✅ | search + reviewed query params in /api/calls/ |
+| Review Workflow | ✅ | mark-reviewed endpoint + is_reviewed flag |
+| Follow-ups API | ✅ | Create/List/Patch with role-based access |
+| Dashboard Statistics | ✅ | Overview, Summary, Topics, Live |
 | Topics Analysis | ✅ | Top topics, keywords, issues |
 | Admin Panel | ✅ | Django admin for all models |
 | Documentation | ✅ | 7 comprehensive guides |
@@ -418,9 +483,11 @@ back-end/
 ### 18. 📈 API Endpoints Count
 
 - **Authentication:** 7 endpoints
-- **Calls Management:** 9 endpoints
-- **Dashboard:** 2 endpoints
-- **Total:** 18 endpoints
+- **Calls Management:** 11 endpoints (بما فيها process + mark-reviewed + قوائم المشاعر)
+- **Follow-ups:** 3 endpoints
+- **Dashboard:** 4 endpoints (overview, summary, topics, live)
+- **Total (HTTP):** 25 endpoints
+- **WebSockets:** 1 endpoint (`ws/calls/<call_id>/`)
 
 ---
 
@@ -438,7 +505,13 @@ back-end/
 - ✅ **CALLS_API_TESTS.http** - Calls API tests
 - ✅ **DASHBOARD_API_TESTS.http** - Dashboard tests
 - ✅ **COMPLETE_PERMISSIONS_TESTS.http** - Complete test suite
-- ✅ **Postman_Collection.json** - Postman collection for all APIs
+- ✅ **Postman_Collection.json** - Complete Postman collection (50+ requests)
+  - Authentication: updated (success + error cases)
+  - Calls: updated (CRUD + filters + process + review)
+  - Follow-ups: added (create/list/patch)
+  - Dashboard: updated (overview/live/summary/topics)
+  - Auto-save tokens and variables
+  - Test scripts for all requests
 
 ---
 
@@ -457,29 +530,39 @@ back-end/
 
 ### Models & Database
 - **Total Models:** 5 (UserProfile, Call, CallAnalysis, FollowUp, Report)
+  - `UserProfile` في `accounts` app
+  - `Call`, `CallAnalysis`, `FollowUp`, `Report` في `calls` app
 - **Database:** PostgreSQL 15
 - **Migrations:** All applied successfully
 
 ### API Endpoints
 - **Authentication:** 7 endpoints (3 public, 4 protected)
-- **Calls Management:** 9 endpoints (all protected)
-- **Dashboard:** 2 endpoints (all protected)
-- **Total:** 18 endpoints
+- **Calls Management:** 11 endpoints (تشمل process وقوائم المشاعر)
+- **Follow-ups:** 3 endpoints
+- **Dashboard:** 4 endpoints (overview, summary, topics, live)
+- **Total (HTTP):** 25 endpoints
+- **WebSockets:** 1 endpoint (ws/calls/<call_id>/)
 
 ### Applications
-- **Total Apps:** 5 (accounts, calls, dashboard, users, reports)
+- **Total Apps:** 3 (accounts, calls, dashboard)
+  - `accounts`: Authentication, Permissions, UserProfile (merged from users)
+  - `calls`: Calls, Reports, Analysis, FollowUp (merged from reports)
+  - `dashboard`: Statistics & Analytics
 - **Main App:** config (Django settings)
 
 ### Documentation & Testing
 - **Documentation Files:** 7 markdown files
 - **Test Files:** 5 HTTP files + 1 Postman collection
-- **Total Test Requests:** 50+ test cases
+- **Total Test Requests:** 50+ requests in Postman collection
+  - Success cases: 30+
+  - Error cases: 20+
+  - Auto-testing scripts included
 
 ### Code Statistics
 - **Lines of Code:** ~2000+ lines
 - **Python Files:** 20+ files
 - **Serializers:** 6 serializers
-- **Views:** 10+ views/viewsets
+- **Views:** 12+ views/viewsets
 - **Permissions:** 3 custom permissions
 
 ### Dependencies
@@ -490,10 +573,13 @@ back-end/
 - **python-dotenv:** Environment variables
 - **django-cors-headers:** CORS support
 - **gunicorn:** Production server
+- **celery, django-celery-beat, redis:** Background tasks and scheduling
+- **channels, channels-redis, daphne:** Real-time WebSockets over ASGI/Redis
+- **httpx:** تكامل خدمة الـ AI
 
 ### Docker Services
-- **Services:** 3 (web, db, pgadmin)
-- **Ports:** 8000 (Django), 5433 (PostgreSQL), 5050 (pgAdmin)
+- **Services:** 6 (web, db, pgadmin, redis, celery_worker, celery_beat)
+- **Ports:** 8000 (ASGI via Daphne), 5433 (PostgreSQL), 5050 (pgAdmin), 6379 (Redis)
 - **Volumes:** PostgreSQL data persistence
 
 ---
@@ -501,16 +587,21 @@ back-end/
 ## 🎉 النتيجة النهائية
 
 **مشروع كامل ومتكامل** مع:
-- ✅ Backend API كامل (18 endpoints)
+- ✅ Backend API كامل (22 HTTP endpoints) + WebSocket
 - ✅ Authentication & Authorization (JWT + Role-based)
 - ✅ File Management (Upload/Download)
-- ✅ Data Analysis (Sentiment, Keywords, Priority)
-- ✅ Dashboard Statistics (Summary & Topics)
+- ✅ Data Analysis (Sentiment, Keywords, Priority) متكامل مع خدمة AI
+- ✅ Real-time Updates (Django Channels + Redis)
+- ✅ Dashboard Statistics (Overview, Summary, Topics, Live)
 - ✅ Comprehensive Documentation (7 guides)
-- ✅ Testing Suite (HTTP files + Postman collection)
-- ✅ Docker Setup (3 services)
+- ✅ Complete Testing Suite (HTTP files + Postman collection with 50+ requests)
+- ✅ Docker Setup (6 services) مع Daphne وRedis وCelery
 - ✅ Admin Panel (Django admin)
 - ✅ Management Commands (Data import)
+- ✅ Optimized Structure (3 apps: accounts, calls, dashboard)
+  - `accounts`: Authentication + UserProfile (merged from users)
+  - `calls`: Calls + Reports (merged from reports)
+  - `dashboard`: Statistics & Analytics
 
 ---
 
@@ -559,6 +650,7 @@ docker-compose exec web python backend/manage.py createsuperuser
 - **Authentication:** `http://localhost:8000/api/auth/`
 - **Calls:** `http://localhost:8000/api/calls/`
 - **Dashboard:** `http://localhost:8000/api/dashboard/`
+- **WebSocket:** `ws://localhost:8000/ws/calls/<call_id>/`
 
 ---
 
@@ -599,13 +691,6 @@ docker-compose exec web python backend/manage.py createsuperuser
 
 ---
 
-## 📚 Additional Resources
-
-- **Postman Collection:** Import `Postman_Collection.json` for easy testing
-- **API Guides:** Check individual `.md` files for detailed documentation
-- **Test Files:** Use `.http` files with REST Client extension
-
----
 
 **تم إنجاز جميع التاسكات بنجاح! 🚀**
 

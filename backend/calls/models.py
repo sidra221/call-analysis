@@ -47,6 +47,7 @@ class CallAnalysis(models.Model):
     keywords = models.JSONField()
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES)
     needs_followup = models.BooleanField(default=False)
+    is_reviewed = models.BooleanField(default=False)
     transcript = models.TextField()
     sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, null=True, blank=True)  # Keep for backward compatibility
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)

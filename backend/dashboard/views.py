@@ -1,11 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db import connection
 from django.db.models import Count, Q, Avg
 from django.utils import timezone
 from datetime import timedelta
 from calls.models import Call, CallAnalysis, FollowUp
 from accounts.permissions import IsManagerOrQA
+from config.responses import success_response, error_response
 
 
 class DashboardSummaryView(APIView):
@@ -135,29 +137,21 @@ class DashboardTopicsView(APIView):
                 'neutral': topic['neutral_count'],
             })
 
-        # الكلمات المفتاحية الأكثر استخداماً
-        all_keywords = []
-        analyses = CallAnalysis.objects.all()
-        for analysis in analyses:
-            if analysis.keywords:
-                all_keywords.extend(analysis.keywords)
-
-        # حساب تكرار الكلمات
-        keyword_counts = {}
-        for keyword in all_keywords:
-            keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
-
-        # ترتيب الكلمات حسب التكرار
-        top_keywords = sorted(
-            keyword_counts.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:10]
-
-        keywords_list = [
-            {'keyword': keyword, 'count': count}
-            for keyword, count in top_keywords
-        ]
+        # الكلمات المفتاحية الأكثر استخداماً (SQL optimized on PostgreSQL)
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT LOWER(elem) AS keyword, COUNT(*) AS cnt
+                FROM (
+                    SELECT jsonb_array_elements_text(keywords) AS elem
+                    FROM calls_callanalysis
+                    WHERE keywords IS NOT NULL
+                ) t
+                GROUP BY LOWER(elem)
+                ORDER BY cnt DESC
+                LIMIT 10
+            """)
+            rows = cursor.fetchall()
+            keywords_list = [{'keyword': r[0], 'count': r[1]} for r in rows]
 
         # المشاكل الأكثر تكراراً (negative sentiment)
         negative_issues = CallAnalysis.objects.filter(
@@ -189,4 +183,74 @@ class DashboardTopicsView(APIView):
             'negative_issues': negative_issues_list,
             'positive_issues': positive_issues_list,
         })
+
+
+class DashboardOverviewView(APIView):
+    """
+    GET /api/dashboard/
+    """
+    permission_classes = [IsAuthenticated, IsManagerOrQA]
+
+    def get(self, request):
+        try:
+            total_calls = Call.objects.count()
+            completed_calls = Call.objects.filter(status='completed').count()
+            failed_calls = Call.objects.filter(status='failed').count()
+            pending_calls = Call.objects.filter(status='pending').count()
+            avg_sentiment_score = CallAnalysis.objects.aggregate(
+                avg_score=Avg('sentiment_score')
+            )['avg_score'] or 0
+
+            # top 10 keywords optimized
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT LOWER(elem) AS keyword, COUNT(*) AS cnt
+                    FROM (
+                        SELECT jsonb_array_elements_text(keywords) AS elem
+                        FROM calls_callanalysis
+                        WHERE keywords IS NOT NULL
+                    ) t
+                    GROUP BY LOWER(elem)
+                    ORDER BY cnt DESC
+                    LIMIT 10
+                """)
+                rows = cursor.fetchall()
+                top_keywords = [{'keyword': r[0], 'count': r[1]} for r in rows]
+
+            data = {
+                'total_calls': total_calls,
+                'completed_calls': completed_calls,
+                'failed_calls': failed_calls,
+                'pending_calls': pending_calls,
+                'average_sentiment_score': round(float(avg_sentiment_score), 2),
+                'top_keywords': top_keywords,
+            }
+            return success_response(data)
+        except Exception as exc:
+            return error_response(str(exc), code="dashboard_error", status_code=500)
+
+
+class LiveDemoView(APIView):
+    """
+    GET /api/dashboard/live/
+    """
+    permission_classes = [IsAuthenticated, IsManagerOrQA]
+
+    def get(self, request):
+        try:
+            calls = Call.objects.select_related('analysis').order_by('-created_at')[:5]
+            data = []
+            for c in calls:
+                sentiment = None
+                if hasattr(c, 'analysis') and c.analysis:
+                    sentiment = c.analysis.sentiment
+                data.append({
+                    'id': c.id,
+                    'status': c.status,
+                    'sentiment': sentiment,
+                    'created_at': c.created_at,
+                })
+            return success_response({'latest_calls': data})
+        except Exception as exc:
+            return error_response(str(exc), code="live_demo_error", status_code=500)
 

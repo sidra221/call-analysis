@@ -55,6 +55,7 @@ class CallAnalysisSerializer(serializers.ModelSerializer):
             'keywords',
             'priority',
             'needs_followup',
+            'is_reviewed',
             'transcript',
             'sentiment',
             'created_at',
@@ -86,6 +87,7 @@ class FollowUpSerializer(serializers.ModelSerializer):
 class CallListSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
     sentiment = serializers.SerializerMethodField()
+    is_reviewed = serializers.SerializerMethodField()
 
     class Meta:
         model = Call
@@ -97,6 +99,7 @@ class CallListSerializer(serializers.ModelSerializer):
             'status',
             'duration',
             'sentiment',
+            'is_reviewed',
             'created_at',
             'updated_at'
         ]
@@ -108,3 +111,9 @@ class CallListSerializer(serializers.ModelSerializer):
         except CallAnalysis.DoesNotExist:
             return None
 
+    def get_is_reviewed(self, obj):
+        try:
+            analysis = CallAnalysis.objects.get(call=obj)
+            return analysis.is_reviewed
+        except CallAnalysis.DoesNotExist:
+            return False
