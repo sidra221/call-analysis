@@ -1,9 +1,8 @@
-version: "3.9"
-
 services:
   web:
     build: .
     container_name: call_analysis_backend
+    working_dir: /app/backend
     command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
     volumes:
       - .:/app
@@ -47,7 +46,8 @@ services:
   celery_worker:
     build: .
     container_name: call_analysis_celery_worker
-    command: celery -A backend.config worker -l info --concurrency=2
+    working_dir: /app/backend
+    command: celery -A config worker -l info --concurrency=2
     volumes:
       - .:/app
     env_file:
@@ -59,7 +59,8 @@ services:
   celery_beat:
     build: .
     container_name: call_analysis_celery_beat
-    command: celery -A backend.config beat -l info
+    working_dir: /app/backend
+    command: celery -A config beat -l info
     volumes:
       - .:/app
     env_file:

@@ -1272,6 +1272,40 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "List Calls - Search + Reviewed",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/?search=account&reviewed=true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										""
+									],
+									"query": [
+										{
+											"key": "search",
+											"value": "account"
+										},
+										{
+											"key": "reviewed",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -1888,6 +1922,189 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Start Processing - Error: No Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/process/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"process",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Start Processing - Error: Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/999999/process/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"999999",
+										"process",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mark Reviewed - Error: No Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callId}}/mark-reviewed/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callId}}",
+										"mark-reviewed",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mark Reviewed - Error: Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/999999/mark-reviewed/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"999999",
+										"mark-reviewed",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mark Reviewed - Error: Analysis Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/calls/{{callIdWithoutAnalysis}}/mark-reviewed/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"calls",
+										"{{callIdWithoutAnalysis}}",
+										"mark-reviewed",
+										""
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -2016,6 +2233,319 @@
 										"api",
 										"followups",
 										"1",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Follow-up - Error: QA Forbidden",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 403\", function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{qaAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"call_id\": {{callId}},\n  \"assigned_to\": 2,\n  \"notes\": \"qa should not create\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Follow-up - Error: Missing call_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"assigned_to\": 2,\n  \"notes\": \"missing call id\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Follow-up - Error: Missing assigned_to",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"call_id\": {{callId}},\n  \"notes\": \"missing assigned user\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Follow-up - Error: Call Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"call_id\": 999999,\n  \"assigned_to\": 2,\n  \"notes\": \"call not found\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Follow-up - Error: Assigned User Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"call_id\": {{callId}},\n  \"assigned_to\": 999999,\n  \"notes\": \"user not found\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Follow-up - Error: No Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"done\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/1/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										"1",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Follow-up - Error: Not Found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{managerAccessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"done\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/followups/999999/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"followups",
+										"999999",
 										""
 									]
 								}
@@ -2380,6 +2910,11 @@
 		{
 			"key": "callId",
 			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "callIdWithoutAnalysis",
+			"value": "2",
 			"type": "string"
 		}
 	]
