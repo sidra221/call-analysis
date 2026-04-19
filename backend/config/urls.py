@@ -25,8 +25,11 @@ urlpatterns = [
     path('api/calls/', include('calls.urls')),
     path('api/followups/', include('calls.followup_urls')),
     path('api/dashboard/', include('dashboard.urls')),
+    path('api/', include('reports.urls')),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+

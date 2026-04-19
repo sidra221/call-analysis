@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'accounts',
     'calls',
     'dashboard',
+    'reports',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

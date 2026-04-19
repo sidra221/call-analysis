@@ -1,0 +1,227 @@
+{
+  "info": {
+    "name": "Call Analysis API",
+    "_postman_id": "12345-abcde-67890",
+    "description": "Full API Testing Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "access_token", "value": "" },
+    { "key": "call_id", "value": "" }
+  ],
+  "item": [
+
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/api/auth/register/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"qa1\",\n  \"email\": \"qa1@test.com\",\n  \"password\": \"12345678\",\n  \"role\": \"qa\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/api/auth/login/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"qa1\",\n  \"password\": \"12345678\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.collectionVariables.set('access_token', jsonData.data.access);"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Auth - Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/auth/me/"
+      }
+    },
+
+    {
+      "name": "Calls - Upload",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/calls/",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "audio_file",
+              "type": "file",
+              "src": []
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Calls - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/calls/"
+      }
+    },
+
+    {
+      "name": "Calls - Details",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/calls/{{call_id}}/"
+      }
+    },
+
+    {
+      "name": "Calls - Process",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/calls/{{call_id}}/process/"
+      }
+    },
+
+    {
+      "name": "Calls - Mark Reviewed",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/calls/{{call_id}}/mark-reviewed/"
+      }
+    },
+
+    {
+      "name": "Calls - Search",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/calls/?search=test"
+      }
+    },
+
+    {
+      "name": "FollowUps - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "Content-Type": "application/json" },
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/followups/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"call_id\": {{call_id}},\n  \"assigned_to\": 1,\n  \"notes\": \"Test follow-up\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "FollowUps - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/followups/"
+      }
+    },
+
+    {
+      "name": "FollowUps - Update",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "Content-Type": "application/json" },
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/followups/1/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"done\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Dashboard - Overview",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/dashboard/"
+      }
+    },
+
+    {
+      "name": "Dashboard - Summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/dashboard/summary/"
+      }
+    },
+
+    {
+      "name": "Dashboard - Topics",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/dashboard/topics/"
+      }
+    },
+
+    {
+      "name": "Dashboard - Live",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "Authorization": "Bearer {{access_token}}" }
+        ],
+        "url": "{{base_url}}/api/dashboard/live/"
+      }
+    }
+
+  ]
+}

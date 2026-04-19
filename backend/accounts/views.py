@@ -53,7 +53,7 @@ class QAOnlyView(APIView):
     """
     View محمية - فقط QAs يمكنهم الوصول
     """
-    permission_classes = [IsAuthenticated, IsQA]
+    permission_classes = [IsAuthenticated, IsManagerOrQA]
     
     def get(self, request):
         return Response({

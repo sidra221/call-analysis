@@ -14,7 +14,7 @@ class IsQA(permissions.BasePermission):
         
         try:
             user_profile = UserProfile.objects.get(user=request.user)
-            return user_profile.role == 'qa'
+            return user_profile.role.lower() == 'qa'
         except UserProfile.DoesNotExist:
             return False
 
@@ -31,7 +31,7 @@ class IsManager(permissions.BasePermission):
         
         try:
             user_profile = UserProfile.objects.get(user=request.user)
-            return user_profile.role == 'manager'
+            return user_profile.role.lower() == 'manager'
         except UserProfile.DoesNotExist:
             return False
 

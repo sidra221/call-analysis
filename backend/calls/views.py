@@ -199,7 +199,7 @@ class CallViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=['post'],
-        permission_classes=[IsAuthenticated, IsManager],
+        permission_classes=[IsAuthenticated, IsManagerOrQA],
         url_path='mark-reviewed'
     )
     def mark_reviewed(self, request, pk=None):
@@ -229,9 +229,8 @@ class FollowUpViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'create':
-            return [IsAuthenticated(), IsManager()]
+            return [IsAuthenticated(), IsManagerOrQA()]
         return [permission() for permission in self.permission_classes]
-
     def create(self, request, *args, **kwargs):
         call_id = request.data.get('call_id')
         assigned_to = request.data.get('assigned_to')
