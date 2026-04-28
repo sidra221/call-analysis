@@ -72,6 +72,8 @@ function SectionCard({ title, subtitle, children }) {
 export default function Dashboard() {
   return (
     <Grid container spacing={3}>
+
+      {/* HEADER */}
       <Grid item xs={12}>
         <Card>
           <CardContent>
@@ -85,6 +87,7 @@ export default function Dashboard() {
         </Card>
       </Grid>
 
+      {/* OVERVIEW */}
       <Grid item xs={12}>
         <SectionCard title="Overview" subtitle="Summary of system activity">
           <Grid container spacing={2}>
@@ -113,6 +116,7 @@ export default function Dashboard() {
         </SectionCard>
       </Grid>
 
+      {/* SENTIMENT */}
       <Grid item xs={12}>
         <SectionCard title="Sentiment Analysis" subtitle="Distribution of call sentiment results">
           <Grid container spacing={2}>
@@ -139,6 +143,7 @@ export default function Dashboard() {
               </Grid>
             ))}
           </Grid>
+
           <Card variant="outlined" sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -150,6 +155,7 @@ export default function Dashboard() {
         </SectionCard>
       </Grid>
 
+      {/* PRIORITY */}
       <Grid item xs={12}>
         <SectionCard title="Priority Distribution" subtitle="Priority levels for current calls">
           <Grid container spacing={2}>
@@ -176,6 +182,7 @@ export default function Dashboard() {
               </Grid>
             ))}
           </Grid>
+
           <Card variant="outlined" sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -187,6 +194,7 @@ export default function Dashboard() {
         </SectionCard>
       </Grid>
 
+      {/* KEYWORDS + ISSUES */}
       <Grid item xs={12} md={6}>
         <SectionCard title="Top Keywords" subtitle="Most frequent terms in recent calls">
           <Stack spacing={1}>
@@ -209,6 +217,7 @@ export default function Dashboard() {
         </SectionCard>
       </Grid>
 
+      {/* FOLLOW UPS */}
       <Grid item xs={12}>
         <SectionCard title="Follow-ups" subtitle="Follow-up workload and progress snapshot">
           <Grid container spacing={2}>
@@ -231,6 +240,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </Grid>
+
             <Grid item xs={12} sm={6}>
               <Card variant="outlined" sx={{ height: '100%' }}>
                 <CardContent
@@ -254,6 +264,7 @@ export default function Dashboard() {
         </SectionCard>
       </Grid>
 
+      {/* LATEST CALLS */}
       <Grid item xs={12}>
         <SectionCard title="Latest Calls" subtitle="Most recent calls requiring monitoring">
           <Table size="small">
@@ -267,6 +278,7 @@ export default function Dashboard() {
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
+
             <TableBody>
               {latestCalls.map((call) => (
                 <TableRow key={call.id}>
@@ -297,9 +309,90 @@ export default function Dashboard() {
                 </TableRow>
               ))}
             </TableBody>
+
           </Table>
         </SectionCard>
       </Grid>
+
+      {/* ---------------------- WHITE CARDS AT THE END ---------------------- */}
+      <Grid item xs={12}>
+        <Grid container spacing={2}>
+
+          {/* Impressions */}
+          <Grid item xs={12} sm={4}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent
+                sx={{
+                  minHeight: 150,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Impressions
+                </Typography>
+                <Typography variant="h3">1,563</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  May 23 - June 01, 2018
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Goal */}
+          <Grid item xs={12} sm={4}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent
+                sx={{
+                  minHeight: 150,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Goal
+                </Typography>
+                <Typography variant="h3">30,564</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  May 28 - June 01, 2018
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Impact */}
+          <Grid item xs={12} sm={4}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent
+                sx={{
+                  minHeight: 150,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Impact
+                </Typography>
+                <Typography variant="h3">42.6%</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  May 30 - June 01, 2018
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+        </Grid>
+      </Grid>
+
     </Grid>
   );
 }

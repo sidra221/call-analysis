@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Call, CallAnalysis, FollowUp, Report
+from .models import Call, CallAnalysis, FollowUp
 
 
 @admin.register(Call)
@@ -23,7 +23,6 @@ class CallAnalysisAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at'
     )
-
     list_filter = ('sentiment', 'priority', 'needs_followup', 'created_at')
     search_fields = ('main_issue',)
     readonly_fields = ('created_at', 'updated_at')
@@ -34,12 +33,4 @@ class FollowUpAdmin(admin.ModelAdmin):
     list_display = ('call', 'assigned_to', 'status', 'created_at', 'updated_at')
     list_filter = ('status', 'created_at')
     search_fields = ('notes',)
-    readonly_fields = ('created_at', 'updated_at')
-
-
-@admin.register(Report)
-class ReportAdmin(admin.ModelAdmin):
-    list_display = ('title', 'created_by', 'period_start', 'period_end', 'created_at', 'updated_at')
-    list_filter = ('created_at',)
-    search_fields = ('title',)
     readonly_fields = ('created_at', 'updated_at')
