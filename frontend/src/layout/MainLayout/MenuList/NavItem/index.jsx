@@ -98,7 +98,7 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
           <ListItemIcon
             sx={{
               minWidth: level === 1 ? 36 : 18,
-              color: isSelected ? 'secondary.main' : 'text.primary',
+              color: isSelected ? 'primary.main' : 'text.primary',
               ...(!drawerOpen &&
                 level === 1 && {
                   borderRadius: `${borderRadius}px`,
@@ -106,10 +106,10 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
                   height: 46,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  '&:hover': { bgcolor: 'secondary.light' },
+                  '&:hover': { bgcolor: 'primary.light' },
                   ...(isSelected && {
-                    bgcolor: 'secondary.light',
-                    '&:hover': { bgcolor: 'secondary.light' }
+                    bgcolor: 'primary.light',
+                    '&:hover': { bgcolor: 'primary.light' }
                   })
                 })
             }}
@@ -145,7 +145,7 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
                       display: 'block',
                       fontSize: '0.6875rem',
                       fontWeight: 500,
-                      color: 'text.secondary',
+                      color: 'text.primary',
                       textTransform: 'capitalize',
                       lineHeight: 1.66
                     }}

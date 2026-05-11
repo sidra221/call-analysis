@@ -1,398 +1,347 @@
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Divider,
-  Chip,
-  Grid,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography
+  Box, Card, CardContent, Typography, Table, TableBody, TableCell,
+  TableHead, TableRow, Chip, Divider, Avatar, Stack, Button, IconButton,
+  Menu, MenuItem, ListItemIcon, ListItemText, TextField, Checkbox
+} from "@mui/material";
+import { IconEye, IconEdit, IconTrash, IconUsers, IconDots } from '@tabler/icons-react';
+import StatCard from './StatCard';
+import { useNavigate } from "react-router-dom";
+import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import LowPriorityIcon from "@mui/icons-material/LowPriority";
+import useCallsStore from 'hooks/useCallsStore';
+import {
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend
+} from "chart.js";
+import { useState, useMemo, useRef, useEffect  } from "react";
+import { Bar } from "react-chartjs-2";
+import useAuth from 'hooks/useAuth';
+import { useLocation } from "react-router-dom";
 
-const mainStats = [
-  { title: 'Total Calls', value: 50 },
-  { title: 'Completed Calls', value: 35 },
-  { title: 'Pending Calls', value: 10 },
-  { title: 'Needs Follow-up', value: 5 }
-];
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const sentiments = [
-  { title: 'Positive', value: 20 },
-  { title: 'Negative', value: 18 },
-  { title: 'Neutral', value: 12 }
-];
+const employees = ['Ahmad Ali', 'Sara Mohamed', 'Omar Khaled', 'Lina Hassan', 'Yousef Nasser'];
 
-const priorities = [
-  { title: 'High', value: 10 },
-  { title: 'Medium', value: 25 },
-  { title: 'Low', value: 15 }
-];
+export default function UploadCall() {
+  const navigate = useNavigate();
+  const { calls, setCalls } = useCallsStore();
 
-const latestCalls = [
-  { id: 1, status: 'completed', sentiment: 'positive', priority: 'high', reviewed: 'Yes' },
-  { id: 2, status: 'pending', sentiment: 'negative', priority: 'medium', reviewed: 'No' },
-  { id: 3, status: 'completed', sentiment: 'neutral', priority: 'low', reviewed: 'Yes' },
-  { id: 4, status: 'pending', sentiment: 'positive', priority: 'medium', reviewed: 'No' },
-  { id: 5, status: 'completed', sentiment: 'negative', priority: 'high', reviewed: 'Yes' }
-];
+  // Delete
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [callToDelete, setCallToDelete] = useState(null);
+  const handleDelete = (id) => {
+    setCalls(calls.filter((c) => c.id !== id));
+  };
 
-const sentimentColor = {
-  positive: 'success',
-  negative: 'error',
-  neutral: 'default'
-};
+  // 3-dots menu
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuCallId, setMenuCallId] = useState(null);
+  const openMenu = (event, callId) => { setAnchorEl(event.currentTarget); setMenuCallId(callId); };
+  const closeMenu = () => { setAnchorEl(null); setMenuCallId(null); };
 
-const priorityColor = {
-  high: 'error',
-  medium: 'warning',
-  low: 'success'
-};
+  // ✅ Users menu — نفس نظام Calls.js
+  
+  // ✅ استخدم position بدل anchor element
+  const [usersMenuPosition, setUsersMenuPosition] = useState(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
-function SectionCard({ title, subtitle, children }) {
+  const closeUsersMenu = () => {
+    setUsersMenuPosition(null);
+    setUserSearch('');
+  };
+
+  
+    const filteredEmployees = useMemo(() => {
+      return employees.filter((name) =>
+        name.toLowerCase().includes(userSearch.toLowerCase())
+      );
+    }, [userSearch]);
+
+
+  const fileInputRef = useRef(null);
+  const { user } = useAuth();
+  const role = (user?.role || '').toLowerCase();
+  const isManager = role === 'manager';
+    
+  const latestCalls = calls.slice(0, 5);
+
+  const sentimentColor = { positive: 'success', negative: 'error', neutral: 'default' };
+  const priorityColor = { high: 'error', medium: 'warning', low: 'success' };
+  const stateColor = { pending: 'warning', in_progress: 'info', completed: 'success', rejected: 'error' };
+  const statusLabel = { pending: 'Pending', in_progress: 'In Progress', completed: 'Completed', rejected: 'Rejected' };
+
+  const overviewData = [
+    { label: "Neutral Calls", value: 90, color: "secondary" },
+    { label: "Positive Calls", value: 20, color: "success" },
+    { label: "Negative Calls", value: 45, color: "error" },
+    { label: "Follow-up", value: 30, color: "warning" }
+  ];
+
+  const sentimentChartData = {
+    labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    datasets: [
+      { label: "Positive", data: [3, 5, 4, 6, 2, 4, 3], backgroundColor: "#2ecc71", borderRadius: 5, barThickness: 14 },
+      { label: "Negative", data: [2, 3, 5, 2, 4, 3, 2], backgroundColor: "#e74c3c", borderRadius: 5, barThickness: 14 }
+    ]
+  };
+
+  const topIssues = [
+    { issue: "Billing Problem", percent: 45 },
+    { issue: "Technical Issue", percent: 35 },
+    { issue: "Account Access", percent: 25 },
+    { issue: "Other", percent: 10 }
+  ];
+
+  const keywords = ["refund", "delay", "password", "cancel", "support", "error"];
+const location = useLocation();
+const state = location.state;
+
+useEffect(() => {
+   
+
+    // ✅ فتح users menu بمنتصف يمين الشاشة لما يجي من Dashboard
+    if (state?.openUsers) {
+      setTimeout(() => {
+        setUsersMenuPosition({
+          top: window.innerHeight / 2,
+          left: window.innerWidth / 2
+        });
+      }, 300);
+    }
+
+    window.history.replaceState({}, document.title);
+  }, []);
+
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography variant="h5">{title}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {subtitle}
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
+    <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 3 }}>
 
-export default function Dashboard() {
-  return (
-    <Grid container spacing={3}>
-
-      {/* HEADER */}
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Typography variant="h4" gutterBottom>
-              Dashboard
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Monitor call analysis performance and key insights
-            </Typography>
+      {/* Priority Cards */}
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Avatar sx={{ bgcolor: "error.light", width: 48, height: 48 }}><PriorityHighIcon color="error" /></Avatar>
+            <Box><Typography variant="subtitle2" color="text.secondary">High Priority</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>45</Typography></Box>
           </CardContent>
         </Card>
-      </Grid>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Avatar sx={{ bgcolor: "warning.light", width: 48, height: 48 }}><ReportProblemIcon color="warning" /></Avatar>
+            <Box><Typography variant="subtitle2" color="text.secondary">Medium Priority</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>70</Typography></Box>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Avatar sx={{ bgcolor: "success.light", width: 48, height: 48 }}><LowPriorityIcon color="success" /></Avatar>
+            <Box><Typography variant="subtitle2" color="text.secondary">Low Priority</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>120</Typography></Box>
+          </CardContent>
+        </Card>
+      </Box>
 
-      {/* OVERVIEW */}
-      <Grid item xs={12}>
-        <SectionCard title="Overview" subtitle="Summary of system activity">
-          <Grid container spacing={2}>
-            {mainStats.map((metric) => (
-              <Grid item xs={12} sm={6} md={3} key={metric.title}>
-                <Card variant="outlined" sx={{ height: '100%' }}>
-                  <CardContent
-                    sx={{
-                      minHeight: 150,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      {metric.title}
-                    </Typography>
-                    <Typography variant="h3">{metric.value}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </SectionCard>
-      </Grid>
+      {/* Overview + Sentiment */}
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Overview</Typography>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "flex", justifyContent: "center" }}><StatCard data={overviewData} /></Box>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Sentiment</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Box sx={{ height: 220, mt: 1 }}><Bar data={sentimentChartData} options={{ responsive: true, maintainAspectRatio: false }} /></Box>
+          </CardContent>
+        </Card>
+      </Box>
 
-      {/* SENTIMENT */}
-      <Grid item xs={12}>
-        <SectionCard title="Sentiment Analysis" subtitle="Distribution of call sentiment results">
-          <Grid container spacing={2}>
-            {sentiments.map((metric) => (
-              <Grid item xs={12} sm={4} key={metric.title}>
-                <Card variant="outlined" sx={{ height: '100%' }}>
-                  <CardContent
-                    sx={{
-                      minHeight: 150,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      {metric.title}
-                    </Typography>
-                    <Chip label={metric.title} color={sentimentColor[metric.title.toLowerCase()]} size="small" sx={{ mb: 1 }} />
-                    <Typography variant="h3">{metric.value}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-
-          <Card variant="outlined" sx={{ mt: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Sentiment Distribution Chart
-              </Typography>
-              <Box sx={{ height: 120, bgcolor: 'grey.100', borderRadius: 1 }} />
-            </CardContent>
-          </Card>
-        </SectionCard>
-      </Grid>
-
-      {/* PRIORITY */}
-      <Grid item xs={12}>
-        <SectionCard title="Priority Distribution" subtitle="Priority levels for current calls">
-          <Grid container spacing={2}>
-            {priorities.map((metric) => (
-              <Grid item xs={12} sm={4} key={metric.title}>
-                <Card variant="outlined" sx={{ height: '100%' }}>
-                  <CardContent
-                    sx={{
-                      minHeight: 150,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      {metric.title}
-                    </Typography>
-                    <Chip label={metric.title} color={priorityColor[metric.title.toLowerCase()]} size="small" sx={{ mb: 1 }} />
-                    <Typography variant="h3">{metric.value}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-
-          <Card variant="outlined" sx={{ mt: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Priority Distribution Chart
-              </Typography>
-              <Box sx={{ height: 120, bgcolor: 'grey.100', borderRadius: 1 }} />
-            </CardContent>
-          </Card>
-        </SectionCard>
-      </Grid>
-
-      {/* KEYWORDS + ISSUES */}
-      <Grid item xs={12} md={6}>
-        <SectionCard title="Top Keywords" subtitle="Most frequent terms in recent calls">
-          <Stack spacing={1}>
-            <Typography variant="body2">- delayed delivery</Typography>
-            <Typography variant="body2">- invoice issue</Typography>
-            <Typography variant="body2">- payment retry</Typography>
-            <Typography variant="body2">- follow-up request</Typography>
-          </Stack>
-        </SectionCard>
-      </Grid>
-
-      <Grid item xs={12} md={6}>
-        <SectionCard title="Top Issues" subtitle="Most reported customer concerns">
-          <Stack spacing={1}>
-            <Typography variant="body2">- Service interruption</Typography>
-            <Typography variant="body2">- Billing mismatch</Typography>
-            <Typography variant="body2">- Onboarding clarification</Typography>
-            <Typography variant="body2">- App usability feedback</Typography>
-          </Stack>
-        </SectionCard>
-      </Grid>
-
-      {/* FOLLOW UPS */}
-      <Grid item xs={12}>
-        <SectionCard title="Follow-ups" subtitle="Follow-up workload and progress snapshot">
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Card variant="outlined" sx={{ height: '100%' }}>
-                <CardContent
-                  sx={{
-                    minHeight: 150,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'center'
-                  }}
-                >
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Needs Follow-up
-                  </Typography>
-                  <Typography variant="h3">5</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <Card variant="outlined" sx={{ height: '100%' }}>
-                <CardContent
-                  sx={{
-                    minHeight: 150,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'center'
-                  }}
-                >
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Total Follow-ups
-                  </Typography>
-                  <Typography variant="h3">8</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </SectionCard>
-      </Grid>
-
-      {/* LATEST CALLS */}
-      <Grid item xs={12}>
-        <SectionCard title="Latest Calls" subtitle="Most recent calls requiring monitoring">
-          <Table size="small">
+      {/* Table */}
+      <Card sx={{ width: "100%" }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Latest Calls</Typography>
+          <Divider sx={{ mb: 2 }} />
+          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Sentiment</TableCell>
-                <TableCell>Priority</TableCell>
-                <TableCell>Reviewed</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell sx={{ width: 120 }}>Priority</TableCell>
+                <TableCell sx={{ width: 140 }}>Status</TableCell>
+                <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
+                <TableCell sx={{ width: 100 }}>Duration</TableCell>
+                <TableCell sx={{ width: 140 }}>Created At</TableCell>
+                <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
+                <TableCell sx={{ width: 150 }}>Uploaded By</TableCell>
+                <TableCell align="center" sx={{ width: 160 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
-
             <TableBody>
               {latestCalls.map((call) => (
-                <TableRow key={call.id}>
-                  <TableCell>{call.id}</TableCell>
-                  <TableCell>{call.status}</TableCell>
-                  <TableCell>
-                    <Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" variant="outlined" />
+                <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }}>
+                  <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {call.id.length > 14 ? call.id.slice(0, 14) + '...' : call.id}
                   </TableCell>
+                  <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
+                  <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
+                  <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
+                  <TableCell>{call.duration}</TableCell>
                   <TableCell>
-                    <Chip label={call.priority} color={priorityColor[call.priority]} size="small" variant="outlined" />
+                    <Box component="span" sx={{ unicodeBidi: 'isolate', display: 'inline-block' }}>{call.createdAt}</Box>
                   </TableCell>
-                  <TableCell>
-                    <Chip label={call.reviewed} color={call.reviewed === 'Yes' ? 'success' : 'error'} size="small" variant="outlined" />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button size="small" variant="outlined">
-                        View
-                      </Button>
-                      <Button size="small" variant="outlined" color="warning" disabled={call.status === 'completed'}>
-                        Process
-                      </Button>
-                      <Button size="small" variant="contained" disabled={call.reviewed === 'Yes'}>
-                        Review
-                      </Button>
+                  <TableCell><Chip label={call.reviewed} color={call.reviewed === 'Yes' ? 'success' : 'error'} size="small" /></TableCell>
+                  <TableCell>{call.uploadedBy}</TableCell>
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <IconButton size="small" onClick={() => navigate("/calls", { state: { selectedCallId: call.id } })} sx={{ color: '#673ab7' }}>
+                        <IconEye size={18} />
+                      </IconButton>
+                      <IconButton size="small" onClick={(e) => openMenu(e, call.id)} sx={{ color: '#1e88e5' }}>
+                        <IconDots size={18} />
+                      </IconButton>
                     </Stack>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
-
           </Table>
-        </SectionCard>
-      </Grid>
+        </CardContent>
+      </Card>
 
-      {/* ---------------------- WHITE CARDS AT THE END ---------------------- */}
-      <Grid item xs={12}>
-        <Grid container spacing={2}>
+      {/* 3-dots Menu */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
+        <MenuItem onClick={() => {
+          navigate("/calls", { state: { selectedCallId: menuCallId, mode: "edit" } });
+          closeMenu();
+        }}>
+          <ListItemIcon><IconEdit size={16} /></ListItemIcon>
+          <ListItemText>Edit</ListItemText>
+        </MenuItem>
 
-          {/* Impressions */}
-          <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ height: '100%' }}>
-              <CardContent
-                sx={{
-                  minHeight: 150,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center'
-                }}
-              >
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Impressions
-                </Typography>
-                <Typography variant="h3">1,563</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  May 23 - June 01, 2018
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* ✅ Users — يفتح مباشرة بالداش بجنب الزر */}
+        <MenuItem onClick={(e) => {
+          const rect = anchorEl.getBoundingClientRect();
+          setUsersMenuPosition({ top: rect.top, left: rect.left });
+          closeMenu();
+        }}>
+          <ListItemIcon><IconUsers size={16} /></ListItemIcon>
+          <ListItemText>Users</ListItemText>
+        </MenuItem>
 
-          {/* Goal */}
-          <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ height: '100%' }}>
-              <CardContent
-                sx={{
-                  minHeight: 150,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center'
-                }}
-              >
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Goal
-                </Typography>
-                <Typography variant="h3">30,564</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  May 28 - June 01, 2018
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+        <MenuItem onClick={() => {
+          setCallToDelete(menuCallId);
+          setOpenDeleteDialog(true);
+          closeMenu();
+        }}>
+          <ListItemIcon><IconTrash size={16} /></ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
 
-          {/* Impact */}
-          <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ height: '100%' }}>
-              <CardContent
-                sx={{
-                  minHeight: 150,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center'
-                }}
-              >
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Impact
-                </Typography>
-                <Typography variant="h3">42.6%</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  May 30 - June 01, 2018
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+      {/* ✅ Users Menu — نفس نظام Calls.js */}
+      <Menu
+        open={Boolean(usersMenuPosition)}
+        onClose={closeUsersMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={usersMenuPosition ?? undefined}
+        disableAutoFocusItem
+        disableEnforceFocus
+        PaperProps={{ sx: { width: 280, p: 1 } }}
+      >
+        <Box sx={{ px: 1, py: 1 }}>
+          <TextField
+            onKeyDown={(e) => e.stopPropagation()}
+            size="small" fullWidth placeholder="Search employees..."
+            value={userSearch} autoFocus
+            onChange={(e) => setUserSearch(e.target.value)}
+          />
+        </Box>
+        <Divider />
+        {filteredEmployees.map((name) => (
+          <MenuItem key={name} onClick={() => {
+            setSelectedUsers((prev) =>
+              prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+            );
+          }}>
+            <Checkbox checked={selectedUsers.includes(name)} />
+            <ListItemText>{name}</ListItemText>
+          </MenuItem>
+        ))}
+        <Divider />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+          <Button variant="contained" size="small" onClick={() => {
+            console.log('Selected Users:', selectedUsers);
+             setSelectedUsers([]);
+            closeUsersMenu();
+          }}>
+            send
+          </Button>
+        </Box>
+      </Menu>
+      {/* Delete Dialog */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}
+        maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Are you sure you want to delete {callToDelete}?</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)} variant="outlined"
+            sx={{ color: 'text.secondary', borderColor: 'grey.400', '&:hover': { borderColor: 'grey.600', backgroundColor: 'grey.100' } }}>
+            Cancel
+          </Button>
+          <Button onClick={() => { handleDelete(callToDelete); setOpenDeleteDialog(false); }}
+            variant="contained" color="error"
+            sx={{ backgroundColor: 'error.dark', '&:hover': { backgroundColor: 'error.main' } }}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-        </Grid>
-      </Grid>
+      {/* Top Issues + Keywords */}
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Top Issues</Typography>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+              {topIssues.map((issue) => (
+                <Box key={issue.issue} sx={{ p: 2, borderRadius: 3, border: "1px solid", borderColor: "divider", position: "relative", overflow: "hidden", zIndex: 1 }}>
+                  <Box sx={{
+                    position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%",
+                    background: issue.percent > 40 ? "#FCE7F3" : issue.percent > 30 ? "#F3E8FF" : issue.percent > 20 ? "#FEF9C3" : "#D1D5DB",
+                    transform: "translate(40%, -40%)", filter: "blur(2px)", pointerEvents: "none", zIndex: 0
+                  }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, position: "relative", zIndex: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography sx={{ fontWeight: 600 }}>{issue.issue}</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", px: 1, py: 0.3, borderRadius: 1 }}>{issue.percent}%</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ mt: 2, height: 6, borderRadius: 5, backgroundColor: "action.hover", overflow: "hidden", position: "relative", zIndex: 2 }}>
+                    <Box sx={{
+                      width: `${issue.percent}%`, height: "100%", borderRadius: 5,
+                      background: issue.percent > 40 ? "#EC4899" : issue.percent > 30 ? "#A855F7" : issue.percent > 20 ? "#FDE047" : "#6B7280"
+                    }} />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Keywords</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
+              {keywords.map((word) => <Chip key={word} label={word} variant="outlined" />)}
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
-    </Grid>
+    </Box>
   );
 }

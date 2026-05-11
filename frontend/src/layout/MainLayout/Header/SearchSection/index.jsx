@@ -30,11 +30,11 @@ function HeaderAvatar({ children, ref, ...others }) {
       sx={{
         ...theme.typography.commonAvatar,
         ...theme.typography.mediumAvatar,
-        color: theme.vars.palette.secondary.dark,
-        background: theme.vars.palette.secondary.light,
+        color: theme.vars.palette.primary.dark,
+        background: theme.vars.palette.primary.light,
         '&:hover': {
-          color: theme.vars.palette.secondary.light,
-          background: theme.vars.palette.secondary.dark
+          color: theme.vars.palette.primary.light,
+          background: theme.vars.palette.primary.dark
         }
       }}
       {...others}

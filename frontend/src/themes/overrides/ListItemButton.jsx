@@ -10,21 +10,21 @@ export default function ListItemButton(theme) {
           paddingBottom: '10px',
 
           '&.Mui-selected': {
-            color: theme.vars.palette.secondary.dark,
-            backgroundColor: theme.vars.palette.secondary.light,
+            color: theme.vars.palette.primary.dark,
+            backgroundColor: theme.vars.palette.primary.light,
             '&:hover': {
-              backgroundColor: theme.vars.palette.secondary.light
+              backgroundColor: theme.vars.palette.primary.light
             },
             '& .MuiListItemIcon-root': {
-              color: theme.vars.palette.secondary.dark
+              color: theme.vars.palette.primary.dark
             }
           },
 
           '&:hover': {
-            backgroundColor: theme.vars.palette.secondary.light,
-            color: theme.vars.palette.secondary.dark,
+            backgroundColor: theme.vars.palette.primary.light,
+            color: theme.vars.palette.primary.dark,
             '& .MuiListItemIcon-root': {
-              color: theme.vars.palette.secondary.dark
+              color: theme.vars.palette.primary.dark
             }
           }
         }

@@ -117,7 +117,7 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
                     display: 'block',
                     fontSize: '0.6875rem',
                     fontWeight: 500,
-                    color: 'text.secondary',
+                    color: 'text.primary',
                     textTransform: 'capitalize',
                     lineHeight: 1.66
                   }}
@@ -132,10 +132,7 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
         {items}
       </List>
 
-      {/* group divider */}
-      <Activity mode={drawerOpen ? 'visible' : 'hidden'}>
-        <Divider sx={{ mt: 0.25, mb: 1.25 }} />
-      </Activity>
+    
     </>
   );
 }

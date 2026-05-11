@@ -1,12 +1,12 @@
-import { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings, IconUpload } from '@tabler/icons-react';
+import { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings, IconUpload , IconUsers,IconReportAnalytics } from '@tabler/icons-react';
 
-const icons = { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings, IconUpload };
+const icons = { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings, IconUpload,  IconUsers,IconReportAnalytics  };
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
 
 const dashboard = {
-  id: 'call-analysis',
-  title: 'Call Analysis',
+
+  
   type: 'group',
   children: [
     {
@@ -33,16 +33,24 @@ const dashboard = {
       icon: icons.IconRefresh,
       breadcrumbs: false
     },
+   {
+  id: 'users',
+  title: 'Users',
+  type: 'item',
+  url: '/users',
+  icon: icons.IconUsers,
+   breadcrumbs: false
+},
     {
-      id: 'upload-call',
-      title: 'Upload Call',
-      type: 'item',
-      url: '/upload-call',
-      icon: icons.IconUpload,
-      breadcrumbs: false
-    },
+  id: 'reports',
+  title: 'Reports',
+  type: 'item',
+  url: '/reports',
+  icon: IconReportAnalytics ,
+  breadcrumbs: false
+},
     {
-      id: 'reports',
+      id: 'Profile',
       title: 'Profile',
       type: 'item',
       url: '/profile',
@@ -57,6 +65,8 @@ const dashboard = {
       icon: icons.IconSettings,
       breadcrumbs: false
     }
+
+    
   ]
 };
 

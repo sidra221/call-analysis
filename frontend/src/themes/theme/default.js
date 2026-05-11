@@ -15,7 +15,7 @@ const defaultColor = {
   secondaryLight: '#ede7f6',
   secondary200: '#b39ddb',
   secondaryMain: '#673ab7',
-  secondaryDark: '#5e35b1',
+  secondaryDark: '#4527a0',
   secondary800: '#4527a0',
 
   // success

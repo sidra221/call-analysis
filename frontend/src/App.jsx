@@ -10,7 +10,7 @@ import ThemeCustomization from 'themes';
 
 // auth provider
 
-// ==============================|| APP ||============================== //
+// ============================== APP ============================== //
 
 export default function App() {
   return (

@@ -2,7 +2,7 @@ services:
   web:
     build: .
     container_name: call_analysis_backend
-    working_dir: /app/backend
+    working_dir: /app/call_analysis   # updated folder name
     command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
     volumes:
       - .:/app
@@ -46,7 +46,7 @@ services:
   celery_worker:
     build: .
     container_name: call_analysis_celery_worker
-    working_dir: /app/backend
+    working_dir: /app/call_analysis   # updated folder name
     command: celery -A config worker -l info --concurrency=2
     volumes:
       - .:/app
@@ -59,7 +59,7 @@ services:
   celery_beat:
     build: .
     container_name: call_analysis_celery_beat
-    working_dir: /app/backend
+    working_dir: /app/call_analysis   # updated folder name
     command: celery -A config beat -l info
     volumes:
       - .:/app

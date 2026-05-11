@@ -1,13 +1,10 @@
 import { memo, useMemo } from 'react';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
-import Chip from '@mui/material/Chip';
 import Drawer from '@mui/material/Drawer';
-import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 
 // project imports
-import MenuCard from './MenuCard';
 import MenuList from '../MenuList';
 import LogoSection from '../LogoSection';
 import MiniDrawerStyled from './MiniDrawerStyled';
@@ -17,8 +14,6 @@ import { drawerWidth } from 'store/constant';
 import SimpleBar from 'ui-component/third-party/SimpleBar';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
-
-// ==============================|| SIDEBAR DRAWER ||============================== //
 
 function Sidebar() {
   const downMD = useMediaQuery((theme) => theme.breakpoints.down('md'));
@@ -40,43 +35,29 @@ function Sidebar() {
   );
 
   const drawer = useMemo(() => {
-    const drawerContent = (
-      <>
-        <MenuCard />
-        <Stack direction="row" sx={{ justifyContent: 'center', mb: 2 }}>
-          <Chip label={import.meta.env.VITE_APP_VERSION} size="small" color="default" />
-        </Stack>
-      </>
-    );
+    const drawerSX = drawerOpen
+      ? { paddingLeft: '16px', paddingRight: '16px', marginTop: '0px' }
+      : { paddingLeft: '0px', paddingRight: '0px', marginTop: '20px' };
 
-    let drawerSX = { paddingLeft: '0px', paddingRight: '0px', marginTop: '20px' };
-    if (drawerOpen) drawerSX = { paddingLeft: '16px', paddingRight: '16px', marginTop: '0px' };
+    const content = <MenuList />;
 
-    return (
-      <>
-        {downMD ? (
-          <Box sx={drawerSX}>
-            <MenuList />
-            {drawerOpen && drawerContent}
-          </Box>
-        ) : (
-          <SimpleBar sx={{ height: 'calc(100vh - 90px)', ...drawerSX }}>
-            <MenuList />
-            {drawerOpen && drawerContent}
-          </SimpleBar>
-        )}
-      </>
+    return downMD ? (
+      <Box sx={drawerSX}>{content}</Box>
+    ) : (
+      <SimpleBar sx={{ height: 'calc(100vh - 90px)', ...drawerSX }}>
+        {content}
+      </SimpleBar>
     );
   }, [downMD, drawerOpen]);
 
   return (
-    <Box component="nav" sx={{ flexShrink: { md: 0 }, width: { xs: 'auto', md: drawerWidth } }} aria-label="mailbox folders">
+    <Box component="nav" sx={{ flexShrink: { md: 0 }, width: { xs: 'auto', md: drawerWidth } }}>
       {downMD || (miniDrawer && drawerOpen) ? (
         <Drawer
           variant={downMD ? 'temporary' : 'persistent'}
           anchor="left"
           open={drawerOpen}
-          onClose={() => handlerDrawerOpen(!drawerOpen)}
+          onClose={() => handlerDrawerOpen(false)}
           slotProps={{
             paper: {
               sx: {
@@ -90,7 +71,6 @@ function Sidebar() {
             }
           }}
           ModalProps={{ keepMounted: true }}
-          color="inherit"
         >
           {downMD && logo}
           {drawer}

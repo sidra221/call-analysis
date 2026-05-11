@@ -17,7 +17,10 @@ export default function Register() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (form.password !== form.confirmPassword) return;
+   if (form.password !== form.confirmPassword) {
+  setError('Passwords do not match');
+  return;
+}
     register({ username: form.username, email: form.email, password: form.password });
     navigate('/login');
   };

@@ -54,5 +54,5 @@ export default function useMenuCollapse(menu, pathname, miniMenuOpened, setSelec
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, menu.children]);
+  }, [pathname, menu]);
 }

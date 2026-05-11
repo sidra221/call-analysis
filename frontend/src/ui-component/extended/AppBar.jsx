@@ -37,16 +37,14 @@ function ElevationScroll({ children, window }) {
 
   return cloneElement(children, {
     elevation: trigger ? 1 : 0,
-    style: {
+    sx: {
       backgroundColor: theme.vars.palette.background.default,
-      color: theme.vars.palette.text.dark
+      color: theme.vars.palette.text.primary
     }
   });
 }
 
-// ==============================|| MINIMAL LAYOUT APP BAR ||============================== //
-
-export default function AppBar({ ...others }) {
+export default function AppBar(props) {
   const [drawerToggle, setDrawerToggle] = useState(false);
 
   const drawerToggler = (open) => (event) => {
@@ -57,70 +55,54 @@ export default function AppBar({ ...others }) {
   };
 
   return (
-    <ElevationScroll {...others}>
-      <MuiAppBar>
+    <ElevationScroll {...props}>
+      <MuiAppBar position="fixed" color="inherit" elevation={0}>
         <Container>
-          <Toolbar sx={{ py: 2.5, px: `0 !important` }}>
-            <Typography component={RouterLink} to="/" sx={{ flexGrow: 1, textAlign: 'left' }}>
+          <Toolbar>
+            <Typography component={RouterLink} to="/" sx={{ flexGrow: 1 }}>
               <Logo />
             </Typography>
-            <Stack direction="row" sx={{ gap: { xs: 1.5, md: 2.5 }, display: { xs: 'none', sm: 'flex' } }}>
-              <Button color="inherit" component={Link} href="#">
-                Home
-              </Button>
-              <Button color="inherit" component={RouterLink} to="/login" target="_blank">
+
+            <Stack direction="row" sx={{ gap: 2.5, display: { xs: 'none', sm: 'flex' } }}>
+              <Button color="inherit">Home</Button>
+              <Button color="inherit" component={RouterLink} to="/login">
                 Dashboard
               </Button>
-              <Button color="inherit" component={Link} href="https://codedthemes.gitbook.io/berry" target="_blank">
+              <Button color="inherit" href="https://codedthemes.gitbook.io/berry" target="_blank">
                 Documentation
               </Button>
-              <Button component={Link} href="https://links.codedthemes.com/hsqll" disableElevation variant="contained" color="secondary">
+              <Button variant="contained" color="primary">
                 Purchase Now
               </Button>
             </Stack>
+
             <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
-              <IconButton color="inherit" onClick={drawerToggler(true)} size="large">
+              <IconButton color="inherit" onClick={drawerToggler(true)}>
                 <MenuIcon />
               </IconButton>
+
               <Drawer anchor="top" open={drawerToggle} onClose={drawerToggler(false)}>
-                {drawerToggle && (
-                  <Box sx={{ width: 'auto' }} role="presentation" onClick={drawerToggler(false)} onKeyDown={drawerToggler(false)}>
-                    <List>
-                      <Link sx={{ textDecoration: 'none' }} href="#" target="_blank">
-                        <ListItemButton component="a">
-                          <ListItemIcon>
-                            <IconHome2 />
-                          </ListItemIcon>
-                          <ListItemText primary="Home" />
-                        </ListItemButton>
-                      </Link>
-                      <Link sx={{ textDecoration: 'none' }} href="/login" target="_blank">
-                        <ListItemButton component="a">
-                          <ListItemIcon>
-                            <IconDashboard />
-                          </ListItemIcon>
-                          <ListItemText primary="Dashboard" />
-                        </ListItemButton>
-                      </Link>
-                      <Link sx={{ textDecoration: 'none' }} href="https://codedthemes.gitbook.io/berry" target="_blank">
-                        <ListItemButton component="a">
-                          <ListItemIcon>
-                            <IconBook />
-                          </ListItemIcon>
-                          <ListItemText primary="Documentation" />
-                        </ListItemButton>
-                      </Link>
-                      <Link sx={{ textDecoration: 'none' }} href="https://links.codedthemes.com/hsqll" target="_blank">
-                        <ListItemButton component="a">
-                          <ListItemIcon>
-                            <IconCreditCard />
-                          </ListItemIcon>
-                          <ListItemText primary="Purchase Now" />
-                        </ListItemButton>
-                      </Link>
-                    </List>
-                  </Box>
-                )}
+                <List>
+                  <ListItemButton>
+                    <ListItemIcon><IconHome2 /></ListItemIcon>
+                    <ListItemText primary="Home" />
+                  </ListItemButton>
+
+                  <ListItemButton>
+                    <ListItemIcon><IconDashboard /></ListItemIcon>
+                    <ListItemText primary="Dashboard" />
+                  </ListItemButton>
+
+                  <ListItemButton>
+                    <ListItemIcon><IconBook /></ListItemIcon>
+                    <ListItemText primary="Documentation" />
+                  </ListItemButton>
+
+                  <ListItemButton>
+                    <ListItemIcon><IconCreditCard /></ListItemIcon>
+                    <ListItemText primary="Purchase Now" />
+                  </ListItemButton>
+                </List>
               </Drawer>
             </Box>
           </Toolbar>
@@ -130,4 +112,6 @@ export default function AppBar({ ...others }) {
   );
 }
 
-ElevationScroll.propTypes = { children: PropTypes.node, window: PropTypes.any };
+ElevationScroll.propTypes = {
+  children: PropTypes.node
+};

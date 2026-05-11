@@ -38,11 +38,11 @@ export default function Header() {
             ...theme.typography.mediumAvatar,
             overflow: 'hidden',
             transition: 'all .2s ease-in-out',
-            color: theme.vars.palette.secondary.dark,
-            background: theme.vars.palette.secondary.light,
+            color: theme.vars.palette.primary.dark,
+            background: theme.vars.palette.primary.light,
             '&:hover': {
-              color: theme.vars.palette.secondary.light,
-              background: theme.vars.palette.secondary.dark
+              color: theme.vars.palette.primary.light,
+              background: theme.vars.palette.primary.dark
             }
           }}
           onClick={() => handlerDrawerOpen(!drawerOpen)}

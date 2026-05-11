@@ -35,6 +35,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setIsLoggedIn(false);
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('authUser');
   };
 
   const value = useMemo(() => ({ isLoggedIn, user, login, register, logout }), [isLoggedIn, user]);

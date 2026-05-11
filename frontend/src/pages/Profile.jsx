@@ -1,6 +1,6 @@
 import { Button, Card, CardContent, Grid, Typography } from '@mui/material';
 import useAuth from 'hooks/useAuth';
-
+import { Divider } from "@mui/material";
 export default function Profile() {
   const { user } = useAuth();
 
@@ -13,6 +13,7 @@ export default function Profile() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           View your account details
         </Typography>
+        <Divider sx={{ my: 2 }} />
 
         <Grid container spacing={2}>
           <Grid item xs={12}>
@@ -36,6 +37,7 @@ export default function Profile() {
           <Grid item xs={12}>
             <Button variant="outlined">Edit</Button>
           </Grid>
+          
         </Grid>
       </CardContent>
     </Card>
