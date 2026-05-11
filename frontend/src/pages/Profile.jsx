@@ -18,24 +18,24 @@ export default function Profile() {
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Typography variant="subtitle2" color="text.secondary">
-              Username
+              siiiiiidraaaaaa 
             </Typography>
             <Typography variant="h6">{user.username}</Typography>
           </Grid>
           <Grid item xs={12}>
             <Typography variant="subtitle2" color="text.secondary">
-              Email
+              tooooop
             </Typography>
             <Typography variant="h6">{user.email}</Typography>
           </Grid>
           <Grid item xs={12}>
             <Typography variant="subtitle2" color="text.secondary">
-              Role
+              albakiiiiiiiiiii
             </Typography>
             <Typography variant="h6">{user.role}</Typography>
           </Grid>
           <Grid item xs={12}>
-            <Button variant="outlined">Edit</Button>
+            <Button variant="outlined">photoshop</Button>
           </Grid>
           
         </Grid>
