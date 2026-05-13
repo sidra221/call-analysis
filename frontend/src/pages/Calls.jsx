@@ -26,6 +26,8 @@ const employees = ['Ahmad Ali', 'Sara Mohamed', 'Omar Khaled', 'Lina Hassan', 'Y
 const rowsPerPage = 6;
 
 export default function Calls() {
+
+  
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
   const [isDirty, setIsDirty] = useState(false);
@@ -34,7 +36,68 @@ export default function Calls() {
   const location = useLocation();
   const state = location.state;
 
-  const { calls, setCalls } = useCallsStore();
+  const { calls, setCalls, isProcessing, setIsProcessing, processingProgress, setProcessingProgress } = useCallsStore();
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const audioUrl = URL.createObjectURL(file);
+    const newCallId = `C-${Date.now().toString().slice(-4)}`;
+
+    // 1. Start Processing
+    setIsProcessing(true);
+    setProcessingProgress(0);
+
+    const newCall = {
+      id: newCallId,
+      status: 'in_progress',
+      sentiment: 'neutral',
+      priority: 'medium',
+      reviewed: 'No',
+      issue: 'Processing AI Analysis...',
+      transcript: 'The AI is currently transcribing and analyzing the audio content...',
+      audio: audioUrl,
+      duration: '00:00',
+      createdAt: new Date().toISOString().split('T')[0],
+      uploadedBy: user?.name || 'System'
+    };
+
+    setCalls([newCall, ...calls]);
+
+    // 2. Simulate AI Processing Steps
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 15;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+
+        // 3. Complete Processing
+        setTimeout(() => {
+          setCalls(prevCalls => prevCalls.map(c =>
+            c.id === newCallId
+              ? {
+                  ...c,
+                  status: 'completed',
+                  issue: 'Billing Dispute Resolved',
+                  sentiment: 'positive',
+                  priority: 'low',
+                  duration: '02:45',
+                  transcript: 'Customer was happy with the refund explanation and the quick resolution of the billing issue.'
+                }
+              : c
+          ));
+          setIsProcessing(false);
+          setProcessingProgress(0);
+          window.dispatchEvent(new Event('calls-updated'));
+        }, 500);
+      }
+      setProcessingProgress(progress);
+    }, 600);
+
+    e.target.value = '';
+  };
 
   // ✅ استخدم position بدل anchor element
   const [usersMenuPosition, setUsersMenuPosition] = useState(null);
@@ -208,7 +271,7 @@ export default function Calls() {
         }}
       />
 
-      <Card>
+      <Card sx={{ borderRadius: 3 }}>
         <CardContent>
           <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>
             Calls Management
@@ -288,18 +351,18 @@ export default function Calls() {
             </Grid>
           </Grid>
 
-          <TableContainer sx={{ overflowX: 'hidden' }}>
-            <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+          <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+            <Table size="small" sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
                   <TableCell sx={{ width: 120 }}>Priority</TableCell>
                   <TableCell sx={{ width: 140 }}>Status</TableCell>
                   <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
-                  <TableCell sx={{ width: 100 }}>Duration</TableCell>
-                  <TableCell sx={{ width: 140 }}>Created At</TableCell>
+                  <TableCell sx={{ width: 100, display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={{ width: 140, display: { xs: 'none', lg: 'table-cell' } }}>Created At</TableCell>
                   <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
-                  <TableCell sx={{ width: 150 }}>Uploaded By</TableCell>
+                  <TableCell sx={{ width: 150, display: { xs: 'none', lg: 'table-cell' } }}>Uploaded By</TableCell>
                   <TableCell align="center" sx={{ width: 160 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -312,14 +375,14 @@ export default function Calls() {
                     <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
                     <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
                     <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
-                    <TableCell>{call.duration}</TableCell>
-                    <TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                       <Box component="span" sx={{ direction: 'ltr', unicodeBidi: 'isolate', display: 'inline-block' }}>
                         {call.createdAt}
                       </Box>
                     </TableCell>
                     <TableCell><Chip label={call.reviewed} color={call.reviewed === 'Yes' ? 'success' : 'error'} size="small" /></TableCell>
-                    <TableCell>{call.uploadedBy}</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.uploadedBy}</TableCell>
                     <TableCell align="center">
                       <Stack direction="row" spacing={1} justifyContent="center">
                         <IconButton size="small" onClick={() => openCallDrawer(call, false)} sx={{ color: '#673ab7' }}>

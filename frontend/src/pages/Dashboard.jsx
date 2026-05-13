@@ -33,7 +33,9 @@ export default function UploadCall() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [callToDelete, setCallToDelete] = useState(null);
   const handleDelete = (id) => {
-    setCalls(calls.filter((c) => c.id !== id));
+    if (Array.isArray(calls)) {
+      setCalls(calls.filter((c) => c.id !== id));
+    }
   };
 
   // 3-dots menu
@@ -121,19 +123,19 @@ useEffect(() => {
 
       {/* Priority Cards */}
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
-        <Card sx={{ flex: 1, minWidth: 0 }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: "error.light", width: 48, height: 48 }}><PriorityHighIcon color="error" /></Avatar>
             <Box><Typography variant="subtitle2" color="text.secondary">High Priority</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>45</Typography></Box>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 0 }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: "warning.light", width: 48, height: 48 }}><ReportProblemIcon color="warning" /></Avatar>
             <Box><Typography variant="subtitle2" color="text.secondary">Medium Priority</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>70</Typography></Box>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 0 }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: "success.light", width: 48, height: 48 }}><LowPriorityIcon color="success" /></Avatar>
             <Box><Typography variant="subtitle2" color="text.secondary">Low Priority</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>120</Typography></Box>
@@ -143,61 +145,59 @@ useEffect(() => {
 
       {/* Overview + Sentiment */}
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
-        <Card sx={{ flex: 1, minWidth: 0 }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Overview</Typography>
-            <Divider sx={{ my: 2 }} />
+            <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>Overview</Typography>
             <Box sx={{ display: "flex", justifyContent: "center" }}><StatCard data={overviewData} /></Box>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 0 }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Sentiment</Typography>
-            <Divider sx={{ my: 1 }} />
+            <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>Sentiment</Typography>
             <Box sx={{ height: 220, mt: 1 }}><Bar data={sentimentChartData} options={{ responsive: true, maintainAspectRatio: false }} /></Box>
           </CardContent>
         </Card>
       </Box>
 
       {/* Table */}
-      <Card sx={{ width: "100%" }}>
+      <Card sx={{ width: "100%", borderRadius: 3 }}>
         <CardContent>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Latest Calls</Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell sx={{ width: 120 }}>Priority</TableCell>
-                <TableCell sx={{ width: 140 }}>Status</TableCell>
-                <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
-                <TableCell sx={{ width: 100 }}>Duration</TableCell>
-                <TableCell sx={{ width: 140 }}>Created At</TableCell>
-                <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
-                <TableCell sx={{ width: 150 }}>Uploaded By</TableCell>
-                <TableCell align="center" sx={{ width: 160 }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {latestCalls.map((call) => (
-                <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }}>
-                  <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {call.id.length > 14 ? call.id.slice(0, 14) + '...' : call.id}
-                  </TableCell>
-                  <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
-                  <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
-                  <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
-                  <TableCell>{call.duration}</TableCell>
-                  <TableCell>
-                    <Box component="span" sx={{ unicodeBidi: 'isolate', display: 'inline-block' }}>{call.createdAt}</Box>
-                  </TableCell>
-                  <TableCell><Chip label={call.reviewed} color={call.reviewed === 'Yes' ? 'success' : 'error'} size="small" /></TableCell>
-                  <TableCell>{call.uploadedBy}</TableCell>
-                  <TableCell align="center">
-                    <Stack direction="row" spacing={1} justifyContent="center">
-                      <IconButton size="small" onClick={() => navigate("/calls", { state: { selectedCallId: call.id } })} sx={{ color: '#673ab7' }}>
-                        <IconEye size={18} />
-                      </IconButton>
+          <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>Latest Calls</Typography>
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 800 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell sx={{ width: 120 }}>Priority</TableCell>
+                  <TableCell sx={{ width: 140 }}>Status</TableCell>
+                  <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
+                  <TableCell sx={{ width: 100, display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={{ width: 140, display: { xs: 'none', lg: 'table-cell' } }}>Created At</TableCell>
+                  <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
+                  <TableCell sx={{ width: 150, display: { xs: 'none', lg: 'table-cell' } }}>Uploaded By</TableCell>
+                  <TableCell align="center" sx={{ width: 160 }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {latestCalls.map((call) => (
+                  <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }}>
+                    <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {call.id.length > 14 ? call.id.slice(0, 14) + '...' : call.id}
+                    </TableCell>
+                    <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
+                    <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
+                    <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                      <Box component="span" sx={{ unicodeBidi: 'isolate', display: 'inline-block' }}>{call.createdAt}</Box>
+                    </TableCell>
+                    <TableCell><Chip label={call.reviewed} color={call.reviewed === 'Yes' ? 'success' : 'error'} size="small" /></TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.uploadedBy}</TableCell>
+                    <TableCell align="center">
+                      <Stack direction="row" spacing={1} justifyContent="center">
+                        <IconButton size="small" onClick={() => navigate("/calls", { state: { selectedCallId: call.id } })} sx={{ color: '#673ab7' }}>
+                          <IconEye size={18} />
+                        </IconButton>
                       <IconButton size="small" onClick={(e) => openMenu(e, call.id)} sx={{ color: '#1e88e5' }}>
                         <IconDots size={18} />
                       </IconButton>
@@ -205,8 +205,12 @@ useEffect(() => {
                   </TableCell>
                 </TableRow>
               ))}
+              
             </TableBody>
+                
+
           </Table>
+          </Box>
         </CardContent>
       </Card>
 
@@ -304,7 +308,7 @@ useEffect(() => {
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
         <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Top Issues</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>Top Issues</Typography>
             <Divider sx={{ my: 2 }} />
             <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
               {topIssues.map((issue) => (
@@ -333,7 +337,7 @@ useEffect(() => {
         </Card>
         <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Keywords</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>Keywords</Typography>
             <Divider sx={{ my: 1 }} />
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
               {keywords.map((word) => <Chip key={word} label={word} variant="outlined" />)}

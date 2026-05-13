@@ -96,18 +96,6 @@ const [notifications, setNotifications] = useState([
       ? notifications.filter((n) => n.unread)
       : notifications;
 
-      useEffect(() => {
-  if (open) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = 'auto';
-  }
-
-  return () => {
-    document.body.style.overflow = 'auto';
-  };
-}, [open]);
-
   return (
     <>
       {/* 🔔 ICON WITH BADGE */}

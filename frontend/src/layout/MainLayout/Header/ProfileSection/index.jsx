@@ -87,7 +87,17 @@ export default function ProfileSection() {
       />
 
       {/* Main Menu */}
-      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+{/* Main Menu */}
+<Menu
+  anchorEl={anchorEl}
+  open={open}
+  onClose={handleClose}
+  PaperProps={{
+    sx: {
+      width: 150
+    }
+  }}
+>
         {!showLanguageMenu && (
           <>
             {/* Language */}

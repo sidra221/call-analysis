@@ -1,7 +1,8 @@
+//deleeeeet///////////////////////////////////////////////////////////////////////////////////////////////////
+
 import { useNavigate } from "react-router-dom";
 import StatCard from './StatCard';
 import { Paper } from '@mui/material';
-import StatsRow from "./StatsRow";
 import {
   Box,
   Button,
@@ -364,18 +365,22 @@ export default function Dashboard() {
               
               <Grid item xs={12}>
                 <SectionCard title="Latest Calls" subtitle="Most recent calls requiring monitoring">
-                  <Table size="small" sx={{ minWidth: 650 }}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>ID</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Sentiment</TableCell>
-                        <TableCell>Priority</TableCell>
-                        <TableCell>Reviewed</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
+
+            <Table size="small" sx={{ minWidth: 800 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell sx={{ width: 120 }}>Priority</TableCell>
+                  <TableCell sx={{ width: 140 }}>Status</TableCell>
+                  <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
+                  <TableCell sx={{ width: 100, display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={{ width: 140, display: { xs: 'none', lg: 'table-cell' } }}>Created At</TableCell>
+                  <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
+                  <TableCell sx={{ width: 150, display: { xs: 'none', lg: 'table-cell' } }}>Uploaded By</TableCell>
+                  <TableCell align="center" sx={{ width: 160 }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                       {latestCalls.map((call) => (
                         <TableRow key={call.id}>
                           <TableCell>{call.id}</TableCell>

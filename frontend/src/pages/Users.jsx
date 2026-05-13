@@ -32,27 +32,10 @@ import {
   TableRow
 } from '@mui/material';
 
-const defaultUsers = [
-  {
-    id: 1,
-    username: 'admin',
-    email: 'admin@test.com',
-    role: 'Admin',
-    createdAt: '01-05-2026',
-    avatar: 'https://i.pravatar.cc/150?img=1'
-  },
-  {
-    id: 2,
-    username: 'agent1',
-    email: 'agent@test.com',
-    role: 'Agent',
-    createdAt: '11-03-2026',
-    avatar: 'https://i.pravatar.cc/150?img=2'
-  }
-];
+import useUsersStore from 'hooks/useUsersStore';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState(defaultUsers);
+  const { users, setUsers } = useUsersStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -128,7 +111,7 @@ export default function UsersPage() {
   };
 
   return (
-    <Card>
+    <Card sx={{ borderRadius: 3 }}>
       <CardContent>
 
         {/* Header */}
@@ -136,19 +119,21 @@ export default function UsersPage() {
                     Users Management
                   </Typography>
 <Stack
-  direction="row"
-  alignItems="center"
+  direction={{ xs: 'column', sm: 'row' }}
+  alignItems={{ xs: 'stretch', sm: 'center' }}
   justifyContent="space-between"
-  mb={2}
+  spacing={2}
+  mb={3}
 >
 
   {/* LEFT: search + filter */}
-  <Stack direction="row" spacing={2}>
+  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexGrow={1}>
     <TextField
       placeholder="Search user..."
       size="small"
       value={search}
       onChange={(e) => setSearch(e.target.value)}
+      sx={{ minWidth: { md: 200 } }}
     />
 
     <TextField
@@ -156,14 +141,13 @@ export default function UsersPage() {
       size="small"
       value={roleFilter}
       onChange={(e) => setRoleFilter(e.target.value)}
+      sx={{ minWidth: { md: 150 } }}
     >
       <MenuItem value="All">All Roles</MenuItem>
       <MenuItem value="Admin">Admin</MenuItem>
       <MenuItem value="Agent">Agent</MenuItem>
     </TextField>
 
-    {/* Reset Button */}
-     
     <Button
       variant="outlined"
       startIcon={<IconRefresh size={18} />}
@@ -176,7 +160,7 @@ export default function UsersPage() {
         borderRadius: 2,
         textTransform: 'none',
         fontWeight: 500,
-        minWidth: 100
+        whiteSpace: 'nowrap'
       }}
     >
       Reset
@@ -188,88 +172,76 @@ export default function UsersPage() {
     variant="contained"
     startIcon={<IconPlus size={18} />}
     onClick={() => setOpen(true)}
+    sx={{ borderRadius: 2, textTransform: 'none', px: 3 }}
   >
     Add User
   </Button>
 </Stack>
 
         {/* Table */}
-        <TableContainer>
-<Table  size="small" sx={{ borderCollapse: 'separate', borderSpacing: '0 2px' }}>
+        <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+          <Table size="small" sx={{ borderCollapse: 'separate', borderSpacing: '0 2px', minWidth: 700 }}>
             <TableHead>
               <TableRow>
-               <TableCell padding="checkbox">
-  <Checkbox
-    checked={isAllSelected}
-    indeterminate={
-      selected.length > 0 &&
-      selected.length < filteredUsers.length
-    }
-    onChange={handleSelectAll}
-  />
-</TableCell>
-                <TableCell sx={{ width: '25%' }} >Username</TableCell>
-                <TableCell sx={{ width: '20%' }}>Email</TableCell>
-                <TableCell sx={{ width: '15%' }}>Role</TableCell>
-                <TableCell sx={{ width: '15%' }}>Created At</TableCell>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    checked={isAllSelected}
+                    indeterminate={
+                      selected.length > 0 &&
+                      selected.length < filteredUsers.length
+                    }
+                    onChange={handleSelectAll}
+                  />
+                </TableCell>
+                <TableCell sx={{ width: '25%' }}>Username</TableCell>
+                <TableCell sx={{ width: '25%' }}>Email</TableCell>
+                <TableCell sx={{ width: '15%', display: { xs: 'none', sm: 'table-cell' } }}>Role</TableCell>
+                <TableCell sx={{ width: '15%', display: { xs: 'none', md: 'table-cell' } }}>Created At</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
-
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} hover>
-
-                  {/* Checkbox */}
-                  <TableCell padding="checkbox" sx={{ width: 50, pr: 1 }}>
-<Checkbox
-  checked={selected.includes(user.id)}
-  onChange={() => handleSelect(user.id)}
-/>
-                  </TableCell>
-
-                  {/* Avatar + Name */}
-<TableCell sx={{ pl: 2 }}>
-  <Stack direction="row" spacing={1} alignItems="center">
-    <Avatar
-      src={user.avatar}
-      sx={{ width: 28, height: 28 }}
-    />
-    <Typography>{user.username}</Typography>
-  </Stack>
-</TableCell>
-
-                  <TableCell >{user.email}</TableCell>
-
-                  {/* Role Chip */}
-                  <TableCell>
-                    <Chip
-                      label={user.role}
-                      sx={{
-                        backgroundColor: roleColors[user.role].bg,
-                        color: roleColors[user.role].color,
-                      }}
-                       size="small"
+              {filteredUsers.map((u) => (
+                <TableRow key={u.id} hover>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selected.includes(u.id)}
+                      onChange={() => handleSelect(u.id)}
                     />
                   </TableCell>
-
-                  <TableCell >{user.createdAt}</TableCell>
-
-                  <TableCell align="center">
-                    <IconButton sx={{ color: '#5e35b1' }}>
-                      <IconEdit size={18} />
-                    </IconButton>
-
-                    <IconButton
-                      sx={{ color: '#d32f2f' }}
-                      onClick={() =>
-                        setUsers(users.filter((u) => u.id !== user.id))
-                      }
-                    >
-                      <IconTrash size={18} />
-                    </IconButton>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Avatar src={u.avatar} sx={{ width: 32, height: 32 }} />
+                      <Typography variant="subtitle2">{u.username}</Typography>
+                    </Stack>
                   </TableCell>
-
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                    <Chip
+                      label={u.role}
+                      size="small"
+                      sx={{
+                        bgcolor: roleColors[u.role].bg,
+                        color: roleColors[u.role].color,
+                        fontWeight: 600
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{u.createdAt}</TableCell>
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <IconButton size="small" color="primary">
+                        <IconEdit size={18} />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => setUsers(users.filter((user) => user.id !== u.id))}
+                      >
+                        <IconTrash size={18} />
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

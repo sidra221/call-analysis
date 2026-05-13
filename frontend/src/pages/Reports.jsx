@@ -140,60 +140,62 @@ const confirmDelete = () => {
       </Stack>
 
       {/* TABLE */}
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ width: "30%" }} >Period</TableCell>
-            <TableCell sx={{ width: "20%" }}>Type</TableCell>
-            <TableCell sx={{ width: "20%" }}>Status</TableCell>
-            <TableCell sx={{ width: "20%" }}>Created By</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-
-        <TableBody>
-          {[...reports]
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .map(r => (
-            <TableRow
-              key={r.id}
-              hover
-              sx={{ cursor: 'pointer' }}
-              onClick={() => {
-                setSelectedReport(r);
-                setOpenView(true);
-              }}
-            >
-              <TableCell>{r.from} → {r.to}</TableCell>
-
-              <TableCell>
-                <Chip label={r.type} size="small" color="primary" variant="outlined" />
-              </TableCell>
-
-              <TableCell>
-                <Chip
-                  label={r.status}
-                  color={r.status === 'published' ? 'success' : 'warning'}
-                  size="small"
-                />
-              </TableCell>
-
-              <TableCell>{r.createdBy}</TableCell>
-              <TableCell>
-  <IconButton
-    color="error"
-    onClick={(e) => {
-      e.stopPropagation(); // 🔥 مهم حتى ما يفتح التقرير
-      handleDeleteClick(r);
-    }}
-  >
-    <IconTrash size={18} />
-  </IconButton>
-</TableCell>
+      <Box sx={{ width: '100%', overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 600 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ width: "30%" }} >Period</TableCell>
+              <TableCell sx={{ width: "20%" }}>Type</TableCell>
+              <TableCell sx={{ width: "20%", display: { xs: 'none', sm: 'table-cell' } }}>Status</TableCell>
+              <TableCell sx={{ width: "20%", display: { xs: 'none', md: 'table-cell' } }}>Created By</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+
+          <TableBody>
+            {[...reports]
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map(r => (
+              <TableRow
+                key={r.id}
+                hover
+                sx={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setSelectedReport(r);
+                  setOpenView(true);
+                }}
+              >
+                <TableCell>{r.from} → {r.to}</TableCell>
+
+                <TableCell>
+                  <Chip label={r.type} size="small" color="primary" variant="outlined" />
+                </TableCell>
+
+                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                  <Chip
+                    label={r.status}
+                    color={r.status === 'published' ? 'success' : 'warning'}
+                    size="small"
+                  />
+                </TableCell>
+
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{r.createdBy}</TableCell>
+                <TableCell align="right">
+                  <IconButton
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(r);
+                    }}
+                  >
+                    <IconTrash size={18} />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
 
     </CardContent>
   </Card>

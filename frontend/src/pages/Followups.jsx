@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import useSearchStore from 'hooks/useSearchStore';
 import {
   Box,
   Button,
@@ -42,7 +43,7 @@ const statusColor = {
 
 export default function Followups() {
   const location = useLocation();
-
+  const { search } = useSearchStore();
   const [followups, setFollowups] = useState(initialFollowups);
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -145,15 +146,15 @@ export default function Followups() {
           </Grid>
 
           {/* TABLE */}
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+            <Table size="small" sx={{ minWidth: 600 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Call</TableCell>
                   <TableCell>Assigned</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Notes</TableCell>
-                  <TableCell>Date</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Notes</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Date</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -172,8 +173,8 @@ export default function Followups() {
                       />
                     </TableCell>
 
-                    <TableCell>{f.notes}</TableCell>
-                    <TableCell>{f.createdAt}</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{f.notes}</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{f.createdAt}</TableCell>
 
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
