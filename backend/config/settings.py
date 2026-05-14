@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
 
@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # required for BLACKLIST_AFTER_ROTATION
+    'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
 
     # Project apps
@@ -136,6 +136,14 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# تأكد من وجود مجلد static
+import os as _os
+if not _os.path.exists(STATICFILES_DIRS[0]):
+    _os.makedirs(STATICFILES_DIRS[0], exist_ok=True)
+
+# إعدادات الملفات الثابتة للتطوير
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

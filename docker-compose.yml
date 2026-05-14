@@ -2,7 +2,7 @@ services:
   web:
     build: .
     container_name: call_analysis_backend
-    working_dir: /app/call_analysis   # updated folder name
+    working_dir: /app/backend
     command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
     volumes:
       - .:/app
@@ -13,6 +13,41 @@ services:
     depends_on:
       - db
       - redis
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  celery_worker:
+    build: .
+    container_name: call_analysis_celery_worker
+    working_dir: /app/backend
+    command: celery -A config worker -l info --concurrency=2
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  celery_beat:
+    build: .
+    container_name: call_analysis_celery_beat
+    working_dir: /app/backend
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   db:
     image: postgres:15
@@ -42,32 +77,6 @@ services:
     container_name: call_analysis_redis
     ports:
       - "6379:6379"
-
-  celery_worker:
-    build: .
-    container_name: call_analysis_celery_worker
-    working_dir: /app/call_analysis   # updated folder name
-    command: celery -A config worker -l info --concurrency=2
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - web
-      - redis
-
-  celery_beat:
-    build: .
-    container_name: call_analysis_celery_beat
-    working_dir: /app/call_analysis   # updated folder name
-    command: celery -A config beat -l info
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - web
-      - redis
 
 volumes:
   postgres_data:
