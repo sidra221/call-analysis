@@ -1,6 +1,12 @@
 services:
+
+  # ─────────────────────────────────────────
+  # Backend — Django + Daphne (ASGI)
+  # ─────────────────────────────────────────
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: call_analysis_backend
     working_dir: /app/backend
     command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
@@ -17,8 +23,13 @@ services:
       - 8.8.8.8
       - 1.1.1.1
 
+  # ─────────────────────────────────────────
+  # Celery Worker — background task processor
+  # ─────────────────────────────────────────
   celery_worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: call_analysis_celery_worker
     working_dir: /app/backend
     command: celery -A config worker -l info --concurrency=2
@@ -33,8 +44,13 @@ services:
       - 8.8.8.8
       - 1.1.1.1
 
+  # ─────────────────────────────────────────
+  # Celery Beat — scheduled tasks
+  # ─────────────────────────────────────────
   celery_beat:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: call_analysis_celery_beat
     working_dir: /app/backend
     command: celery -A config beat -l info
@@ -49,6 +65,43 @@ services:
       - 8.8.8.8
       - 1.1.1.1
 
+  # ─────────────────────────────────────────
+  # AI Service — FastAPI + WhisperX + NLP
+  # ─────────────────────────────────────────
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    container_name: call_analysis_ai
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./ai_service:/app
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  # ─────────────────────────────────────────
+  # Frontend — React + Vite
+  # ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: call_analysis_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_WS_BASE_URL=ws://localhost:8000
+    depends_on:
+      - web
+
+  # ─────────────────────────────────────────
+  # PostgreSQL — main database
+  # ─────────────────────────────────────────
   db:
     image: postgres:15
     container_name: call_analysis_db
@@ -61,6 +114,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 
+  # ─────────────────────────────────────────
+  # pgAdmin — database GUI
+  # ─────────────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4
     container_name: call_analysis_pgadmin
@@ -72,6 +128,9 @@ services:
     depends_on:
       - db
 
+  # ─────────────────────────────────────────
+  # Redis — message broker + WebSocket layer
+  # ─────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: call_analysis_redis

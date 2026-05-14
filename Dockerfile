@@ -1,18 +1,24 @@
-# Use a stable base image
-FROM python:3.12-bullseye
+# Base image with Python 3.11
+FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies required by WhisperX and audio processing
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
     gcc \
-    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy and install Python dependencies
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies (force break-system-packages for Python 3.12)
-RUN pip install --no-cache-dir --break-system-packages -i https://pypi.org/simple -r requirements.txt
-
+# Copy application source code
 COPY . .
 
-CMD ["python", "backend/manage.py", "runserver", "0.0.0.0:8000"]
+# Expose the port FastAPI will run on
+EXPOSE 9000
+
+# Start the FastAPI server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9000"]

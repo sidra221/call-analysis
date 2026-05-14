@@ -29,6 +29,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+whisper_env/
 
 # Django
 *.log
@@ -45,22 +46,24 @@ db.sqlite3-journal
 .env.*.local
 *.env
 
-# IDE
+# IDE & Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
 # Docker
 .dockerignore
+docker-compose.override.yml
 
 # Database
 *.db
 *.sqlite
 
-# Coverage
+# Coverage & Testing
 htmlcov/
 .tox/
 .coverage
@@ -71,6 +74,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+test-results/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -95,30 +99,42 @@ celerybeat.pid
 # mkdocs
 /site
 
-# mypy
+# mypy & Pyre
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# Pyre
 .pyre/
 
-# Backup files
+# Backup & Temp files
 *.bak
 *.backup
 *.tmp
+*.out
 
 # OS
-Thumbs.db
-.DS_Store
 .AppleDouble
 .LSOverride
 
 # Project specific
 backend/media/
 backend/staticfiles/
+outputs/
+logs/
+*.json
+
+# Audio & Media files
 *.mp3
 *.wav
 *.m4a
 *.aac
+*.ogg
+*.flac
 
+# Model files (large binaries)
+*.bin
+*.pt
+*.ckpt
+
+# Secrets & tokens
+token.txt
+secrets.json
