@@ -3,22 +3,21 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies required by WhisperX and audio processing
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    git \
+    libpq-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies
+# Copy and install Python dependencies with retry on timeout
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout=120 --retries=5 -r requirements.txt
 
 # Copy application source code
 COPY . .
 
-# Expose the port FastAPI will run on
-EXPOSE 9000
+# Expose the Django port
+EXPOSE 8000
 
-# Start the FastAPI server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9000"]
+# Default command — overridden by docker-compose per service
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
