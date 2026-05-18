@@ -1,8 +1,7 @@
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from django.contrib.auth.models import User
 
 from .serializers import RegisterSerializer
 from .permissions import IsQA, IsManager, IsManagerOrQA
@@ -31,11 +30,37 @@ class RegisterView(APIView):
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Public login endpoint.
+    Accepts email and password — looks up the username internally.
     Returns an access token and a refresh token on valid credentials.
     POST /api/accounts/login/
     """
 
     permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        """
+        Override to allow login with email instead of username.
+        Finds the user by email, then passes the username to the JWT view.
+        Returns a clear error if the email or password is incorrect.
+        """
+        email = request.data.get('username', '').strip()
+
+        # Look up user by email
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return error_response(
+                "Invalid email or password.",
+                code="invalid_credentials",
+                status_code=401
+            )
+
+        # Replace email with actual username for JWT processing
+        data = request.data.copy()
+        data['username'] = user.username
+        request._full_data = data
+
+        return super().post(request, *args, **kwargs)
 
 
 class CustomTokenRefreshView(TokenRefreshView):

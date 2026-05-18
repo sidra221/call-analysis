@@ -1,33 +1,67 @@
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Box, Button, Card, CardContent, Grid, Link, TextField, Typography } from '@mui/material';
+import {
+  Box, Button, Card, CardContent, Grid, Link,
+  MenuItem, TextField, Typography, Alert, CircularProgress
+} from '@mui/material';
 import useAuth from 'hooks/useAuth';
 
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
+
   const [form, setForm] = useState({
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'qa'
   });
 
-  const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const onChange = (key) => (event) =>
+    setForm((prev) => ({ ...prev, [key]: event.target.value }));
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-   if (form.password !== form.confirmPassword) {
-  setError('Passwords do not match');
-  return;
-}
-    register({ username: form.username, email: form.email, password: form.password });
-    navigate('/login');
+    setError('');
+
+    // Validate passwords match
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await register({
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        role: form.role
+      });
+      navigate('/login');
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-      <Card sx={{ width: '100%', maxWidth: 520 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f4f5fa',
+        p: 2
+      }}
+    >
+      <Card sx={{ width: '100%', maxWidth: 520, borderRadius: 2 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h4" gutterBottom>
             Register
@@ -36,17 +70,47 @@ export default function Register() {
             Create your account for Call Analysis
           </Typography>
 
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit}>
             <Grid container spacing={2}>
+
               <Grid item xs={12}>
-                <TextField label="Username" fullWidth required value={form.username} onChange={onChange('username')} />
+                <TextField
+                  label="Username"
+                  fullWidth
+                  required
+                  value={form.username}
+                  onChange={onChange('username')}
+                />
               </Grid>
+
               <Grid item xs={12}>
-                <TextField label="Email" type="email" fullWidth required value={form.email} onChange={onChange('email')} />
+                <TextField
+                  label="Email"
+                  type="email"
+                  fullWidth
+                  required
+                  value={form.email}
+                  onChange={onChange('email')}
+                />
               </Grid>
+
               <Grid item xs={12}>
-                <TextField label="Password" type="password" fullWidth required value={form.password} onChange={onChange('password')} />
+                <TextField
+                  label="Password"
+                  type="password"
+                  fullWidth
+                  required
+                  value={form.password}
+                  onChange={onChange('password')}
+                />
               </Grid>
+
               <Grid item xs={12}>
                 <TextField
                   label="Confirm Password"
@@ -57,11 +121,35 @@ export default function Register() {
                   onChange={onChange('confirmPassword')}
                 />
               </Grid>
+
+              {/* Role selector — required by Backend */}
               <Grid item xs={12}>
-                <Button fullWidth variant="contained" type="submit">
-                  Register
+                <TextField
+                  select
+                  label="Role"
+                  fullWidth
+                  required
+                  value={form.role}
+                  onChange={onChange('role')}
+                >
+                  <MenuItem value="manager">Manager</MenuItem>
+                  <MenuItem value="qa">QA</MenuItem>
+                  <MenuItem value="agent">Agent</MenuItem>
+                </TextField>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  type="submit"
+                  disabled={loading}
+                  sx={{ py: 1.4, fontWeight: 600, borderRadius: 1.5 }}
+                >
+                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Register'}
                 </Button>
               </Grid>
+
             </Grid>
           </Box>
 

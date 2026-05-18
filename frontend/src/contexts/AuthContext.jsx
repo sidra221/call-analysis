@@ -22,39 +22,47 @@ export function AuthProvider({ children }) {
   });
 
   // ─────────────────────────────────────────
-  // Login — calls Backend JWT endpoint
+  // Login — sends email to Backend which looks up the username internally
   // ─────────────────────────────────────────
   const login = useCallback(async ({ email, password }) => {
-    // Step 1: Get JWT tokens from Backend
     const tokenRes = await fetch(`${API_URL}/api/accounts/login/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      // Backend accepts email in the username field and resolves it internally
       body: JSON.stringify({ username: email, password })
     });
 
     if (!tokenRes.ok) {
-      throw new Error('Invalid credentials');
+      throw new Error('Invalid email or password.');
     }
 
-    const { access, refresh } = (await tokenRes.json());
+    const data = await tokenRes.json();
 
-    // Step 2: Save tokens to localStorage
+    // Handle both wrapped { data: { access } } and unwrapped { access } responses
+    const access = data?.access || data?.data?.access;
+    const refresh = data?.refresh || data?.data?.refresh;
+
+    if (!access) {
+      throw new Error('Invalid email or password.');
+    }
+
+    // Save tokens to localStorage
     localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
 
-    // Step 3: Fetch current user profile using the access token
+    // Fetch current user profile using the access token
     const meRes = await fetch(`${API_URL}/api/accounts/me/`, {
       headers: { Authorization: `Bearer ${access}` }
     });
 
     if (!meRes.ok) {
-      throw new Error('Failed to fetch user profile');
+      throw new Error('Failed to fetch user profile.');
     }
 
     const meData = await meRes.json();
-    const userData = meData.data;
+    const userData = meData.data || meData;
 
-    // Step 4: Save user info and update state
+    // Save user info and update state
     localStorage.setItem('authUser', JSON.stringify(userData));
     setUser(userData);
     setIsLoggedIn(true);

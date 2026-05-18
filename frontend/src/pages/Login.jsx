@@ -1,16 +1,8 @@
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  TextField,
-  Typography,
-  Link,
-  CircularProgress,
-  IconButton,
-  InputAdornment
+  Box, Button, Card, CardContent, TextField, Typography,
+  Link, CircularProgress, IconButton, InputAdornment, Alert
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import useAuth from 'hooks/useAuth';
@@ -19,7 +11,8 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState('');
+  // Backend accepts username (not email) for JWT login
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,19 +21,19 @@ export default function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-    setLoading(true);
 
-    if (!email || !password) {
-      setError('Please enter your email and password');
-      setLoading(false);
+    if (!username || !password) {
+      setError('Please enter your username and password');
       return;
     }
 
+    setLoading(true);
     try {
-      await login({ email, password });
+      // Pass username as email field — AuthContext sends it to Backend as username
+      await login({ email: username, password });
       navigate('/dashboard');
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Invalid username or password');
     } finally {
       setLoading(false);
     }
@@ -70,35 +63,34 @@ export default function Login() {
         <CardContent sx={{ p: 4 }}>
           <Typography
             variant="h3"
-            sx={{
-              mb: 1,
-              fontWeight: 700,
-              color: '#1e88e5',
-              textAlign: 'center'
-            }}
+            sx={{ mb: 1, fontWeight: 700, color: '#1e88e5', textAlign: 'center' }}
           >
             Login
           </Typography>
 
           <Typography
             variant="body2"
-            sx={{
-              mb: 4,
-              color: 'text.secondary',
-              textAlign: 'center'
-            }}
+            sx={{ mb: 4, color: 'text.secondary', textAlign: 'center' }}
           >
             Enter your credentials to continue
           </Typography>
 
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit}>
+
+            {/* Username field — Backend JWT uses username not email */}
             <TextField
-              label="Email Address"
-              type="email"
+              label="Username"
+              type="text"
               fullWidth
               size="medium"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               sx={{ mb: 3 }}
             />
 
@@ -117,7 +109,7 @@ export default function Login() {
                       onClick={() => setShowPassword((prev) => !prev)}
                       edge="end"
                     >
-                      {showPassword ?  <Visibility /> :<VisibilityOff />}
+                      {showPassword ? <Visibility /> : <VisibilityOff />}
                     </IconButton>
                   </InputAdornment>
                 )
@@ -143,23 +135,17 @@ export default function Login() {
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
             </Button>
 
-            {error && (
-              <Typography color="error" sx={{ mt: 2, textAlign: 'center' }}>
-                {error}
-              </Typography>
-            )}
-
             <Typography variant="body2" sx={{ mt: 3, textAlign: 'center' }}>
-              Don’t have an account?{' '}
+              Don't have an account?{' '}
               <Link component={RouterLink} to="/register" underline="hover">
                 Register
               </Link>
             </Typography>
+
           </Box>
         </CardContent>
       </Card>
 
-      {/* Animation */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
