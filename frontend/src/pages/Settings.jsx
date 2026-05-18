@@ -14,8 +14,11 @@ import {
   FormControlLabel,
   Divider,
   Box,
-  Chip
+  Chip,
+  useColorScheme
 } from '@mui/material';
+
+import useConfig from 'hooks/useConfig';
 
 // Icons
 import {
@@ -33,15 +36,19 @@ import {
   IconRefreshAlert
 } from '@tabler/icons-react';
 
-const tabs = [
-  { label: 'Profile', icon: <IconUser size={18} /> },
-  { label: 'Security', icon: <IconShieldLock size={18} /> },
-  { label: 'Preferences', icon: <IconAdjustments size={18} /> },
-  { label: 'System', icon: <IconSettings size={18} /> }
-];
-
 export default function SettingsPage() {
   const [tab, setTab] = useState(0);
+  const { mode, setMode } = useColorScheme();
+  const { state: { language }, setField } = useConfig();
+
+  const isAr = language === 'ar';
+
+  const tabs = [
+    { label: isAr ? 'الملف الشخصي' : 'Profile', icon: <IconUser size={18} /> },
+    { label: isAr ? 'الأمان' : 'Security', icon: <IconShieldLock size={18} /> },
+    { label: isAr ? 'التفضيلات' : 'Preferences', icon: <IconAdjustments size={18} /> },
+    { label: isAr ? 'النظام' : 'System', icon: <IconSettings size={18} /> }
+  ];
 
   return (
     <Card sx={{ borderRadius: 3, boxShadow: 2 }}>
@@ -56,7 +63,7 @@ export default function SettingsPage() {
             fontWeight: 600
           }}
         >
-          Settings
+          {isAr ? 'الإعدادات' : 'Settings'}
         </Typography>
 
         {/* Tabs */}
@@ -271,29 +278,35 @@ export default function SettingsPage() {
                 }}
               >
                 <IconAdjustments size={20} />
-                Preferences
+                {isAr ? 'التفضيلات' : 'Preferences'}
               </Typography>
 
               <Stack spacing={2}>
 
                 <FormControlLabel
-                  control={<Switch />}
-                  label="Dark Mode"
+                  control={
+                    <Switch 
+                      checked={mode === 'dark'} 
+                      onChange={(e) => setMode(e.target.checked ? 'dark' : 'light')} 
+                    />
+                  }
+                  label={isAr ? 'الوضع الليلي' : 'Dark Mode'}
                 />
 
                 <FormControlLabel
                   control={<Switch defaultChecked />}
-                  label="Notifications"
+                  label={isAr ? 'الإشعارات' : 'Notifications'}
                 />
 
                 <TextField
                   select
                   fullWidth
-                  label="Language"
-                  defaultValue="English"
+                  label={isAr ? 'اللغة' : 'Language'}
+                  value={language}
+                  onChange={(e) => setField('language', e.target.value)}
                 >
-                  <MenuItem value="Arabic">Arabic</MenuItem>
-                  <MenuItem value="English">English</MenuItem>
+                  <MenuItem value="ar">العربية</MenuItem>
+                  <MenuItem value="en">English</MenuItem>
                 </TextField>
 
               </Stack>
@@ -307,7 +320,7 @@ export default function SettingsPage() {
                   textTransform: 'none'
                 }}
               >
-                Save Preferences
+                {isAr ? 'حفظ التفضيلات' : 'Save Preferences'}
               </Button>
 
             </CardContent>

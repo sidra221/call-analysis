@@ -11,7 +11,7 @@ function StatCard({ data }) {
         height: "100%",
         p: 3,
         borderRadius: 3,
-        boxShadow: "none", // نفس ستايل الكاردات عندك
+        boxShadow: "none", 
         border: "1px solid",
         borderColor: "divider"
       }}
@@ -54,7 +54,7 @@ function StatCard({ data }) {
             <LinearProgress
               variant="determinate"
               value={percent}
-              color={item.color} // 🔥 هون صار نفس نظام MUI
+              color={item.color} 
               sx={{
                 height: 8,
                 borderRadius: 5,

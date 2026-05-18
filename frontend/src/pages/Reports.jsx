@@ -20,6 +20,8 @@ export default function Reports() {
     to: ''
   });
 
+
+  
   const handleGenerate = () => {
     const newReport = {
       id: Date.now(),
@@ -114,17 +116,18 @@ const confirmDelete = () => {
   setReportToDelete(null);
 };
   return (
-   <Box p={3}>
+   <Box >
 
   <Card sx={{ borderRadius: 3 }}>
-    <CardContent>
+    <CardContent >
 
       {/* HEADER INSIDE CARD */}
       <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+        direction={{ xs: 'column', sm: 'row' }}
+  alignItems={{ xs: 'stretch', sm: 'center' }}
+  justifyContent="space-between"
+  spacing={2}
+  mb={3}
       >
         <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>
           Reports
@@ -239,8 +242,18 @@ const confirmDelete = () => {
           </Stack>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={() => setOpenForm(false)}>Cancel</Button>
+        <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={() => setOpenForm(false)}
+                 variant="outlined"
+      sx={{
+        color: 'text.secondary',
+        borderColor: 'grey.400',
+        '&:hover': {
+          borderColor: 'grey.600',
+          backgroundColor: 'grey.100',
+        },
+      }}
+      >Cancel</Button>
           <Button variant="contained" onClick={handleGenerate}>
             Generate
           </Button>
@@ -262,7 +275,7 @@ const confirmDelete = () => {
     </DialogContentText>
   </DialogContent>
 
-  <DialogActions>
+  <DialogActions >
     <Button
       onClick={() => setDeleteDialog(false)}
       variant="outlined"
@@ -403,8 +416,15 @@ const confirmDelete = () => {
           </DialogContent>
         )}
 
-        <DialogActions>
-          <Button onClick={() => setOpenView(false)}>Close</Button>
+        <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={() => setOpenView(false)}
+          variant="outlined"
+             sx={{ color: 'text.secondary',
+             borderColor: 'grey.400', 
+             '&:hover': 
+             { borderColor: 'grey.600', 
+             backgroundColor: 'grey.100' } }}
+            >Cancel</Button>
 
           {selectedReport?.status === 'draft' && (
             <Button variant="contained" onClick={handlePublish}>

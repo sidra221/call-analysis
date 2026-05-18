@@ -10,6 +10,7 @@ const useCallsStore = create((set, get) => ({
   loading: false,
   error: null,
 
+  // Fetch all calls from Backend with optional filters
   fetchCalls: async (params = {}) => {
     set({ loading: true, error: null });
     try {

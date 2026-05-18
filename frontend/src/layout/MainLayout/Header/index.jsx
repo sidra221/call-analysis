@@ -9,6 +9,7 @@ import LogoSection from '../LogoSection';
 import SearchSection from './SearchSection';
 import ProfileSection from './ProfileSection';
 import NotificationSection from './NotificationSection';
+import useConfig from 'hooks/useConfig';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
 
@@ -20,6 +21,7 @@ import { IconMenu2 } from '@tabler/icons-react';
 export default function Header() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
+  const { state: { language } } = useConfig();
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
@@ -27,7 +29,7 @@ export default function Header() {
   return (
     <>
       {/* logo & toggler button */}
-      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex' }}>
+      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex', mr: language === 'ar' ? 0 : 2, ml: language === 'ar' ? 2 : 0 }}>
         <Box component="span" sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
           <LogoSection />
         </Box>

@@ -22,7 +22,7 @@ function Sidebar() {
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
 
   const {
-    state: { miniDrawer }
+    state: { miniDrawer, language }
   } = useConfig();
 
   const logo = useMemo(
@@ -55,7 +55,7 @@ function Sidebar() {
       {downMD || (miniDrawer && drawerOpen) ? (
         <Drawer
           variant={downMD ? 'temporary' : 'persistent'}
-          anchor="left"
+          anchor={language === 'ar' ? 'right' : 'left'}
           open={drawerOpen}
           onClose={() => handlerDrawerOpen(false)}
           slotProps={{

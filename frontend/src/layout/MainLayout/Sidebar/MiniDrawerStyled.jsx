@@ -8,7 +8,8 @@ import { drawerWidth } from 'store/constant';
 function openedMixin(theme) {
   return {
     width: drawerWidth,
-    borderRight: 'none',
+    borderRight: theme.direction === 'rtl' ? 'inherit' : 'none',
+    borderLeft: theme.direction === 'rtl' ? 'none' : 'inherit',
     zIndex: 1099,
     background: theme.vars.palette.background.default,
     overflowX: 'hidden',
@@ -22,7 +23,8 @@ function openedMixin(theme) {
 
 function closedMixin(theme) {
   return {
-    borderRight: 'none',
+    borderRight: theme.direction === 'rtl' ? 'inherit' : 'none',
+    borderLeft: theme.direction === 'rtl' ? 'none' : 'inherit',
     zIndex: 1099,
     background: theme.vars.palette.background.default,
     overflowX: 'hidden',
@@ -38,7 +40,8 @@ function closedMixin(theme) {
 
 const MiniDrawerStyled = styled(Drawer, { shouldForwardProp: (prop) => prop !== 'open' })(({ theme, open }) => ({
   width: drawerWidth,
-  borderRight: '0px',
+  borderRight: theme.direction === 'rtl' ? 'inherit' : '0px',
+  borderLeft: theme.direction === 'rtl' ? '0px' : 'inherit',
   flexShrink: 0,
   whiteSpace: 'nowrap',
   boxSizing: 'border-box',

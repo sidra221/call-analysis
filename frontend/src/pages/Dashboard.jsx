@@ -104,8 +104,6 @@ const state = location.state;
 
 useEffect(() => {
    
-
-    // ✅ فتح users menu بمنتصف يمين الشاشة لما يجي من Dashboard
     if (state?.openUsers) {
       setTimeout(() => {
         setUsersMenuPosition({
@@ -154,7 +152,7 @@ useEffect(() => {
         <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent>
             <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>Sentiment</Typography>
-            <Box sx={{ height: 220, mt: 1 }}><Bar data={sentimentChartData} options={{ responsive: true, maintainAspectRatio: false }} /></Box>
+            <Box sx={{ height: 250, mt: 2 }}><Bar data={sentimentChartData} options={{ responsive: true, maintainAspectRatio: false }} /></Box>
           </CardContent>
         </Card>
       </Box>

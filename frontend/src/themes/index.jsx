@@ -43,6 +43,12 @@ export default function ThemeCustomization({ children }) {
           customShadows: CustomShadows(palette.light, 'light')
         }
       },
+
+        dark: {
+          palette: palette.dark,
+          customShadows: CustomShadows(palette.dark, 'dark')
+        },
+
       cssVariables: {
         cssVarPrefix: CSS_VAR_PREFIX,
         colorSchemeSelector: 'data-color-scheme'

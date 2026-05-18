@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { IconEye, IconEdit, IconTrash, IconUsers, IconX, IconDots, IconRefresh, IconUpload, IconDeviceFloppy } from '@tabler/icons-react';
-import { Menu, ListItemIcon, ListItemText, Checkbox } from '@mui/material';
+import { IconEye, IconEdit, IconTrash, IconUsers, IconX, IconDots, 
+  IconRefresh, IconUpload, IconDeviceFloppy,IconCheck, IconFilter ,IconAdjustmentsHorizontal,
+  IconSearch
+ } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
-import {
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
-} from '@mui/material';
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer,
   FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Select,
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, TablePagination, Typography
+  TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText, Checkbox,
+    Backdrop,  LinearProgress,Dialog, DialogTitle, DialogContent, DialogContentText, 
+    DialogActions, Popover, Badge
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
 
@@ -36,68 +37,84 @@ export default function Calls() {
   const location = useLocation();
   const state = location.state;
 
-  const { calls, setCalls, isProcessing, setIsProcessing, processingProgress, setProcessingProgress } = useCallsStore();
+ const {
+  calls,
+  setCalls,
+  isProcessing,
+  setIsProcessing,
+  processingProgress,
+  setProcessingProgress
+} = useCallsStore();
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+const handleFileUpload = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    const audioUrl = URL.createObjectURL(file);
-    const newCallId = `C-${Date.now().toString().slice(-4)}`;
+  const audioUrl = URL.createObjectURL(file);
+  const newCallId = `C-${Date.now().toString().slice(-5)}`;
 
-    // 1. Start Processing
-    setIsProcessing(true);
-    setProcessingProgress(0);
+  // افتح البوب اب
+  setIsProcessing(true);
+  setProcessingProgress(0);
 
-    const newCall = {
-      id: newCallId,
-      status: 'in_progress',
-      sentiment: 'neutral',
-      priority: 'medium',
-      reviewed: 'No',
-      issue: 'Processing AI Analysis...',
-      transcript: 'The AI is currently transcribing and analyzing the audio content...',
-      audio: audioUrl,
-      duration: '00:00',
-      createdAt: new Date().toISOString().split('T')[0],
-      uploadedBy: user?.name || 'System'
-    };
+  // ضيف المكالمة مباشرة
+  const newCall = {
+    id: newCallId,
+    status: 'in_progress',
+    sentiment: 'neutral',
+    priority: 'medium',
+    reviewed: 'No',
+    issue: 'AI is processing the uploaded call...',
+    transcript: 'Transcribing audio and analyzing sentiment...',
+    audio: audioUrl,
+    duration: '00:00',
+    createdAt: new Date().toISOString().split('T')[0],
+    uploadedBy: user?.name || 'System'
+  };
 
-    setCalls([newCall, ...calls]);
+  setCalls((prev) => [newCall, ...prev]);
 
-    // 2. Simulate AI Processing Steps
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
+  // محاكاة المعالجة
+  let progress = 0;
 
-        // 3. Complete Processing
-        setTimeout(() => {
-          setCalls(prevCalls => prevCalls.map(c =>
+  const interval = setInterval(() => {
+    progress += 10;
+
+    setProcessingProgress(progress);
+
+    if (progress >= 100) {
+      clearInterval(interval);
+
+      // بعد اكتمال المعالجة
+      setTimeout(() => {
+        setCalls((prev) =>
+          prev.map((c) =>
             c.id === newCallId
               ? {
                   ...c,
                   status: 'completed',
-                  issue: 'Billing Dispute Resolved',
                   sentiment: 'positive',
                   priority: 'low',
-                  duration: '02:45',
-                  transcript: 'Customer was happy with the refund explanation and the quick resolution of the billing issue.'
+                  issue: 'Billing issue resolved successfully',
+                  transcript:
+                    'Customer issue was resolved and the client confirmed satisfaction.',
+                  duration: '02:45'
                 }
               : c
-          ));
-          setIsProcessing(false);
-          setProcessingProgress(0);
-          window.dispatchEvent(new Event('calls-updated'));
-        }, 500);
-      }
-      setProcessingProgress(progress);
-    }, 600);
+          )
+        );
 
-    e.target.value = '';
-  };
+       setTimeout(() => {
+  setIsProcessing(false);
+  setProcessingProgress(0);
+}, 1200);
+        window.dispatchEvent(new Event('calls-updated'));
+      }, 500);
+    }
+  }, 400);
+
+  e.target.value = '';
+};
 
   // ✅ استخدم position بدل anchor element
   const [usersMenuPosition, setUsersMenuPosition] = useState(null);
@@ -146,8 +163,32 @@ export default function Calls() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
   const [reviewedFilter, setReviewedFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedCall, setSelectedCall] = useState(null);
+  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+
+  const openFilters = (event) => {
+    setFilterAnchorEl(event.currentTarget);
+  };
+
+  const closeFilters = () => {
+    setFilterAnchorEl(null);
+  };
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== 'all') count++;
+    if (sentimentFilter !== 'all') count++;
+    if (priorityFilter !== 'all') count++;
+    if (reviewedFilter !== 'all') count++;
+    if (startDate) count++;
+    if (endDate) count++;
+    return count;
+  }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate]);
+
   const [openDrawer, setOpenDrawer] = useState(false);
   const [editableTranscript, setEditableTranscript] = useState('');
   const [editableSentiment, setEditableSentiment] = useState('neutral');
@@ -158,21 +199,40 @@ export default function Calls() {
     setLoading(true);
     const timer = setTimeout(() => setLoading(false), 400);
     return () => clearTimeout(timer);
-  }, [search, statusFilter, sentimentFilter, reviewedFilter]);
+  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate]);
 
   const filteredCalls = useMemo(() => {
+    if (!Array.isArray(calls)) return [];
     return calls.filter((call) => {
       const matchesSearch =
-        call.id.toLowerCase().includes(search.toLowerCase()) ||
+        String(call.id).toLowerCase().includes(search.toLowerCase()) ||
         call.status.toLowerCase().includes(search.toLowerCase()) ||
         call.sentiment.toLowerCase().includes(search.toLowerCase()) ||
         call.priority.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || call.status === statusFilter;
       const matchesSentiment = sentimentFilter === 'all' || call.sentiment === sentimentFilter;
+      const matchesPriority = priorityFilter === 'all' || call.priority === priorityFilter;
       const matchesReviewed = reviewedFilter === 'all' || call.reviewed === reviewedFilter;
-      return matchesSearch && matchesStatus && matchesSentiment && matchesReviewed;
+
+      // Date range filter
+      let matchesDate = true;
+      if (startDate || endDate) {
+        const callDate = new Date(call.createdAt);
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (callDate < start) matchesDate = false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (callDate > end) matchesDate = false;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesSentiment && matchesPriority && matchesReviewed && matchesDate;
     });
-  }, [search, statusFilter, sentimentFilter, reviewedFilter, calls]);
+  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate, calls]);
 
   const openCallDrawer = (call, edit = false) => {
     setSelectedCall(call);
@@ -200,7 +260,7 @@ export default function Calls() {
       }
     }
 
-    // ✅ فتح users menu بمنتصف يمين الشاشة لما يجي من Dashboard
+    
     if (state?.openUsers) {
       setTimeout(() => {
         setUsersMenuPosition({
@@ -242,34 +302,13 @@ export default function Calls() {
 
   return (
     <>
-      <input
-        type="file"
-        accept="audio/*"
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const audioUrl = URL.createObjectURL(file);
-          const newCall = {
-            id: `C-${Date.now()}`,
-            status: 'pending',
-            sentiment: 'neutral',
-            priority: 'medium',
-            reviewed: 'No',
-            issue: 'Uploaded audio call',
-            transcript: 'Auto-generated call from uploaded audio file',
-            audio: audioUrl,
-            duration: '00:00',
-            createdAt: new Date().toISOString().split('T')[0],
-            uploadedBy: user?.name || 'System'
-          };
-          const updated = [newCall, ...calls];
-          setCalls(updated);
-          window.dispatchEvent(new Event('calls-updated'));
-          e.target.value = '';
-        }}
-      />
+<input
+  type="file"
+  accept="audio/*"
+  ref={fileInputRef}
+  style={{ display: 'none' }}
+  onChange={handleFileUpload}
+/>
 
       <Card sx={{ borderRadius: 3 }}>
         <CardContent>
@@ -277,13 +316,23 @@ export default function Calls() {
             Calls Management
           </Typography>
 
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={3}>
+          <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
+            <Grid item xs={12} md={5}>
               <TextField
-                fullWidth size="small" placeholder="Search calls..."
+                fullWidth size="small" placeholder="Search calls ..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                sx={{
+                  borderRadius: '12px',
+                  bgcolor: 'background.paper',
+                  '& .MuiOutlinedInput-notchedOutline': { borderRadius: '12px' }
+                }}
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconSearch size={18} style={{ color: '#9e9e9e' }} />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       {loading ? <CircularProgress size={16} /> : search ? (
@@ -297,59 +346,156 @@ export default function Calls() {
               />
             </Grid>
 
-            <Grid item xs={12} md={3} sx={{ minWidth: 80 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select value={statusFilter} label="Status" sx={{ borderRadius: 2 }}
-                  onChange={(event) => setStatusFilter(event.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                </Select>
-              </FormControl>
+            <Grid item xs={6} md="auto">
+              <Badge badgeContent={activeFilterCount} color="primary">
+                <Button
+                  variant="outlined"
+                  startIcon={<IconAdjustmentsHorizontal size={18} />}
+                  onClick={openFilters}
+                  sx={{ 
+                    borderRadius: 2, 
+                    textTransform: 'none', 
+                    fontWeight: 600,
+                    height: 40,
+                    borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
+                    bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent'
+                  }}
+                >
+                  Filters
+                </Button>
+              </Badge>
             </Grid>
 
-            <Grid item xs={12} md={3} sx={{ minWidth: 80 }}>
+            {activeFilterCount > 0 && (
+              <Grid item xs={6} md="auto">
+                <Button
+                  variant="text"
+                  color="error"
+                  startIcon={<IconRefresh size={18} />}
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setSentimentFilter('all');
+                    setPriorityFilter('all');
+                    setReviewedFilter('all');
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Reset All
+                </Button>
+              </Grid>
+            )}
+
+            <Grid item xs={12} md="auto" sx={{ ml: 'auto' }}>
+              <Button 
+                variant="contained" 
+                startIcon={<IconUpload size={18} />}
+                onClick={() => fileInputRef.current?.click()}
+                sx={{ 
+                  borderRadius: 2, 
+                  textTransform: 'none', 
+                  fontWeight: 600,
+                  height: 40,
+                  boxShadow: (theme) => theme.vars.customShadows.z1
+                }}
+              >
+                Upload Call
+              </Button>
+            </Grid>
+          </Grid>
+
+          {/* Filters Popover */}
+          <Popover
+            open={Boolean(filterAnchorEl)}
+            anchorEl={filterAnchorEl}
+            onClose={closeFilters}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            PaperProps={{
+              sx: {
+                p: 3,
+                width: 320,
+                borderRadius: 3,
+                mt: 1.5,
+                boxShadow: (theme) => theme.vars.customShadows.z1
+              }
+            }}
+          >
+            <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Filter Calls</Typography>
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select value={statusFilter} label="Status"
+                  onChange={(event) => setStatusFilter(event.target.value)}>
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="in_progress">In Progress</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Priority</InputLabel>
+                <Select value={priorityFilter} label="Priority"
+                  onChange={(event) => setPriorityFilter(event.target.value)}>
+                  <MenuItem value="all">All Priorities</MenuItem>
+                  <MenuItem value="high">High</MenuItem>
+                  <MenuItem value="medium">Medium</MenuItem>
+                  <MenuItem value="low">Low</MenuItem>
+                </Select>
+              </FormControl>
+
               <FormControl fullWidth size="small">
                 <InputLabel>Sentiment</InputLabel>
-                <Select value={sentimentFilter} label="Sentiment" sx={{ borderRadius: 2 }}
+                <Select value={sentimentFilter} label="Sentiment"
                   onChange={(event) => setSentimentFilter(event.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="all">All Sentiments</MenuItem>
                   <MenuItem value="positive">Positive</MenuItem>
                   <MenuItem value="negative">Negative</MenuItem>
                   <MenuItem value="neutral">Neutral</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
 
-            <Grid item xs={12} md={3} sx={{ minWidth: 80 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Reviewed</InputLabel>
-                <Select value={reviewedFilter} label="Reviewed" sx={{ borderRadius: 2 }}
+                <Select value={reviewedFilter} label="Reviewed"
                   onChange={(event) => setReviewedFilter(event.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="Yes">Yes</MenuItem>
-                  <MenuItem value="No">No</MenuItem>
+                  <MenuItem value="all">All Reviews</MenuItem>
+                  <MenuItem value="Yes">Reviewed</MenuItem>
+                  <MenuItem value="No">Not Reviewed</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
 
-            <Grid item xs={12} md={2} sx={{ minWidth: 80 }}>
-              <Button fullWidth variant="outlined" startIcon={<IconRefresh size={18} />}
-                onClick={() => { setStatusFilter('all'); setSentimentFilter('all'); setReviewedFilter('all'); }}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 500 }}>
-                Reset
-              </Button>
-            </Grid>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                  Date Range
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    fullWidth size="small" type="date"
+                    label="From" InputLabelProps={{ shrink: true }}
+                    value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <TextField
+                    fullWidth size="small" type="date"
+                    label="To" InputLabelProps={{ shrink: true }}
+                    value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </Stack>
+              </Box>
 
-            <Grid item xs={12} md={2} sx={{ ml: 'auto', minWidth: 80 }}>
-              <Button fullWidth variant="contained" startIcon={<IconUpload size={18} />}
-                onClick={() => fileInputRef.current?.click()}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 500 }}>
-                Upload
+              <Button 
+                variant="contained" 
+                fullWidth 
+                onClick={closeFilters}
+                sx={{ borderRadius: 2, textTransform: 'none' }}
+              >
+                Apply Filters
               </Button>
-            </Grid>
-          </Grid>
+            </Stack>
+          </Popover>
 
           <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
             <Table size="small" sx={{ minWidth: 800 }}>
@@ -502,7 +648,11 @@ export default function Calls() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400', '&:hover': { borderColor: 'grey.600', backgroundColor: 'grey.100' } }}>
+            sx={{ color: 'text.secondary',
+             borderColor: 'grey.400', 
+             '&:hover': 
+             { borderColor: 'grey.600', 
+             backgroundColor: 'grey.100' } }}>
             Cancel
           </Button>
           <Button onClick={() => { handleDelete(callToDelete); setOpenDeleteDialog(false); }}
@@ -512,6 +662,120 @@ export default function Calls() {
           </Button>
         </DialogActions>
       </Dialog>
+
+
+<Backdrop
+  sx={{
+    color: '#fff',
+    zIndex: (theme) => theme.zIndex.drawer + 1,
+    flexDirection: 'column',
+    backdropFilter: 'blur(4px)',
+    bgcolor: (theme) => theme.vars.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)'
+  }}
+  open={isProcessing}
+>
+  <Card
+    sx={{
+      p: 4,
+      borderRadius: 4,
+      boxShadow: 24,
+      width: 400,
+      textAlign: 'center',
+      transition: '0.3s'
+    }}
+  >
+    <Stack spacing={3} alignItems="center">
+      {processingProgress < 100 ? (
+        <>
+          {/* Progress Circle */}
+          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+            <CircularProgress
+              variant="determinate"
+              value={processingProgress}
+              size={80}
+              thickness={4}
+              sx={{ color: 'primary.main' }}
+            />
+
+            <Box
+              sx={{
+                top: 0,
+                left: 0,
+                bottom: 0,
+                right: 0,
+                position: 'absolute',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Typography
+                variant="caption"
+                component="div"
+                color="text.secondary"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '1rem'
+                }}
+              >
+                {`${Math.round(processingProgress)}%`}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                color: 'text.primary',
+                fontWeight: 700,
+                mb: 1
+              }}
+            >
+               Processing...
+            </Typography>
+          </Box>
+
+         
+
+
+        </>
+      ) : (
+        <>
+          {/* Success State */}
+          <Box
+            sx={{
+              width: 90,
+              height: 90,
+              borderRadius: '50%',
+              bgcolor: 'success.main',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'pop 0.4s ease'
+            }}
+          >
+            <IconCheck size={50} stroke={3} />
+          </Box>
+
+          <Box >
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                color: 'success.main',
+                mb: 1
+              }}
+            >
+              Completed
+            </Typography>
+
+          </Box>
+        </>
+      )}
+    </Stack>
+  </Card>
+</Backdrop>
 
       {/* Drawer */}
       <Drawer anchor="right" open={openDrawer} onClose={closeCallDrawer}>

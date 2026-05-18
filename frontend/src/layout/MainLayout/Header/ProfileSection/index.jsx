@@ -7,13 +7,19 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Chip from '@mui/material/Chip';
 import User1 from 'assets/images/users/user-round.svg';
-import { IconLogout, IconLanguage, IconArrowLeft } from '@tabler/icons-react';
+import { IconLogout, IconLanguage, IconArrowLeft, IconChevronLeft, IconChevronRight, IconMoon, IconSun } from '@tabler/icons-react';
 import useAuth from 'hooks/useAuth';
+import Switch from '@mui/material/Switch';
+import { useColorScheme } from '@mui/material/styles';
+import useConfig from 'hooks/useConfig';
 
 export default function ProfileSection() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+ const { state: { language }, setField } = useConfig();
+  const { mode, setMode } = useColorScheme();
 
+  
   const [anchorEl, setAnchorEl] = useState(null);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 

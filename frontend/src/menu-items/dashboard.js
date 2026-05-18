@@ -49,14 +49,7 @@ const dashboard = {
   icon: IconReportAnalytics ,
   breadcrumbs: false
 },
-    {
-      id: 'Profile',
-      title: 'Profile',
-      type: 'item',
-      url: '/profile',
-      icon: icons.IconUser,
-      breadcrumbs: false
-    },
+
     {
       id: 'settings',
       title: 'Settings',
