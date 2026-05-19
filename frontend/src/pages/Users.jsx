@@ -21,11 +21,21 @@ import {
   Grid,
   FormControl,
   InputLabel,
-  Select,
+  Select,  Drawer,
+  Divider,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 
 // Icons
-import { IconEdit, IconTrash, IconPlus,IconRefresh,IconUsers} from '@tabler/icons-react';
+import { IconEdit, 
+  IconTrash,
+  IconPlus,
+  IconRefresh,
+  IconUsers,
+  IconClipboardList,
+  IconFileAnalytics} from '@tabler/icons-react';
 
 // Table
 import {
@@ -79,7 +89,8 @@ export default function UsersPage() {
   // 🎨 Role Colors (ستايلك)
   const roleColors = {
     Admin: { bg: '#ede7f6', color: '#5e35b1' },
-    Agent: { bg: '#e3f2fd', color: '#1e88e5' }
+    Agent: { bg: '#e3f2fd', color: '#1e88e5' },
+     QA: { bg: '#fff3e0', color: '#ef6c00' }
   };
 
   // فلترة + سيرش
@@ -119,14 +130,23 @@ export default function UsersPage() {
   const handleAddUser = () => {
     if (!validate()) return;
 
-    const newUser = {
-      id: Date.now(),
-      username: form.username,
-      email: form.email,
-      role: form.role,
-      createdAt: new Date().toISOString().slice(0, 10),
-      avatar: `https://i.pravatar.cc/150?u=${Date.now()}`
-    };
+const newUser = {
+  id: Date.now(),
+  username: form.username,
+  email: form.email,
+  role: form.role,
+  createdAt: new Date().toISOString().slice(0, 10),
+  avatar: `https://i.pravatar.cc/150?u=${Date.now()}`,
+
+  assignedTasks: 4,
+  reportsCount: form.role === 'QA' ? 12 : 0,
+
+  recentEdits: [
+    'Updated call report',
+    'Closed follow-up task',
+    'Edited customer status'
+  ]
+};
 
     setUsers([...users, newUser]);
 
@@ -148,6 +168,13 @@ export default function UsersPage() {
     }
   };
 
+  const [openUserDrawer, setOpenUserDrawer] = useState(false);
+const [selectedUser, setSelectedUser] = useState(null);
+const handleOpenDrawer = (user) => {
+  setSelectedUser(user);
+  setOpenUserDrawer(true);
+};
+
   return (
     <Card sx={{ borderRadius: 3 }}>
       <CardContent>
@@ -158,7 +185,7 @@ export default function UsersPage() {
           </Typography>
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={3}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 size="small"
@@ -179,7 +206,7 @@ export default function UsersPage() {
               />
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Roles</InputLabel>
                 <Select
@@ -191,11 +218,12 @@ export default function UsersPage() {
                   <MenuItem value="All">All </MenuItem>
                   <MenuItem value="Admin">Admin</MenuItem>
                   <MenuItem value="Agent">Agent</MenuItem>
+                  <MenuItem value="QA">QA</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={2}>
+            <Grid size={{ xs: 12, md: 2 }}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -216,7 +244,7 @@ export default function UsersPage() {
               </Button>
             </Grid>
 
-            <Grid item xs={12} md={2} sx={{ ml: 'auto' }}>
+            <Grid size={{ xs: 12, md: 2 }} sx={{ ml: 'auto' }}>
               <Button
                 fullWidth
                 variant="contained"
@@ -281,9 +309,13 @@ export default function UsersPage() {
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{u.createdAt}</TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
-                      <IconButton size="small" color="primary">
-                        <IconEdit size={18} />
-                      </IconButton>
+ <IconButton
+  size="small"
+  color="primary"
+  onClick={() => handleOpenDrawer(u)}
+>
+  <IconEdit size={18} />
+</IconButton>
                       <IconButton
                         size="small"
                         color="error"
@@ -351,6 +383,7 @@ export default function UsersPage() {
               >
                 <MenuItem value="Admin">Admin</MenuItem>
                 <MenuItem value="Agent">Agent</MenuItem>
+                <MenuItem value="QA">QA</MenuItem>
               </TextField>
             </Stack>
           </DialogContent>
@@ -421,6 +454,134 @@ export default function UsersPage() {
 
           </DialogActions>
         </Dialog>
+
+<Drawer
+
+  anchor="right"
+  open={openUserDrawer}
+  onClose={() => setOpenUserDrawer(false)}
+>
+  <Box
+    sx={{
+      width: 380,
+      p: 3,
+      height: '100%',
+      bgcolor: '#fafafa'
+    }}
+  >
+    {selectedUser && (
+      <>
+        <Stack alignItems="center" spacing={2}>
+          <Avatar
+            src={selectedUser.avatar}
+            sx={{ width: 90, height: 90 }}
+          />
+
+          <Box textAlign="center">
+            <Typography variant="h5" fontWeight={700}>
+              {selectedUser.username}
+            </Typography>
+
+            <Typography color="text.secondary">
+              {selectedUser.email}
+            </Typography>
+
+            <Chip
+              label={selectedUser.role}
+              sx={{
+                mt: 1,
+                bgcolor: roleColors[selectedUser.role]?.bg,
+                color: roleColors[selectedUser.role]?.color,
+                fontWeight: 600
+              }}
+            />
+          </Box>
+        </Stack>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Grid container spacing={2}>
+          <Grid size={6}>
+            <Card
+              sx={{
+                borderRadius: 3,
+                textAlign: 'center',
+                py: 2
+              }}
+            >
+              <IconClipboardList size={28} />
+              <Typography variant="h6" fontWeight={700}>
+                {selectedUser.assignedTasks}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Tasks
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={6}>
+            <Card
+              sx={{
+                borderRadius: 3,
+                textAlign: 'center',
+                py: 2
+              }}
+            >
+              <IconFileAnalytics size={28} />
+              
+              <Typography variant="h6" fontWeight={700}>
+                {selectedUser.reportsCount}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Reports
+              </Typography>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography
+          variant="subtitle1"
+          fontWeight={700}
+          sx={{ mb: 2 }}
+        >
+          Recent Activity
+        </Typography>
+
+        <List sx={{ p: 0 }}>
+          {selectedUser.recentEdits?.map((edit, index) => (
+            <ListItem
+              key={index}
+              sx={{
+                px: 2,
+                mb: 1,
+                borderRadius: 2,
+                bgcolor: '#fff'
+              }}
+            >
+              <ListItemText primary={edit} />
+            </ListItem>
+          ))}
+        </List>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Stack spacing={1}>
+          <Typography variant="body2">
+            <strong>Created At:</strong>{' '}
+            {selectedUser.createdAt}
+          </Typography>
+
+          <Typography variant="body2">
+            <strong>Current Role:</strong>{' '}
+            {selectedUser.role}
+          </Typography>
+        </Stack>
+      </>
+    )}
+  </Box>
+</Drawer>
 
       </CardContent>
     </Card>

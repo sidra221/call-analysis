@@ -317,7 +317,7 @@ const handleFileUpload = (e) => {
           </Typography>
 
           <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
-            <Grid item xs={12} md={5}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <TextField
                 fullWidth size="small" placeholder="Search calls ..."
                 value={search}
@@ -346,7 +346,7 @@ const handleFileUpload = (e) => {
               />
             </Grid>
 
-            <Grid item xs={6} md="auto">
+            <Grid size={{ xs: 6, md: 'auto' }}>
               <Badge badgeContent={activeFilterCount} color="primary">
                 <Button
                   variant="outlined"
@@ -367,7 +367,7 @@ const handleFileUpload = (e) => {
             </Grid>
 
             {activeFilterCount > 0 && (
-              <Grid item xs={6} md="auto">
+              <Grid size={{ xs: 6, md: 'auto' }}>
                 <Button
                   variant="text"
                   color="error"
@@ -387,7 +387,7 @@ const handleFileUpload = (e) => {
               </Grid>
             )}
 
-            <Grid item xs={12} md="auto" sx={{ ml: 'auto' }}>
+            <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto' }}>
               <Button 
                 variant="contained" 
                 startIcon={<IconUpload size={18} />}
@@ -598,15 +598,13 @@ const handleFileUpload = (e) => {
         </MenuItem>
       </Menu>
 
-      {/* ✅ Users Menu بـ anchorPosition */}
-      <Menu
+      {/* ✅ Users Popover بـ anchorPosition */}
+      <Popover
         open={Boolean(usersMenuPosition)}
         onClose={closeUsersMenu}
         anchorReference="anchorPosition"
         anchorPosition={usersMenuPosition ?? undefined}
-        disableAutoFocusItem
-        disableEnforceFocus
-        PaperProps={{ sx: { width: 280, p: 1 } }}
+        PaperProps={{ sx: { width: 280, p: 1, borderRadius: 2 } }}
       >
         <Box sx={{ px: 1, py: 1 }}>
           <TextField
@@ -617,16 +615,18 @@ const handleFileUpload = (e) => {
           />
         </Box>
         <Divider />
-        {filteredEmployees.map((name) => (
-          <MenuItem key={name} onClick={() => {
-            setSelectedUsers((prev) =>
-              prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
-            );
-          }}>
-            <Checkbox checked={selectedUsers.includes(name)} />
-            <ListItemText>{name}</ListItemText>
-          </MenuItem>
-        ))}
+        <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+          {filteredEmployees.map((name) => (
+            <MenuItem key={name} onClick={() => {
+              setSelectedUsers((prev) =>
+                prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+              );
+            }}>
+              <Checkbox checked={selectedUsers.includes(name)} />
+              <ListItemText>{name}</ListItemText>
+            </MenuItem>
+          ))}
+        </Box>
         <Divider />
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
           <Button variant="contained" size="small" onClick={() => {
@@ -637,7 +637,7 @@ const handleFileUpload = (e) => {
             send
           </Button>
         </Box>
-      </Menu>
+      </Popover>
 
       {/* Delete Dialog */}
       <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}

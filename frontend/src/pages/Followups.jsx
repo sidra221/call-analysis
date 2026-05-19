@@ -28,7 +28,10 @@ import {
   TextField,
   Typography,
   alpha,
-  useTheme
+  useTheme,
+  Drawer,
+Divider,
+IconButton
 } from '@mui/material';
 
 // Icons
@@ -38,7 +41,10 @@ import {
   IconPlus,
   IconUser,
   IconClockHour4,
-  IconRefresh 
+  IconRefresh ,
+  IconX,
+IconEdit,
+IconDeviceFloppy
 } from '@tabler/icons-react';
 
 const initialFollowups = [
@@ -79,6 +85,8 @@ const initialFollowups = [
 const assignees = ['Maya', 'Ali', 'Rama', 'Omar'];
 
 export default function Followups() {
+
+
 const [assignedFilter, setAssignedFilter] = useState('all');
 const [dateFilter, setDateFilter] = useState('');
 
@@ -93,6 +101,62 @@ const [dateFilter, setDateFilter] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [notes, setNotes] = useState('');
   const [callIdInput, setCallIdInput] = useState('');
+
+  // Fake calls data as state
+  const [calls, setCalls] = useState([
+    {
+      id: 'C-1002',
+      status: 'pending',
+      createdAt: '2026-04-08',
+      uploadedBy: 'Admin',
+      mainIssue: 'Customer requested escalation callback',
+      sentiment: 'negative',
+      priority: 'high',
+      keywords: 'callback, escalation, support',
+      transcript: 'Customer was frustrated and requested escalation.',
+      reviewed: 'No',
+      audio: 'https://www.w3schools.com/html/horse.mp3'
+    },
+    {
+      id: 'C-1004',
+      status: 'done',
+      createdAt: '2026-04-07',
+      uploadedBy: 'Ali',
+      mainIssue: 'Issue resolved successfully',
+      sentiment: 'positive',
+      priority: 'low',
+      keywords: 'resolved, setup',
+      transcript: 'Customer confirmed everything works.',
+      reviewed: 'Yes',
+      audio: 'https://www.w3schools.com/html/horse.mp3'
+    },
+    {
+      id: 'C-1006',
+      status: 'pending',
+      createdAt: '2026-04-06',
+      uploadedBy: 'Maya',
+      mainIssue: 'Need final setup guidance',
+      sentiment: 'neutral',
+      priority: 'medium',
+      keywords: 'guide, setup',
+      transcript: 'Customer asked for final setup walkthrough.',
+      reviewed: 'No',
+      audio: 'https://www.w3schools.com/html/horse.mp3'
+    },
+    {
+      id: 'C-1008',
+      status: 'done',
+      createdAt: '2026-04-05',
+      uploadedBy: 'Omar',
+      mainIssue: 'Final check completed successfully',
+      sentiment: 'positive',
+      priority: 'low',
+      keywords: 'final, check, completed',
+      transcript: 'All tests passed and final check is complete.',
+      reviewed: 'Yes',
+      audio: 'https://www.w3schools.com/html/horse.mp3'
+    }
+  ]);
 
   useEffect(() => {
     if (location.state?.openCreateFollowup) {
@@ -132,10 +196,11 @@ const filtered = useMemo(() => {
     if (!assignedTo || !notes.trim()) return;
 
     const nextId = `F-${Date.now()}`;
+    const targetCallId = callIdInput || `C-${1000 + followups.length + 1}`;
 
     const newItem = {
       id: nextId,
-      callId: callIdInput || `C-${1000 + followups.length + 1}`,
+      callId: targetCallId,
       assignedTo,
       status: 'pending',
       notes: notes.trim(),
@@ -144,12 +209,143 @@ const filtered = useMemo(() => {
 
     setFollowups((prev) => [newItem, ...prev]);
 
+    // Ensure the call exists in our state so the drawer can open
+    if (!calls.find((c) => c.id === targetCallId)) {
+      setCalls((prev) => [
+        ...prev,
+        {
+          id: targetCallId,
+          status: 'pending',
+          createdAt: new Date().toISOString().slice(0, 10),
+          uploadedBy: 'System',
+          mainIssue: notes.trim(),
+          sentiment: 'neutral',
+          priority: 'medium',
+          keywords: 'manual, entry',
+          transcript: 'Transcript not available for manually created follow-up.',
+          reviewed: 'No',
+          audio: 'https://www.w3schools.com/html/horse.mp3'
+        }
+      ]);
+    }
+
     setOpenCreateDialog(false);
 
     setAssignedTo('');
     setNotes('');
     setCallIdInput('');
   };
+
+
+  // Drawer States
+const [openDrawer, setOpenDrawer] = useState(false);
+const [selectedCall, setSelectedCall] = useState(null);
+
+const [isEditMode, setIsEditMode] = useState(false);
+const [isDirty, setIsDirty] = useState(false);
+
+const [editableIssue, setEditableIssue] = useState('');
+const [editableSentiment, setEditableSentiment] = useState('');
+const [editablePriority, setEditablePriority] = useState('');
+const [editableKeywords, setEditableKeywords] = useState('');
+const [editableTranscript, setEditableTranscript] = useState('');
+
+// Colors
+const sentimentColor = {
+  positive: 'success',
+  negative: 'error',
+  neutral: 'default'
+};
+
+const priorityColor = {
+  high: 'error',
+  medium: 'warning',
+  low: 'success'
+};
+
+const stateColor = {
+  pending: 'warning',
+  done: 'success'
+};
+
+  const openCallDrawer = (callId) => {
+    try {
+      console.log('--- openCallDrawer Started ---');
+      console.log('Call ID provided:', callId);
+
+      if (!callId) {
+        console.error('No Call ID provided');
+        return;
+      }
+
+      if (!Array.isArray(calls)) {
+        console.error('Calls state is not an array:', calls);
+        return;
+      }
+
+      const call = calls.find((c) =>
+        c && c.id && String(c.id).trim() === String(callId).trim()
+      );
+
+      if (!call) {
+        console.warn('Call not found in state. Available IDs:', calls.map(c => c.id));
+        alert(`Call ${callId} not found. Please try again or refresh the page.`);
+        return;
+      }
+
+      console.log('Call successfully found:', call);
+
+      setSelectedCall(call);
+      setEditableIssue(call.mainIssue || call.issue || '');
+      setEditableSentiment(call.sentiment || 'neutral');
+      setEditablePriority(call.priority || 'medium');
+      setEditableKeywords(call.keywords || '');
+      setEditableTranscript(call.transcript || '');
+
+      setOpenDrawer(true);
+      console.log('Drawer state set to open');
+    } catch (error) {
+      console.error('Critical error in openCallDrawer:', error);
+      alert('An error occurred while trying to open call details.');
+    }
+  };
+
+  const closeCallDrawer = () => {
+    setOpenDrawer(false);
+    setSelectedCall(null);
+    setIsEditMode(false);
+    setIsDirty(false);
+  };
+
+const handleSave = () => {
+  // Update the calls state so changes persist during the session
+  setCalls((prev) =>
+    prev.map((c) =>
+      c.id === selectedCall.id
+        ? {
+            ...c,
+            mainIssue: editableIssue,
+            sentiment: editableSentiment,
+            priority: editablePriority,
+            keywords: editableKeywords,
+            transcript: editableTranscript
+          }
+        : c
+    )
+  );
+
+  // Also update the selected call so the UI reflects changes immediately
+  setSelectedCall((prev) => ({
+    ...prev,
+    mainIssue: editableIssue,
+    sentiment: editableSentiment,
+    priority: editablePriority,
+    keywords: editableKeywords,
+    transcript: editableTranscript
+  }));
+
+  setIsEditMode(false);
+};
 
   const statusChip = (status) => {
     if (status === 'pending') {
@@ -222,7 +418,7 @@ const filtered = useMemo(() => {
 
           {/* Stats */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Card
                 sx={{
                   borderRadius: '20px',
@@ -255,7 +451,7 @@ const filtered = useMemo(() => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Card
                 sx={{
                   borderRadius: '20px',
@@ -288,7 +484,7 @@ const filtered = useMemo(() => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Card
                 sx={{
                   borderRadius: '20px',
@@ -326,7 +522,7 @@ const filtered = useMemo(() => {
 <Grid container spacing={2} sx={{ mb: 3 }}>
 
   {/* STATUS */}
-  <Grid item xs={12} md={3}>
+  <Grid size={{ xs: 12, md: 3 }}>
     <FormControl fullWidth size="small">
       <InputLabel>Status</InputLabel>
 
@@ -334,7 +530,7 @@ const filtered = useMemo(() => {
         value={statusFilter}
         label="Status"
         onChange={(e) => setStatusFilter(e.target.value)}
-        sx={{ borderRadius: 2 ,width:"90px"}}
+        sx={{ borderRadius: 2 }}
       >
         <MenuItem value="all">All</MenuItem>
         <MenuItem value="pending">Pending</MenuItem>
@@ -344,7 +540,7 @@ const filtered = useMemo(() => {
   </Grid>
 
   {/* ASSIGNED */}
-  <Grid item xs={12} md={3}>
+  <Grid size={{ xs: 12, md: 3 }}>
     <FormControl fullWidth size="small">
       <InputLabel>Assigned To</InputLabel>
 
@@ -352,7 +548,7 @@ const filtered = useMemo(() => {
         value={assignedFilter}
         label="Assigned To"
         onChange={(e) => setAssignedFilter(e.target.value)}
-        sx={{ borderRadius: 2,width:"90px" }}
+        sx={{ borderRadius: 2 }}
       >
         <MenuItem value="all">All</MenuItem>
 
@@ -366,7 +562,7 @@ const filtered = useMemo(() => {
   </Grid>
 
   {/* DATE */}
-  <Grid item xs={12} md={3}>
+  <Grid size={{ xs: 12, md: 3 }}>
     <TextField
       fullWidth
       size="small"
@@ -384,7 +580,7 @@ const filtered = useMemo(() => {
   </Grid>
 
   {/* RESET */}
-  <Grid item xs={12} md={3}>
+  <Grid size={{ xs: 12, md: 3 }}>
     <Button
       fullWidth
       variant="outlined"
@@ -505,17 +701,18 @@ const filtered = useMemo(() => {
                   spacing={1}
                   justifyContent="center"
                 >
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      minWidth: 95
-                    }}
-                  >
-                    View Call
-                  </Button>
+<Button
+  size="small"
+  variant="outlined"
+  onClick={() => openCallDrawer(item.callId)}
+  sx={{
+    borderRadius: '10px',
+    textTransform: 'none',
+    minWidth: 95
+  }}
+>
+  View Call
+</Button>
 
                   <Button
                     size="small"
@@ -586,7 +783,7 @@ const filtered = useMemo(() => {
 
         <DialogContent>
           <Grid container spacing={2} sx={{ mt:1 }}>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 label="Call ID"
                 size="small"
@@ -601,7 +798,7 @@ const filtered = useMemo(() => {
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl
               size="small"
              sx={{width:"215px"}} 
@@ -625,7 +822,7 @@ const filtered = useMemo(() => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 label="Notes"
                 multiline
@@ -670,6 +867,235 @@ const filtered = useMemo(() => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Drawer */}
+<Drawer
+  anchor="right"
+  open={openDrawer}
+  onClose={closeCallDrawer}
+  PaperProps={{
+    sx: {
+      width: { xs: '100%', sm: 450 },
+      borderRadius: { xs: 0, sm: '20px 0 0 20px' },
+      boxShadow: (theme) => theme.vars.customShadows.z1,
+      zIndex: 1500
+    }
+  }}
+>
+  <Box sx={{ p: 3 }}>
+    {selectedCall && (
+      <>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor:
+                  theme.palette[stateColor[selectedCall.status]]?.main || '#999'
+              }}
+            />
+
+            <Typography variant="h5">
+              Call Details - {selectedCall.id}
+            </Typography>
+          </Box>
+
+          <IconButton onClick={closeCallDrawer} size="small">
+            <IconX size={18} />
+          </IconButton>
+        </Box>
+
+        <Stack direction="row" spacing={2} sx={{ mb: 2, mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            {selectedCall.createdAt}
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            Uploaded by{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 600,
+                color: 'text.primary'
+              }}
+            >
+              {selectedCall.uploadedBy}
+            </Box>
+          </Typography>
+        </Stack>
+
+        <Divider sx={{ mb: 2 }} />
+
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>
+          Main Issue
+        </Typography>
+
+        {isEditMode ? (
+          <TextField
+            fullWidth
+            size="small"
+            value={editableIssue}
+            onChange={(e) => {
+              setEditableIssue(e.target.value);
+              setIsDirty(true);
+            }}
+            sx={{ mb: 2 }}
+          />
+        ) : (
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            {editableIssue}
+          </Typography>
+        )}
+
+        <Typography variant="subtitle1" gutterBottom>
+          Analysis
+        </Typography>
+
+        <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+{isEditMode ? (
+  <Stack direction="row" spacing={1} width="100%">
+    <Select
+      fullWidth
+      size="small"
+      value={editableSentiment}
+      onChange={(e) => {
+        setEditableSentiment(e.target.value);
+        setIsDirty(true);
+      }}
+    >
+      <MenuItem value="positive">Positive</MenuItem>
+      <MenuItem value="negative">Negative</MenuItem>
+      <MenuItem value="neutral">Neutral</MenuItem>
+    </Select>
+
+    <Select
+      fullWidth
+      size="small"
+      value={editablePriority}
+      onChange={(e) => {
+        setEditablePriority(e.target.value);
+        setIsDirty(true);
+      }}
+    >
+      <MenuItem value="high">High</MenuItem>
+      <MenuItem value="medium">Medium</MenuItem>
+      <MenuItem value="low">Low</MenuItem>
+    </Select>
+  </Stack>
+) : (
+            <>
+              <Chip
+                label={editableSentiment}
+                color={sentimentColor[editableSentiment]}
+                size="small"
+              />
+
+              <Chip
+                label={`${editablePriority} Priority`}
+                color={priorityColor[editablePriority]}
+                size="small"
+              />
+            </>
+          )}
+        </Stack>
+
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>
+          Keywords
+        </Typography>
+
+        {isEditMode ? (
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="comma separated..."
+            value={editableKeywords}
+            onChange={(e) => {
+              setEditableKeywords(e.target.value);
+              setIsDirty(true);
+            }}
+            sx={{ mb: 3 }}
+          />
+        ) : (
+          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3 }}>
+            {editableKeywords.split(',').map((k, i) => (
+              <Chip key={i} label={k.trim()} size="small" />
+            ))}
+          </Stack>
+        )}
+
+        <Divider sx={{ mb: 2 }} />
+
+        <Typography variant="subtitle1" gutterBottom>
+          Transcript
+        </Typography>
+
+        <TextField
+          fullWidth
+          multiline
+          minRows={4}
+          value={editableTranscript}
+          disabled={!isEditMode}
+          onChange={(e) => {
+            setEditableTranscript(e.target.value);
+            setIsDirty(true);
+          }}
+          sx={{ mb: 2 }}
+        />
+
+        <Divider sx={{ mb: 2 }} />
+
+        <Typography variant="subtitle1" gutterBottom>
+          Audio
+        </Typography>
+
+        <Box sx={{ mb: 3 }}>
+          <audio
+            controls
+            style={{ width: '100%' }}
+            src={selectedCall.audio}
+          />
+        </Box>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (isEditMode) {
+                handleSave();
+                setIsDirty(false);
+              } else {
+                setIsEditMode(true);
+              }
+            }}
+          >
+            {isEditMode ? 'Save' : 'Edit'}
+          </Button>
+
+          <Button
+            variant={
+              selectedCall.reviewed === 'Yes'
+                ? 'contained'
+                : 'outlined'
+            }
+          >
+            {selectedCall.reviewed === 'Yes'
+              ? 'Reviewed'
+              : 'Not Reviewed'}
+          </Button>
+        </Stack>
+      </>
+    )}
+  </Box>
+</Drawer>
+
     </>
   );
 }

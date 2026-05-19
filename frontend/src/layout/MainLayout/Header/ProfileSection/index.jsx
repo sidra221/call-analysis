@@ -36,7 +36,6 @@ export default function ProfileSection() {
       <Chip
         clickable
         disableRipple
-        disableFocusRipple
         sx={{
           ml: 2,
           height: 48,
@@ -104,69 +103,61 @@ export default function ProfileSection() {
     }
   }}
 >
-        {!showLanguageMenu && (
-          <>
-            {/* Language */}
-            <MenuItem
-              onClick={() => {
-                setShowLanguageMenu(true);
-              }}
-            >
-              <ListItemIcon>
-                <IconLanguage size={18} />
-              </ListItemIcon>
-              <ListItemText>Language</ListItemText>
-            </MenuItem>
+  {!showLanguageMenu ? [
+    <MenuItem
+      key="language"
+      onClick={() => {
+        setShowLanguageMenu(true);
+      }}
+    >
+      <ListItemIcon>
+        <IconLanguage size={18} />
+      </ListItemIcon>
+      <ListItemText>Language</ListItemText>
+    </MenuItem>,
 
-            {/* Logout */}
-            <MenuItem
-              onClick={() => {
-                handleClose();
-                logout();
-                navigate('/login');
-              }}
-            >
-              <ListItemIcon>
-                <IconLogout size={18} />
-              </ListItemIcon>
-              <ListItemText>Logout</ListItemText>
-            </MenuItem>
-          </>
-        )}
+    <MenuItem
+      key="logout"
+      onClick={() => {
+        handleClose();
+        logout();
+        navigate('/login');
+      }}
+    >
+      <ListItemIcon>
+        <IconLogout size={18} />
+      </ListItemIcon>
+      <ListItemText>Logout</ListItemText>
+    </MenuItem>
+  ] : [
+    <MenuItem key="back" onClick={() => setShowLanguageMenu(false)}>
+      <ListItemIcon>
+        <IconArrowLeft size={18} />
+      </ListItemIcon>
+      <ListItemText>Back</ListItemText>
+    </MenuItem>,
 
-        {/* Language Submenu */}
-        {showLanguageMenu && (
-          <>
-            {/* Back */}
-            <MenuItem onClick={() => setShowLanguageMenu(false)}>
-              <ListItemIcon>
-                <IconArrowLeft size={18} />
-              </ListItemIcon>
-              <ListItemText>Back</ListItemText>
-            </MenuItem>
+    <MenuItem
+      key="ar"
+      onClick={() => {
+        console.log('Arabic selected');
+        handleClose();
+      }}
+    >
+      <ListItemText>العربية</ListItemText>
+    </MenuItem>,
 
-            {/* Arabic */}
-            <MenuItem
-              onClick={() => {
-                console.log('Arabic selected');
-                handleClose();
-              }}
-            >
-              <ListItemText>العربية</ListItemText>
-            </MenuItem>
-
-            {/* English */}
-            <MenuItem
-              onClick={() => {
-                console.log('English selected');
-                handleClose();
-              }}
-            >
-              <ListItemText>English</ListItemText>
-            </MenuItem>
-          </>
-        )}
-      </Menu>
+    <MenuItem
+      key="en"
+      onClick={() => {
+        console.log('English selected');
+        handleClose();
+      }}
+    >
+      <ListItemText>English</ListItemText>
+    </MenuItem>
+  ]}
+</Menu>
     </>
   );
 }

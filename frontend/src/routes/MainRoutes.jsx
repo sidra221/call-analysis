@@ -10,7 +10,7 @@ const CallsPage = Loadable(lazy(() => import('pages/Calls')));
 const FollowupsPage = Loadable(lazy(() => import('pages/Followups')));
 const ReportsPage = Loadable(lazy(() => import('pages/Reports')));
 
-const SettingsPage = Loadable(lazy(() => import('pages/Settings')));
+const ProfilePage = Loadable(lazy(() => import('pages/Profile')));
 const UsersPage = Loadable(lazy(() => import("pages/Users")));
 
 // ==============================|| MAIN ROUTING ||============================== //
@@ -45,8 +45,8 @@ const MainRoutes = {
     },
     
     {
-      path: 'settings',
-      element: <SettingsPage />
+      path: 'profile',
+      element: <ProfilePage />
     },
     {
       path: 'users',

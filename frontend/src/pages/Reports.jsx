@@ -4,10 +4,11 @@ import {
   DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Stack, Chip, Table, TableBody,
   TableCell, TableHead, TableRow, Divider,Checkbox ,IconButton ,
-  DialogContentText
+  DialogContentText,alpha, useTheme,
+  Grid,Avatar 
 } from '@mui/material';
-import { IconPlus,IconTrash  } from '@tabler/icons-react';
-import { IconMoodSmile, IconMoodNeutral, IconMoodSad } from '@tabler/icons-react';
+import { IconPlus,IconTrash , IconClipboardText,IconChecks,IconClockHour4,IconMoodSmile, IconMoodNeutral, IconMoodSad  } from '@tabler/icons-react';
+
 export default function Reports() {
   const [reports, setReports] = useState([]);
   const [openForm, setOpenForm] = useState(false);
@@ -19,24 +20,54 @@ export default function Reports() {
     from: '',
     to: ''
   });
-
+const theme = useTheme();
 
   
   const handleGenerate = () => {
-    const newReport = {
-      id: Date.now(),
-      type: form.type,
-      from: form.from,
-      to: form.to,
-      status: 'draft',
-      createdBy: 'QA',
-      createdAt: new Date().toISOString(),
-      summary: '',
-      positives: '',
-      recommendations: '',
-      sentiment: 'neutral',
-      topIssues: []
-    };
+const newReport = {
+  id: Date.now(),
+  type: form.type,
+  from: form.from,
+  to: form.to,
+  status: 'draft',
+  createdBy: 'QA',
+  createdAt: new Date().toISOString(),
+
+  summary: '',
+  positives: '',
+  recommendations: '',
+
+  sentiment: 'neutral',
+
+  topIssues: [
+    {
+      issue: 'Delay',
+      count: Math.floor(Math.random() * 20) + 1
+    },
+    {
+      issue: 'Bad audio',
+      count: Math.floor(Math.random() * 15) + 1
+    },
+    {
+      issue: 'Agent tone',
+      count: Math.floor(Math.random() * 10) + 1
+    },
+    {
+      issue: 'Missing info',
+      count: Math.floor(Math.random() * 8) + 1
+    },
+    {
+      issue: 'Escalation',
+      count: Math.floor(Math.random() * 5) + 1
+    }
+  ],
+
+  sentimentStats: {
+    positive: Math.floor(Math.random() * 30),
+    neutral: Math.floor(Math.random() * 15),
+    negative: Math.floor(Math.random() * 10)
+  }
+};
 
     setReports([newReport, ...reports]);
     setOpenForm(false);
@@ -48,6 +79,10 @@ export default function Reports() {
     ));
     setOpenView(false);
   };
+
+  const handleSaveDraft = () => {
+  setOpenView(false);
+};
 
 useEffect(() => {
   const saved = localStorage.getItem('reports');
@@ -115,6 +150,11 @@ const confirmDelete = () => {
   setDeleteDialog(false);
   setReportToDelete(null);
 };
+const role = 'qa'; // qa | manager
+const isEditable =
+  role === 'qa' &&
+  selectedReport?.status === 'draft';
+
   return (
    <Box >
 
@@ -142,6 +182,120 @@ const confirmDelete = () => {
         </Button>
       </Stack>
 
+
+{/* SUMMARY CARDS */}
+<Grid container spacing={2} sx={{ mb: 3 }}>
+
+  {/* Total Reports */}
+  <Grid size={{ xs: 12, md: 4 }}>
+    <Card
+      sx={{
+        borderRadius: '20px',
+        boxShadow: 'none',
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+        height: '100%'
+      }}
+    >
+      <CardContent>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar
+            sx={{
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+              color: theme.palette.primary.main
+            }}
+          >
+            <IconClipboardText size={20} />
+          </Avatar>
+
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Total Reports
+            </Typography>
+
+            <Typography variant="h4" fontWeight={700}>
+              {reports.length}
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  </Grid>
+
+  {/* Published Reports */}
+  <Grid size={{ xs: 12, md: 4 }}>
+    <Card
+      sx={{
+        borderRadius: '20px',
+        boxShadow: 'none',
+        border: `1px solid ${alpha(theme.palette.success.main, 0.15)}`,
+        height: '100%'
+      }}
+    >
+      <CardContent>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar
+            sx={{
+              bgcolor: alpha(theme.palette.success.main, 0.12),
+              color: theme.palette.success.main
+            }}
+          >
+            <IconChecks size={20} />
+          </Avatar>
+
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Published Reports
+            </Typography>
+
+            <Typography variant="h4" fontWeight={700}>
+              {
+                reports.filter(r => r.status === 'published').length
+              }
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  </Grid>
+
+  {/* Draft Reports */}
+  <Grid size={{ xs: 12, md: 4 }}>
+    <Card
+      sx={{
+        borderRadius: '20px',
+        boxShadow: 'none',
+        border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`,
+        height: '100%'
+      }}
+    >
+      <CardContent>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar
+            sx={{
+              bgcolor: alpha(theme.palette.warning.main, 0.12),
+              color: theme.palette.warning.main
+            }}
+          >
+            <IconClockHour4 size={20} />
+          </Avatar>
+
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Draft Reports
+            </Typography>
+
+            <Typography variant="h4" fontWeight={700}>
+              {
+                reports.filter(r => r.status === 'draft').length
+              }
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  </Grid>
+
+</Grid>
       {/* TABLE */}
       <Box sx={{ width: '100%', overflowX: 'auto' }}>
         <Table sx={{ minWidth: 600 }}>
@@ -314,35 +468,38 @@ const confirmDelete = () => {
           <DialogContent>
             <Stack spacing={3} mt={1}>
 
-              <TextField
-                label="Summary (Issues & Solutions)"
-                multiline
-                minRows={3}
-                value={selectedReport.summary}
-                onChange={e =>
-                  setSelectedReport({ ...selectedReport, summary: e.target.value })
-                }
-              />
+<TextField
+  label="Summary (Issues & Solutions)"
+  multiline
+  minRows={3}
+  value={selectedReport.summary}
+  onChange={(e) =>
+    handleFieldChange('summary', e.target.value)
+  }
+  disabled={!isEditable}
+/>
 
-              <TextField
-                label="Positives"
-                multiline
-                minRows={2}
-                value={selectedReport.positives}
-                onChange={e =>
-                  setSelectedReport({ ...selectedReport, positives: e.target.value })
-                }
-              />
+<TextField
+  label="Positives"
+  multiline
+  minRows={2}
+  value={selectedReport.positives}
+  onChange={(e) =>
+    handleFieldChange('positives', e.target.value)
+  }
+  disabled={!isEditable}
+/>
 
-              <TextField
-                label="Recommendations"
-                multiline
-                minRows={2}
-                value={selectedReport.recommendations}
-                onChange={e =>
-                  setSelectedReport({ ...selectedReport, recommendations: e.target.value })
-                }
-              />
+<TextField
+  label="Recommendations"
+  multiline
+  minRows={2}
+  value={selectedReport.recommendations}
+  onChange={(e) =>
+    handleFieldChange('recommendations', e.target.value)
+  }
+  disabled={!isEditable}
+/>
 
               <Divider />
 
@@ -372,6 +529,7 @@ const confirmDelete = () => {
       );
     }
   }}
+  disabled={!isEditable}
 >
  <MenuItem value="positive">
   <Chip label="Positive" color="success" size="small" />
@@ -382,56 +540,151 @@ const confirmDelete = () => {
  <MenuItem value="negative">
   <Chip label="negative" color="error" size="small" />
 </MenuItem>
+disabled={!isEditable}
 </TextField>
               {/* Issues */}
-<TextField
-  select
-  label="Top Issues"
-  value={selectedReport.topIssues || []}
-  onChange={(e) => {
-    const value = e.target.value;
-    handleFieldChange('topIssues',e.target.value);
-  }}
-  fullWidth
-  SelectProps={{
-    multiple: true,
-    renderValue: (selected) => (
-      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-        {selected.map((value) => (
-          <Chip key={value} label={value} size="small" />
-        ))}
-      </Box>
-    )
+{/* Top Issues Analytics */}
+<Card
+  sx={{
+    borderRadius: 4,
+    border: '1px solid',
+    borderColor: 'divider',
+    boxShadow: 0
   }}
 >
-  {['Delay', 'Bad audio', 'Agent tone', 'Missing info', 'Escalation'].map(issue => (
-    <MenuItem key={issue} value={issue}>
-      <Checkbox checked={selectedReport.topIssues?.indexOf(issue) > -1} />
-      {issue}
-    </MenuItem>
-  ))}
-</TextField>
+  <CardContent>
+
+    <Stack
+      direction="row"
+      justifyContent="space-between"
+      alignItems="center"
+      mb={2}
+    >
+    </Stack>
+
+    <Table size="small">
+
+      <TableHead>
+        <TableRow>
+          <TableCell>
+            <Typography fontWeight={700}>
+             top 5 Issue
+            </Typography>
+          </TableCell>
+
+          <TableCell align="right">
+            <Typography fontWeight={700}>
+              Count
+            </Typography>
+          </TableCell>
+        </TableRow>
+      </TableHead>
+
+      <TableBody>
+        {selectedReport.topIssues?.map((item, index) => (
+          <TableRow key={index} hover>
+
+            <TableCell>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+              >
+                <Chip
+                  label={`#${index + 1}`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+
+                <Typography fontWeight={500}>
+                  {item.issue}
+                </Typography>
+              </Stack>
+            </TableCell>
+
+            <TableCell align="right">
+              <Chip
+                label={item.count}
+                color="error"
+                size="small"
+              />
+            </TableCell>
+
+          </TableRow>
+        ))}
+      </TableBody>
+
+    </Table>
+
+  </CardContent>
+</Card>
 
             </Stack>
           </DialogContent>
         )}
 
-        <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setOpenView(false)}
-          variant="outlined"
-             sx={{ color: 'text.secondary',
-             borderColor: 'grey.400', 
-             '&:hover': 
-             { borderColor: 'grey.600', 
-             backgroundColor: 'grey.100' } }}
-            >Cancel</Button>
+<DialogActions
+  sx={{
+    justifyContent: 'flex-end',
+    px: 3,
+    pb: 3,
+    gap: 1
+  }}
+>
+  <Button
+    onClick={() => setOpenView(false)}
+    variant="outlined"
+    sx={{
+      color: 'text.secondary',
+      borderColor: 'grey.400',
+      '&:hover': {
+        borderColor: 'grey.600',
+        backgroundColor: 'grey.100'
+      }
+    }}
+  >
+    Cancel
+  </Button>
+{/* QA Actions */}
+{role === 'qa' && selectedReport?.status === 'draft' && (
+  <>
+    <Button
+      variant="outlined"
+      onClick={handleSaveDraft}
+      sx={{
+       
+        px: 3
+      }}
+    >
+      Save 
+    </Button>
 
-          {selectedReport?.status === 'draft' && (
-            <Button variant="contained" onClick={handlePublish}>
-              Publish 
-            </Button>
-          )}
-        </DialogActions>
+    <Button
+      variant="contained"
+      onClick={handlePublish}
+    >
+      Publish
+    </Button>
+  </>
+)}
+
+{/* Manager Action */}
+{role === 'manager' && (
+  <Button
+    variant="contained"
+    color="success"
+    sx={{
+     
+      px: 3
+    }}
+  >
+    Download 
+  </Button>
+)}
+    
+ 
+</DialogActions>
       </Dialog>
 
     </Box>

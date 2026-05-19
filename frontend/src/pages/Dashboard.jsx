@@ -306,7 +306,7 @@ useEffect(() => {
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", '@media (max-width: 900px)': { flexDirection: "column" } }}>
         <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent>
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>Top Issues</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>Top Negative Issues</Typography>
             <Divider sx={{ my: 2 }} />
             <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
               {topIssues.map((issue) => (
@@ -333,12 +333,32 @@ useEffect(() => {
             </Box>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 0 }}>
+        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 3 }}>
           <CardContent>
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>Keywords</Typography>
-            <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
-              {keywords.map((word) => <Chip key={word} label={word} variant="outlined" />)}
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>Top Positive Issues</Typography>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+              {topIssues.map((issue) => (
+                <Box key={issue.issue} sx={{ p: 2, borderRadius: 3, border: "1px solid", borderColor: "divider", position: "relative", overflow: "hidden", zIndex: 1 }}>
+                  <Box sx={{
+                    position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%",
+                    background: issue.percent > 40 ? "#FCE7F3" : issue.percent > 30 ? "#F3E8FF" : issue.percent > 20 ? "#FEF9C3" : "#D1D5DB",
+                    transform: "translate(40%, -40%)", filter: "blur(2px)", pointerEvents: "none", zIndex: 0
+                  }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, position: "relative", zIndex: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography sx={{ fontWeight: 600 }}>{issue.issue}</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", px: 1, py: 0.3, borderRadius: 1 }}>{issue.percent}%</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ mt: 2, height: 6, borderRadius: 5, backgroundColor: "action.hover", overflow: "hidden", position: "relative", zIndex: 2 }}>
+                    <Box sx={{
+                      width: `${issue.percent}%`, height: "100%", borderRadius: 5,
+                      background: issue.percent > 40 ? "#EC4899" : issue.percent > 30 ? "#A855F7" : issue.percent > 20 ? "#FDE047" : "#6B7280"
+                    }} />
+                  </Box>
+                </Box>
+              ))}
             </Box>
           </CardContent>
         </Card>

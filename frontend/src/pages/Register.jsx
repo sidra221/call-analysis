@@ -79,7 +79,7 @@ export default function Register() {
           <Box component="form" onSubmit={handleSubmit}>
             <Grid container spacing={2}>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Username"
                   fullWidth
@@ -89,7 +89,7 @@ export default function Register() {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Email"
                   type="email"
@@ -100,7 +100,7 @@ export default function Register() {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Password"
                   type="password"
@@ -111,7 +111,7 @@ export default function Register() {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Confirm Password"
                   type="password"
@@ -123,7 +123,7 @@ export default function Register() {
               </Grid>
 
               {/* Role selector — required by Backend */}
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   select
                   label="Role"
@@ -138,7 +138,7 @@ export default function Register() {
                 </TextField>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Button
                   fullWidth
                   variant="contained"

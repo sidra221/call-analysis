@@ -1,6 +1,6 @@
-import { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings, IconUpload , IconUsers,IconReportAnalytics } from '@tabler/icons-react';
+import { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings2, IconUpload , IconUsers,IconReportAnalytics } from '@tabler/icons-react';
 
-const icons = { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings, IconUpload,  IconUsers,IconReportAnalytics  };
+const icons = { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings2, IconUpload,  IconUsers,IconReportAnalytics  };
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
 
@@ -51,11 +51,11 @@ const dashboard = {
 },
 
     {
-      id: 'settings',
-      title: 'Settings',
+      id: 'profile',
+      title: 'profile',
       type: 'item',
-      url: '/settings',
-      icon: icons.IconSettings,
+      url: '/profile',
+      icon: icons.IconSettings2,
       breadcrumbs: false
     }
 
