@@ -11,7 +11,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // Backend accepts username (not email) for JWT login
+  // Backend uses username for JWT login
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,12 +28,12 @@ export default function Login() {
     }
 
     setLoading(true);
+
     try {
-      // Pass username as email field — AuthContext sends it to Backend as username
-      await login({ email: username, password });
+      await login({ username, password });
       navigate('/dashboard');
     } catch (err) {
-      setError('Invalid username or password');
+      setError(err.message || 'Invalid username or password');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,6 @@ export default function Login() {
 
           <Box component="form" onSubmit={handleSubmit}>
 
-            {/* Username field — Backend JWT uses username not email */}
             <TextField
               label="Username"
               type="text"
