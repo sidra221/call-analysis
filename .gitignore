@@ -139,4 +139,4 @@ logs/
 token.txt
 secrets.json
 
-app/
+/app/
