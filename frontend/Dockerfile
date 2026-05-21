@@ -1,19 +1,18 @@
-# Base image with Node.js
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files first for better Docker layer caching
+# Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies using npm
+# Install dependencies
 RUN npm install
 
-# Copy the rest of the source code
+# Copy source code
 COPY . .
 
-# Expose the Vite dev server port
+# React port
 EXPOSE 3000
 
-# Start the development server with host 0.0.0.0 to allow external connections
-CMD ["npm", "run", "start", "--", "--host", "0.0.0.0"]
+# Start React app
+CMD ["npm", "start"]

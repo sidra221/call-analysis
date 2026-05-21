@@ -1,157 +1,182 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { IconEye, IconEdit, IconTrash, IconUsers, IconX, IconDots, 
-  IconRefresh, IconUpload, IconDeviceFloppy,IconCheck, IconFilter ,IconAdjustmentsHorizontal,
-  IconSearch
- } from '@tabler/icons-react';
+import {
+  IconEye, IconEdit, IconTrash, IconX, IconDots,
+  IconRefresh, IconUpload, IconDeviceFloppy, IconCheck,
+  IconAdjustmentsHorizontal, IconSearch
+} from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer,
   FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Select,
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText, Checkbox,
-    Backdrop,  LinearProgress,Dialog, DialogTitle, DialogContent, DialogContentText, 
-    DialogActions, Popover, Badge
+  TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
+  Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
+  DialogActions, Popover, Badge, Alert
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
+import { callsApi } from 'api/api';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
 
 const stateColor = {
-  pending: 'warning', in_progress: 'info', completed: 'success', rejected: 'error'
+  pending: 'warning', processing: 'info', completed: 'success', failed: 'error'
 };
 const statusLabel = {
-  pending: 'Pending', in_progress: 'In Progress', completed: 'Completed', rejected: 'Rejected'
+  pending: 'Pending', processing: 'Processing', completed: 'Completed', failed: 'Failed'
 };
 const sentimentColor = { positive: 'success', negative: 'error', neutral: 'default' };
-const priorityColor = { high: 'error', medium: 'warning', low: 'success' };
-const employees = ['Ahmad Ali', 'Sara Mohamed', 'Omar Khaled', 'Lina Hassan', 'Yousef Nasser'];
+const priorityColor = { high: 'error', medium: 'warning', low: 'success', critical: 'error' };
 const rowsPerPage = 6;
 
 export default function Calls() {
-
-  
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   const location = useLocation();
   const state = location.state;
+  const wsRef = useRef(null);
+  const pollRef = useRef(null);
 
- const {
-  calls,
-  setCalls,
-  isProcessing,
-  setIsProcessing,
-  processingProgress,
-  setProcessingProgress
-} = useCallsStore();
+  const {
+    calls, loading, error,
+    fetchCalls, uploadCall, processCall,
+    updateCallFromWebSocket, markReviewed, patchCall, removeCall
+  } = useCallsStore();
 
-const handleFileUpload = (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  const audioUrl = URL.createObjectURL(file);
-  const newCallId = `C-${Date.now().toString().slice(-5)}`;
-
-  // افتح البوب اب
-  setIsProcessing(true);
-  setProcessingProgress(0);
-
-  // ضيف المكالمة مباشرة
-  const newCall = {
-    id: newCallId,
-    status: 'in_progress',
-    sentiment: 'neutral',
-    priority: 'medium',
-    reviewed: 'No',
-    issue: 'AI is processing the uploaded call...',
-    transcript: 'Transcribing audio and analyzing sentiment...',
-    audio: audioUrl,
-    duration: '00:00',
-    createdAt: new Date().toISOString().split('T')[0],
-    uploadedBy: user?.name || 'System'
-  };
-
-  setCalls((prev) => [newCall, ...prev]);
-
-  // محاكاة المعالجة
-  let progress = 0;
-
-  const interval = setInterval(() => {
-    progress += 10;
-
-    setProcessingProgress(progress);
-
-    if (progress >= 100) {
-      clearInterval(interval);
-
-      // بعد اكتمال المعالجة
-      setTimeout(() => {
-        setCalls((prev) =>
-          prev.map((c) =>
-            c.id === newCallId
-              ? {
-                  ...c,
-                  status: 'completed',
-                  sentiment: 'positive',
-                  priority: 'low',
-                  issue: 'Billing issue resolved successfully',
-                  transcript:
-                    'Customer issue was resolved and the client confirmed satisfaction.',
-                  duration: '02:45'
-                }
-              : c
-          )
-        );
-
-       setTimeout(() => {
-  setIsProcessing(false);
-  setProcessingProgress(0);
-}, 1200);
-        window.dispatchEvent(new Event('calls-updated'));
-      }, 500);
+  // Stop polling helper
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     }
-  }, 400);
-
-  e.target.value = '';
-};
-
-  // ✅ استخدم position بدل anchor element
-  const [usersMenuPosition, setUsersMenuPosition] = useState(null);
-  const [userSearch, setUserSearch] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState([]);
-
-  const closeUsersMenu = () => {
-    setUsersMenuPosition(null);
-    setUserSearch('');
   };
 
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((name) =>
-      name.toLowerCase().includes(userSearch.toLowerCase())
-    );
-  }, [userSearch]);
+  // Finish processing — show 100% then close
+  const finishProcessing = (callId) => {
+    stopPolling();
+    updateCallFromWebSocket(callId);
+    setProcessingProgress(100);
+    setTimeout(() => {
+      setIsProcessing(false);
+      setProcessingProgress(0);
+      fetchCalls();
+    }, 1200);
+  };
+
+  const connectWebSocket = (callId) => {
+    if (wsRef.current) wsRef.current.close();
+    try {
+      const ws = new WebSocket(`${WS_URL}/ws/calls/${callId}/`);
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'analysis_completed' || data.type === 'analysis_failed') {
+            finishProcessing(callId);
+          } else if (data.type === 'analysis_started') {
+            setProcessingProgress(60);
+          }
+        } catch { /* ignore parse errors */ }
+      };
+      ws.onerror = () => { /* WebSocket failed — polling will handle it */ };
+      wsRef.current = ws;
+    } catch { /* ignore WS errors */ }
+  };
+
+  const startPolling = (callId) => {
+    stopPolling();
+    let waited = 0;
+    const maxWait = 60;
+
+    pollRef.current = setInterval(async () => {
+      waited += 2;
+
+      // Gradually increase progress from 60 to 90
+      setProcessingProgress((prev) => Math.min(prev + 3, 90));
+
+      try {
+        const res = await callsApi.get(callId);
+        const status = res?.data?.status;
+        if (status === 'completed' || status === 'failed') {
+          finishProcessing(callId);
+          return;
+        }
+      } catch { /* ignore polling errors */ }
+
+      if (waited >= maxWait) {
+        stopPolling();
+        setIsProcessing(false);
+        setProcessingProgress(0);
+      }
+    }, 2000);
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+  
+    setUploadError('');
+  
+    try {
+      setIsProcessing(true);
+      setProcessingProgress(10);
+  
+      const formData = new FormData();
+      formData.append('audio_file', file);
+  
+      const newCall = await uploadCall(formData);
+  
+      console.log('UPLOAD RESPONSE:', newCall);
+  
+      setProcessingProgress(30);
+  
+      // ✅ أهم تعديل: نقرأ id أو call_id مباشرة
+      const callId = newCall?.id || newCall?.call_id;
+  
+      if (callId) {
+        connectWebSocket(callId);
+        await processCall(callId);   // يشغّل الـ Celery worker
+        setProcessingProgress(50);
+        startPolling(callId);
+      } else {
+        throw new Error('Upload failed — no call ID returned');
+      }
+  
+    } catch (err) {
+      console.error(err);
+      setUploadError(err?.response?.data?.message || err?.message || 'Upload failed');
+      setIsProcessing(false);
+      setProcessingProgress(0);
+      stopPolling();
+    }
+  
+    e.target.value = '';
+  };
+  
+
+  useEffect(() => {
+    fetchCalls();
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      stopPolling();
+    };
+  }, []);
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuCallId, setMenuCallId] = useState(null);
-
-  const openMenu = (event, callId) => {
-    setAnchorEl(event.currentTarget);
-    setMenuCallId(callId);
-  };
-  const closeMenu = () => {
-    setAnchorEl(null);
-    setMenuCallId(null);
-  };
+  const openMenu = (event, callId) => { setAnchorEl(event.currentTarget); setMenuCallId(callId); };
+  const closeMenu = () => { setAnchorEl(null); setMenuCallId(null); };
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [callToDelete, setCallToDelete] = useState(null);
 
-  const handleDelete = (id) => {
-    const updated = calls.filter((c) => c.id !== id);
-    setCalls(updated);
-    window.dispatchEvent(new Event('calls-updated'));
-  };
+  const handleDelete = (id) => { removeCall(id); };
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -160,7 +185,6 @@ const handleFileUpload = (e) => {
   const isManager = role === 'manager';
 
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -170,13 +194,8 @@ const handleFileUpload = (e) => {
   const [selectedCall, setSelectedCall] = useState(null);
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
-  const openFilters = (event) => {
-    setFilterAnchorEl(event.currentTarget);
-  };
-
-  const closeFilters = () => {
-    setFilterAnchorEl(null);
-  };
+  const openFilters = (event) => setFilterAnchorEl(event.currentTarget);
+  const closeFilters = () => setFilterAnchorEl(null);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -195,34 +214,44 @@ const handleFileUpload = (e) => {
   const [editablePriority, setEditablePriority] = useState('medium');
   const [editableKeywords, setEditableKeywords] = useState('');
 
-  useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(timer);
-  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate]);
+  const normalizedCalls = useMemo(() => {
+    if (!Array.isArray(calls)) return [];
+    return calls.map((call) => ({
+      ...call,
+      sentiment: call.analysis?.sentiment || 'neutral',
+      priority: call.analysis?.priority || 'low',
+      is_reviewed: call.analysis?.is_reviewed || false,
+      issue: call.analysis?.main_issue || '',
+      transcript: call.analysis?.transcript || '',
+      keywords: Array.isArray(call.analysis?.keywords)
+        ? call.analysis.keywords.join(', ')
+        : '',
+      uploadedBy: call.uploaded_by_username || '',
+      createdAt: call.created_at ? call.created_at.split('T')[0] : '',
+      duration: call.duration
+        ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`
+        : '00:00',
+    }));
+  }, [calls]);
 
   const filteredCalls = useMemo(() => {
-    if (!Array.isArray(calls)) return [];
-    return calls.filter((call) => {
+    return normalizedCalls.filter((call) => {
+      const searchStr = search.toLowerCase();
       const matchesSearch =
-        String(call.id).toLowerCase().includes(search.toLowerCase()) ||
-        call.status.toLowerCase().includes(search.toLowerCase()) ||
-        call.sentiment.toLowerCase().includes(search.toLowerCase()) ||
-        call.priority.toLowerCase().includes(search.toLowerCase());
+        String(call.id).toLowerCase().includes(searchStr) ||
+        (call.status || '').toLowerCase().includes(searchStr) ||
+        (call.sentiment || '').toLowerCase().includes(searchStr) ||
+        (call.issue || '').toLowerCase().includes(searchStr);
       const matchesStatus = statusFilter === 'all' || call.status === statusFilter;
       const matchesSentiment = sentimentFilter === 'all' || call.sentiment === sentimentFilter;
       const matchesPriority = priorityFilter === 'all' || call.priority === priorityFilter;
-      const matchesReviewed = reviewedFilter === 'all' || call.reviewed === reviewedFilter;
+      const matchesReviewed = reviewedFilter === 'all' ||
+        (reviewedFilter === 'Yes' ? call.is_reviewed : !call.is_reviewed);
 
-      // Date range filter
       let matchesDate = true;
       if (startDate || endDate) {
         const callDate = new Date(call.createdAt);
-        if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          if (callDate < start) matchesDate = false;
-        }
+        if (startDate && callDate < new Date(startDate)) matchesDate = false;
         if (endDate) {
           const end = new Date(endDate);
           end.setHours(23, 59, 59, 999);
@@ -230,85 +259,85 @@ const handleFileUpload = (e) => {
         }
       }
 
-      return matchesSearch && matchesStatus && matchesSentiment && matchesPriority && matchesReviewed && matchesDate;
+      return matchesSearch && matchesStatus && matchesSentiment &&
+             matchesPriority && matchesReviewed && matchesDate;
     });
-  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate, calls]);
+  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter,
+      startDate, endDate, normalizedCalls]);
 
   const openCallDrawer = (call, edit = false) => {
     setSelectedCall(call);
-    setEditableTranscript(call.transcript);
-    setEditableSentiment(call.sentiment);
-    setEditablePriority(call.priority);
+    setEditableTranscript(call.transcript || '');
+    setEditableSentiment(call.sentiment || 'neutral');
+    setEditablePriority(call.priority || 'low');
     setEditableIssue(call.issue || '');
-    setEditableKeywords(call.keywords || 'billing, escalation');
+    setEditableKeywords(call.keywords || '');
     setIsEditMode(edit);
     setOpenDrawer(true);
   };
 
   useEffect(() => {
     const selectedId = state?.selectedCallId;
-    if (!selectedId || !calls.length) return;
-
-    const foundCall = calls.find((c) => String(c.id) === String(selectedId));
+    if (!selectedId || !normalizedCalls.length) return;
+    const foundCall = normalizedCalls.find((c) => String(c.id) === String(selectedId));
     if (!foundCall) return;
-
-    if (!state?.openUsers) {
-      if (state?.mode === 'edit') {
-        openCallDrawer(foundCall, true);
-      } else {
-        openCallDrawer(foundCall, false);
-      }
+    if (state?.mode === 'edit') {
+      openCallDrawer(foundCall, true);
+    } else {
+      openCallDrawer(foundCall, false);
     }
-
-    
-    if (state?.openUsers) {
-      setTimeout(() => {
-        setUsersMenuPosition({
-          top: window.innerHeight / 2,
-          left: window.innerWidth / 2
-        });
-      }, 300);
-    }
-
     window.history.replaceState({}, document.title);
-  }, []);
+  }, [normalizedCalls]);
 
   const closeCallDrawer = () => {
     setOpenDrawer(false);
     setSelectedCall(null);
   };
 
-  const handleSave = () => {
-    const updated = calls.map((c) =>
-      c.id === selectedCall.id
-        ? {
-            ...c,
-            transcript: editableTranscript,
-            sentiment: editableSentiment,
-            priority: editablePriority,
-            issue: editableIssue,
-            keywords: editableKeywords,
-            status: selectedCall.status,
-            reviewed: selectedCall.reviewed
-          }
-        : c
-    );
-    setIsDirty(false);
-    setCalls(updated);
-    window.dispatchEvent(new Event('calls-updated'));
-    setIsEditMode(false);
-    setOpenDrawer(false);
+  const handleSave = async () => {
+    if (!selectedCall) return;
+    try {
+      await patchCall(selectedCall.id, {
+        main_issue: editableIssue,
+        sentiment: editableSentiment,
+        priority: editablePriority,
+        transcript: editableTranscript,
+        keywords: editableKeywords.split(',').map((k) => k.trim()).filter(Boolean),
+      });
+      setIsDirty(false);
+      setIsEditMode(false);
+      setOpenDrawer(false);
+    } catch (err) {
+      setUploadError(err.message || 'Save failed');
+    }
+  };
+
+  const handleMarkReviewed = async (callId) => {
+    try {
+      await markReviewed(callId);
+      if (selectedCall?.id === callId) {
+        setSelectedCall((prev) => ({ ...prev, is_reviewed: true }));
+      }
+    } catch (err) {
+      setUploadError(err.message || 'Mark reviewed failed');
+    }
   };
 
   return (
     <>
-<input
-  type="file"
-  accept="audio/*"
-  ref={fileInputRef}
-  style={{ display: 'none' }}
-  onChange={handleFileUpload}
-/>
+      <input
+        type="file"
+        accept="audio/*"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileUpload}
+      />
+
+      {uploadError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setUploadError('')}>
+          {uploadError}
+        </Alert>
+      )}
 
       <Card sx={{ borderRadius: 3 }}>
         <CardContent>
@@ -322,11 +351,7 @@ const handleFileUpload = (e) => {
                 fullWidth size="small" placeholder="Search calls ..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                sx={{
-                  borderRadius: '12px',
-                  bgcolor: 'background.paper',
-                  '& .MuiOutlinedInput-notchedOutline': { borderRadius: '12px' }
-                }}
+                sx={{ borderRadius: '12px', '& .MuiOutlinedInput-notchedOutline': { borderRadius: '12px' } }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -352,11 +377,8 @@ const handleFileUpload = (e) => {
                   variant="outlined"
                   startIcon={<IconAdjustmentsHorizontal size={18} />}
                   onClick={openFilters}
-                  sx={{ 
-                    borderRadius: 2, 
-                    textTransform: 'none', 
-                    fontWeight: 600,
-                    height: 40,
+                  sx={{
+                    borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
                     borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
                     bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent'
                   }}
@@ -369,16 +391,12 @@ const handleFileUpload = (e) => {
             {activeFilterCount > 0 && (
               <Grid size={{ xs: 6, md: 'auto' }}>
                 <Button
-                  variant="text"
-                  color="error"
+                  variant="text" color="error"
                   startIcon={<IconRefresh size={18} />}
                   onClick={() => {
-                    setStatusFilter('all');
-                    setSentimentFilter('all');
-                    setPriorityFilter('all');
-                    setReviewedFilter('all');
-                    setStartDate('');
-                    setEndDate('');
+                    setStatusFilter('all'); setSentimentFilter('all');
+                    setPriorityFilter('all'); setReviewedFilter('all');
+                    setStartDate(''); setEndDate('');
                   }}
                   sx={{ textTransform: 'none', fontWeight: 600 }}
                 >
@@ -388,59 +406,43 @@ const handleFileUpload = (e) => {
             )}
 
             <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto' }}>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 startIcon={<IconUpload size={18} />}
                 onClick={() => fileInputRef.current?.click()}
-                sx={{ 
-                  borderRadius: 2, 
-                  textTransform: 'none', 
-                  fontWeight: 600,
-                  height: 40,
-                  boxShadow: (theme) => theme.vars.customShadows.z1
-                }}
+                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}
               >
                 Upload Call
               </Button>
             </Grid>
           </Grid>
 
-          {/* Filters Popover */}
           <Popover
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
             transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-            PaperProps={{
-              sx: {
-                p: 3,
-                width: 320,
-                borderRadius: 3,
-                mt: 1.5,
-                boxShadow: (theme) => theme.vars.customShadows.z1
-              }
-            }}
+            PaperProps={{ sx: { p: 3, width: 320, borderRadius: 3, mt: 1.5 } }}
           >
             <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Filter Calls</Typography>
             <Stack spacing={2.5}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
-                <Select value={statusFilter} label="Status"
-                  onChange={(event) => setStatusFilter(event.target.value)}>
+                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="all">All Status</MenuItem>
                   <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="in_progress">In Progress</MenuItem>
+                  <MenuItem value="processing">Processing</MenuItem>
                   <MenuItem value="completed">Completed</MenuItem>
-                  <MenuItem value="rejected">Rejected</MenuItem>
+                  <MenuItem value="failed">Failed</MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl fullWidth size="small">
                 <InputLabel>Priority</InputLabel>
-                <Select value={priorityFilter} label="Priority"
-                  onChange={(event) => setPriorityFilter(event.target.value)}>
+                <Select value={priorityFilter} label="Priority" onChange={(e) => setPriorityFilter(e.target.value)}>
                   <MenuItem value="all">All Priorities</MenuItem>
+                  <MenuItem value="critical">Critical</MenuItem>
                   <MenuItem value="high">High</MenuItem>
                   <MenuItem value="medium">Medium</MenuItem>
                   <MenuItem value="low">Low</MenuItem>
@@ -449,8 +451,7 @@ const handleFileUpload = (e) => {
 
               <FormControl fullWidth size="small">
                 <InputLabel>Sentiment</InputLabel>
-                <Select value={sentimentFilter} label="Sentiment"
-                  onChange={(event) => setSentimentFilter(event.target.value)}>
+                <Select value={sentimentFilter} label="Sentiment" onChange={(e) => setSentimentFilter(e.target.value)}>
                   <MenuItem value="all">All Sentiments</MenuItem>
                   <MenuItem value="positive">Positive</MenuItem>
                   <MenuItem value="negative">Negative</MenuItem>
@@ -460,8 +461,7 @@ const handleFileUpload = (e) => {
 
               <FormControl fullWidth size="small">
                 <InputLabel>Reviewed</InputLabel>
-                <Select value={reviewedFilter} label="Reviewed"
-                  onChange={(event) => setReviewedFilter(event.target.value)}>
+                <Select value={reviewedFilter} label="Reviewed" onChange={(e) => setReviewedFilter(e.target.value)}>
                   <MenuItem value="all">All Reviews</MenuItem>
                   <MenuItem value="Yes">Reviewed</MenuItem>
                   <MenuItem value="No">Not Reviewed</MenuItem>
@@ -473,25 +473,16 @@ const handleFileUpload = (e) => {
                   Date Range
                 </Typography>
                 <Stack direction="row" spacing={1}>
-                  <TextField
-                    fullWidth size="small" type="date"
-                    label="From" InputLabelProps={{ shrink: true }}
-                    value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <TextField
-                    fullWidth size="small" type="date"
-                    label="To" InputLabelProps={{ shrink: true }}
-                    value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                  />
+                  <TextField fullWidth size="small" type="date" label="From"
+                    InputLabelProps={{ shrink: true }} value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)} />
+                  <TextField fullWidth size="small" type="date" label="To"
+                    InputLabelProps={{ shrink: true }} value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)} />
                 </Stack>
               </Box>
 
-              <Button 
-                variant="contained" 
-                fullWidth 
-                onClick={closeFilters}
-                sx={{ borderRadius: 2, textTransform: 'none' }}
-              >
+              <Button variant="contained" fullWidth onClick={closeFilters} sx={{ borderRadius: 2, textTransform: 'none' }}>
                 Apply Filters
               </Button>
             </Stack>
@@ -516,7 +507,7 @@ const handleFileUpload = (e) => {
                 {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => (
                   <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }}>
                     <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {call.id.length > 14 ? call.id.slice(0, 14) + '...' : call.id}
+                      #{call.id}
                     </TableCell>
                     <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
                     <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
@@ -527,7 +518,13 @@ const handleFileUpload = (e) => {
                         {call.createdAt}
                       </Box>
                     </TableCell>
-                    <TableCell><Chip label={call.reviewed} color={call.reviewed === 'Yes' ? 'success' : 'error'} size="small" /></TableCell>
+                    <TableCell>
+                      <Chip
+                        label={call.is_reviewed ? 'Yes' : 'No'}
+                        color={call.is_reviewed ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </TableCell>
                     <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.uploadedBy}</TableCell>
                     <TableCell align="center">
                       <Stack direction="row" spacing={1} justifyContent="center">
@@ -545,7 +542,9 @@ const handleFileUpload = (e) => {
                   <TableRow>
                     <TableCell colSpan={9}>
                       <Box sx={{ py: 2, textAlign: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">No results found</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {loading ? 'Loading...' : 'No results found'}
+                        </Typography>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -560,34 +559,22 @@ const handleFileUpload = (e) => {
               count={filteredCalls.length}
               page={page}
               onPageChange={(event, newPage) => setPage(newPage)}
-              rowsPerPage={6}
+              rowsPerPage={rowsPerPage}
               rowsPerPageOptions={[]}
             />
           </Box>
         </CardContent>
       </Card>
 
-      {/* 3 Dots Menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
         <MenuItem onClick={() => {
-          const call = calls.find((c) => c.id === menuCallId);
-          if (call) { openCallDrawer(call); setIsEditMode(true); }
+          const call = normalizedCalls.find((c) => c.id === menuCallId);
+          if (call) openCallDrawer(call, true);
           closeMenu();
         }}>
           <ListItemIcon><IconEdit size={16} /></ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
-
-        {/* ✅ احفظ position الزر لما تضغط Users */}
-        <MenuItem onClick={(e) => {
-          const rect = anchorEl.getBoundingClientRect();
-          setUsersMenuPosition({ top: rect.top, left: rect.left });
-          closeMenu();
-        }}>
-          <ListItemIcon><IconUsers size={16} /></ListItemIcon>
-          <ListItemText>Users</ListItemText>
-        </MenuItem>
-
         <MenuItem onClick={() => {
           setCallToDelete(menuCallId);
           setOpenDeleteDialog(true);
@@ -598,200 +585,84 @@ const handleFileUpload = (e) => {
         </MenuItem>
       </Menu>
 
-      {/* ✅ Users Popover بـ anchorPosition */}
-      <Popover
-        open={Boolean(usersMenuPosition)}
-        onClose={closeUsersMenu}
-        anchorReference="anchorPosition"
-        anchorPosition={usersMenuPosition ?? undefined}
-        PaperProps={{ sx: { width: 280, p: 1, borderRadius: 2 } }}
-      >
-        <Box sx={{ px: 1, py: 1 }}>
-          <TextField
-            onKeyDown={(e) => e.stopPropagation()}
-            size="small" fullWidth placeholder="Search employees..."
-            value={userSearch} autoFocus
-            onChange={(e) => setUserSearch(e.target.value)}
-          />
-        </Box>
-        <Divider />
-        <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-          {filteredEmployees.map((name) => (
-            <MenuItem key={name} onClick={() => {
-              setSelectedUsers((prev) =>
-                prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
-              );
-            }}>
-              <Checkbox checked={selectedUsers.includes(name)} />
-              <ListItemText>{name}</ListItemText>
-            </MenuItem>
-          ))}
-        </Box>
-        <Divider />
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-          <Button variant="contained" size="small" onClick={() => {
-            console.log('Selected Users:', selectedUsers);
-             setSelectedUsers([]);
-            closeUsersMenu();
-          }}>
-            send
-          </Button>
-        </Box>
-      </Popover>
-
-      {/* Delete Dialog */}
       <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}
         maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          <DialogContentText>Are you sure you want to delete {callToDelete}?</DialogContentText>
+          <DialogContentText>Are you sure you want to delete call #{callToDelete}?</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)} variant="outlined"
-            sx={{ color: 'text.secondary',
-             borderColor: 'grey.400', 
-             '&:hover': 
-             { borderColor: 'grey.600', 
-             backgroundColor: 'grey.100' } }}>
+            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>
             Cancel
           </Button>
           <Button onClick={() => { handleDelete(callToDelete); setOpenDeleteDialog(false); }}
-            variant="contained" color="error"
-            sx={{ backgroundColor: 'error.dark', '&:hover': { backgroundColor: 'error.main' } }}>
+            variant="contained" color="error">
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
+      <Backdrop
+        sx={{
+          color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1,
+          flexDirection: 'column', backdropFilter: 'blur(4px)',
+        }}
+        open={isProcessing}
+      >
+        <Card sx={{ p: 4, borderRadius: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
+          <Stack spacing={3} alignItems="center">
+            {processingProgress < 100 ? (
+              <>
+                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                  <CircularProgress
+                    variant="determinate"
+                    value={processingProgress}
+                    size={80} thickness={4}
+                    sx={{ color: 'primary.main' }}
+                  />
+                  <Box sx={{
+                    top: 0, left: 0, bottom: 0, right: 0, position: 'absolute',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '1rem' }}>
+                      {`${Math.round(processingProgress)}%`}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>Processing...</Typography>
+              </>
+            ) : (
+              <>
+                <Box sx={{
+                  width: 90, height: 90, borderRadius: '50%', bgcolor: 'success.main',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <IconCheck size={50} stroke={3} />
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                  Completed
+                </Typography>
+              </>
+            )}
+          </Stack>
+        </Card>
+      </Backdrop>
 
-<Backdrop
-  sx={{
-    color: '#fff',
-    zIndex: (theme) => theme.zIndex.drawer + 1,
-    flexDirection: 'column',
-    backdropFilter: 'blur(4px)',
-    bgcolor: (theme) => theme.vars.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)'
-  }}
-  open={isProcessing}
->
-  <Card
-    sx={{
-      p: 4,
-      borderRadius: 4,
-      boxShadow: 24,
-      width: 400,
-      textAlign: 'center',
-      transition: '0.3s'
-    }}
-  >
-    <Stack spacing={3} alignItems="center">
-      {processingProgress < 100 ? (
-        <>
-          {/* Progress Circle */}
-          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-            <CircularProgress
-              variant="determinate"
-              value={processingProgress}
-              size={80}
-              thickness={4}
-              sx={{ color: 'primary.main' }}
-            />
-
-            <Box
-              sx={{
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
-                position: 'absolute',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Typography
-                variant="caption"
-                component="div"
-                color="text.secondary"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '1rem'
-                }}
-              >
-                {`${Math.round(processingProgress)}%`}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                color: 'text.primary',
-                fontWeight: 700,
-                mb: 1
-              }}
-            >
-               Processing...
-            </Typography>
-          </Box>
-
-         
-
-
-        </>
-      ) : (
-        <>
-          {/* Success State */}
-          <Box
-            sx={{
-              width: 90,
-              height: 90,
-              borderRadius: '50%',
-              bgcolor: 'success.main',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: 'pop 0.4s ease'
-            }}
-          >
-            <IconCheck size={50} stroke={3} />
-          </Box>
-
-          <Box >
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                color: 'success.main',
-                mb: 1
-              }}
-            >
-              Completed
-            </Typography>
-
-          </Box>
-        </>
-      )}
-    </Stack>
-  </Card>
-</Backdrop>
-
-      {/* Drawer */}
       <Drawer anchor="right" open={openDrawer} onClose={closeCallDrawer}>
         <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
           {selectedCall && (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{
                     width: 10, height: 10, borderRadius: '50%',
                     backgroundColor: (theme) => theme.palette[stateColor[selectedCall.status]]?.main || '#999'
                   }} />
-                  <Typography variant="h5">Call Details - {selectedCall.id}</Typography>
+                  <Typography variant="h5">Call #{selectedCall.id}</Typography>
                   <IconButton size="small"
-                    onClick={() => { if (isEditMode) { handleSave(); setIsDirty(false); } else { setIsEditMode(true); } }}
-                    sx={{ color: isDirty ? 'primary.main' : 'text.primary', transition: '0.2s' }}>
+                    onClick={() => { if (isEditMode) { handleSave(); } else { setIsEditMode(true); } }}
+                    sx={{ color: isDirty ? 'primary.main' : 'text.primary' }}>
                     {isEditMode ? <IconDeviceFloppy size={22} /> : <IconEdit size={18} />}
                   </IconButton>
                 </Box>
@@ -801,10 +672,7 @@ const handleFileUpload = (e) => {
               <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">{selectedCall.createdAt}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Uploaded by{' '}
-                  <Box component="span"
-                    onClick={() => console.log('Go to user:', selectedCall.uploadedBy)}
-                    sx={{ fontWeight: 600, color: 'text.primary', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>
+                  Uploaded by <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {selectedCall.uploadedBy}
                   </Box>
                 </Typography>
@@ -816,40 +684,45 @@ const handleFileUpload = (e) => {
                 <TextField fullWidth size="small" value={editableIssue}
                   onChange={(e) => { setEditableIssue(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
               ) : (
-                <Typography variant="body2" sx={{ mb: 5 }}>{editableIssue}</Typography>
+                <Typography variant="body2" sx={{ mb: 3 }}>{editableIssue || '—'}</Typography>
               )}
 
               <Typography variant="subtitle1" gutterBottom>Analysis</Typography>
-              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
                 {isEditMode ? (
-                  <Select fullWidth size="small" value={editableSentiment}
-                    onChange={(e) => { setEditableSentiment(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }}>
-                    <MenuItem value="positive">Positive</MenuItem>
-                    <MenuItem value="negative">Negative</MenuItem>
-                    <MenuItem value="neutral">Neutral</MenuItem>
-                  </Select>
+                  <>
+                    <Select fullWidth size="small" value={editableSentiment}
+                      onChange={(e) => { setEditableSentiment(e.target.value); setIsDirty(true); }}>
+                      <MenuItem value="positive">Positive</MenuItem>
+                      <MenuItem value="negative">Negative</MenuItem>
+                      <MenuItem value="neutral">Neutral</MenuItem>
+                    </Select>
+                    <Select fullWidth size="small" value={editablePriority}
+                      onChange={(e) => { setEditablePriority(e.target.value); setIsDirty(true); }}>
+                      <MenuItem value="critical">Critical</MenuItem>
+                      <MenuItem value="high">High</MenuItem>
+                      <MenuItem value="medium">Medium</MenuItem>
+                      <MenuItem value="low">Low</MenuItem>
+                    </Select>
+                  </>
                 ) : (
-                  <Chip label={editableSentiment} color={sentimentColor[editableSentiment]} size="small" sx={{ mb: 5 }} />
-                )}
-                {isEditMode ? (
-                  <Select fullWidth size="small" value={editablePriority}
-                    onChange={(e) => { setEditablePriority(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }}>
-                    <MenuItem value="high">High</MenuItem>
-                    <MenuItem value="medium">Medium</MenuItem>
-                    <MenuItem value="low">Low</MenuItem>
-                  </Select>
-                ) : (
-                  <Chip label={`${editablePriority} Priority`} color={priorityColor[editablePriority]} size="small" sx={{ mb: 5 }} />
+                  <>
+                    <Chip label={editableSentiment} color={sentimentColor[editableSentiment]} size="small" />
+                    <Chip label={`${editablePriority} Priority`} color={priorityColor[editablePriority]} size="small" />
+                  </>
                 )}
               </Stack>
 
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Keywords</Typography>
               {isEditMode ? (
-                <TextField fullWidth size="small" placeholder="comma separated..." value={editableKeywords}
+                <TextField fullWidth size="small" placeholder="comma separated..."
+                  value={editableKeywords}
                   onChange={(e) => { setEditableKeywords(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
               ) : (
-                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 5 }}>
-                  {editableKeywords.split(',').map((k, i) => <Chip key={i} label={k.trim()} size="small" />)}
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3 }}>
+                  {(editableKeywords || '').split(',').filter(Boolean).map((k, i) => (
+                    <Chip key={i} label={k.trim()} size="small" />
+                  ))}
                 </Stack>
               )}
 
@@ -862,27 +735,30 @@ const handleFileUpload = (e) => {
               <Divider sx={{ mb: 2 }} />
               <Typography variant="subtitle1" gutterBottom>Audio</Typography>
               <Box sx={{ mb: 2 }}>
-                <audio controls style={{ width: '100%' }}
-                  src={selectedCall?.audio || 'https://www.w3schools.com/html/horse.mp3'} />
+              <audio 
+              controls
+              style={{ width: '100%' }} 
+              src={selectedCall.audio_file?.startsWith('http')?selectedCall.audio_file: `${API_URL}${selectedCall.audio_file}`}/>
+              
+                
               </Box>
 
               <Divider sx={{ mb: 2 }} />
               <Typography variant="subtitle1" gutterBottom>Actions</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
                 <Button variant="contained" size="small"
-                  onClick={() => navigate('/followups', { state: { openCreateFollowup: true, callId: selectedCall.id } })}>
+                  onClick={() => navigate('/followups', {
+                    state: { openCreateFollowup: true, callId: selectedCall.id }
+                  })}>
                   {isManager ? 'Assign Follow-up' : 'Needs Follow-up'}
                 </Button>
-                <Button variant={selectedCall.reviewed === 'Yes' ? 'contained' : 'outlined'} size="small"
-                  onClick={() => {
-                    const updated = calls.map((c) =>
-                      c.id === selectedCall.id ? { ...c, reviewed: c.reviewed === 'Yes' ? 'No' : 'Yes' } : c
-                    );
-                    setCalls(updated);
-                    setSelectedCall((prev) => ({ ...prev, reviewed: prev.reviewed === 'Yes' ? 'No' : 'Yes' }));
-                    window.dispatchEvent(new Event('calls-updated'));
-                  }}>
-                  {selectedCall.reviewed === 'Yes' ? 'Reviewed' : 'No Reviewed'}
+                <Button
+                  variant={selectedCall.is_reviewed ? 'contained' : 'outlined'}
+                  size="small"
+                  color={selectedCall.is_reviewed ? 'success' : 'primary'}
+                  disabled={selectedCall.is_reviewed}
+                  onClick={() => handleMarkReviewed(selectedCall.id)}>
+                  {selectedCall.is_reviewed ? 'Reviewed ✓' : 'Mark Reviewed'}
                 </Button>
               </Stack>
             </>

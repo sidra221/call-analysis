@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 
-BASE_DIR = Path(__file__).resolve().resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
 
@@ -17,13 +17,19 @@ if not SECRET_KEY:
 
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+# FIX: Docker-safe ALLOWED_HOSTS
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,web"
+).split(",")
 
 # -----------------------------
 # CORS SETTINGS
 # -----------------------------
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 _cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
 CORS_ALLOWED_ORIGINS = [o for o in _cors_origins.split(",") if o.strip()]
 
@@ -137,12 +143,10 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# تأكد من وجود مجلد static
 import os as _os
 if not _os.path.exists(STATICFILES_DIRS[0]):
     _os.makedirs(STATICFILES_DIRS[0], exist_ok=True)
 
-# إعدادات الملفات الثابتة للتطوير
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 MEDIA_URL = '/media/'

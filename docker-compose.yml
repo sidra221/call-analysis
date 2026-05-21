@@ -1,126 +1,173 @@
+version: '3.9'
+
 services:
 
-  # ─────────────────────────────────────────
-  # Backend — Django + Daphne (ASGI)
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # Django Backend
+  # ─────────────────────────────────────
   web:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: call_analysis_backend
+
     working_dir: /app/backend
+
     command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
+
     volumes:
       - .:/app
+
     ports:
       - "8000:8000"
+
     env_file:
       - .env
+
     depends_on:
       - db
       - redis
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  # ─────────────────────────────────────────
-  # Celery Worker — background task processor
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # Celery Worker
+  # ─────────────────────────────────────
   celery_worker:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: call_analysis_celery_worker
+
     working_dir: /app/backend
+
     command: celery -A config worker -l info --concurrency=2
+
     volumes:
       - .:/app
+
     env_file:
       - .env
+
     depends_on:
       - web
       - redis
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  # ─────────────────────────────────────────
-  # Celery Beat — scheduled tasks
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # Celery Beat
+  # ─────────────────────────────────────
   celery_beat:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: call_analysis_celery_beat
+
     working_dir: /app/backend
+
     command: celery -A config beat -l info
+
     volumes:
       - .:/app
+
     env_file:
       - .env
+
     depends_on:
       - web
       - redis
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  # ─────────────────────────────────────────
-  # Frontend — React + Vite (مع volume للتعديل المباشر)
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # React Frontend
+  # ─────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+
     container_name: call_analysis_frontend
+
     ports:
       - "3000:3000"
+
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000
-      - VITE_WS_BASE_URL=ws://localhost:8000
+      - PORT=3000
+      - HOST=0.0.0.0
+
+      # IMPORTANT:
+      # Browser must use localhost, not Docker service name
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000
+
     depends_on:
       - web
 
-  # ─────────────────────────────────────────
-  # PostgreSQL — main database
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────
   db:
     image: postgres:15
+
     container_name: call_analysis_db
+
     environment:
       POSTGRES_DB: call_db
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
+
     ports:
       - "5433:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 
-  # ─────────────────────────────────────────
-  # pgAdmin — database GUI
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # PgAdmin
+  # ─────────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4
+
     container_name: call_analysis_pgadmin
+
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin123
+
     ports:
       - "5050:80"
+
     depends_on:
       - db
 
-  # ─────────────────────────────────────────
-  # Redis — message broker + WebSocket layer
-  # ─────────────────────────────────────────
+  # ─────────────────────────────────────
+  # Redis
+  # ─────────────────────────────────────
   redis:
     image: redis:7-alpine
+
     container_name: call_analysis_redis
+
     ports:
       - "6379:6379"
 
+# ─────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────
 volumes:
   postgres_data:

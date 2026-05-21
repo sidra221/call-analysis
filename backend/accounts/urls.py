@@ -4,19 +4,27 @@ from .views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     AuthenticatedUserView,
+    UsersListView,
+    UserDeleteView,
     ManagerOnlyView,
     QAOnlyView,
     ManagerOrQAView,
 )
 
 urlpatterns = [
-    # --- Public endpoints (no authentication required) ---
+    # Public
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
     path('token/refresh/', CustomTokenRefreshView.as_view(), name='token-refresh'),
 
-    # --- Protected endpoints (authentication required) ---
+    # Authenticated user
     path('me/', AuthenticatedUserView.as_view(), name='authenticated-user'),
+
+    # Users management (Manager only)
+    path('users/', UsersListView.as_view(), name='users-list'),
+    path('users/<int:pk>/', UserDeleteView.as_view(), name='user-delete'),
+
+    # Role-based test endpoints
     path('manager-only/', ManagerOnlyView.as_view(), name='manager-only'),
     path('qa-only/', QAOnlyView.as_view(), name='qa-only'),
     path('manager-or-qa/', ManagerOrQAView.as_view(), name='manager-or-qa'),

@@ -17,14 +17,8 @@ from config.responses import success_response, error_response
 
 logger = logging.getLogger(__name__)
 
-
 def _call_ai_for_report(analyses_data: list) -> dict:
-    """
-    Send call analyses to the AI Service /generate-report endpoint.
-    Returns a dict with repeated_issues list.
-    """
-    base_url = settings.AI_SERVICE_URL.replace('/analyze-call', '')
-    url = f"{base_url}/generate-report"
+    url = settings.AI_SERVICE_URL.replace('/analyze-call', '') + '/generate-report'
     timeout = settings.AI_SERVICE_TIMEOUT
 
     headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
@@ -47,7 +41,6 @@ def _call_ai_for_report(analyses_data: list) -> dict:
     except Exception as e:
         logger.error(f"[REPORT AI PARSE ERROR] {str(e)}")
         raise ValueError("Could not parse AI response for report")
-
 
 class ReportViewSet(viewsets.ModelViewSet):
     """

@@ -1,92 +1,120 @@
 import { create } from 'zustand';
 import { callsApi } from 'api/api';
 
-// ─────────────────────────────────────────
-// Calls store — manages call list state
-// Fetches from Backend instead of localStorage
-// ─────────────────────────────────────────
-const useCallsStore = create((set, get) => ({
+const useCallsStore = create((set) => ({
   calls: [],
   loading: false,
   error: null,
 
-  // Fetch all calls from Backend with optional filters
+  // ─── Fetch Calls ─────────────────────
   fetchCalls: async (params = {}) => {
     set({ loading: true, error: null });
+
     try {
       const res = await callsApi.list(params);
-      // Backend returns paginated response: { success, data: { results, count } }
-      const results = res?.data?.results || res?.data || [];
-      set({ calls: results, loading: false });
+
+      // request() يرجع JSON مباشرة (مش res.data)
+      const results = res?.results || res || [];
+
+      set({
+        calls: results,
+        loading: false,
+      });
     } catch (err) {
-      set({ error: err.message, loading: false });
+      set({
+        error: err.message,
+        loading: false,
+      });
     }
   },
 
-  // Upload a new call audio file
+  // ─── Upload Call ─────────────────────
   uploadCall: async (formData) => {
     const res = await callsApi.create(formData);
-    const newCall = res?.data;
+
+    console.log('UPLOAD API RESPONSE:', res);
+
+    // res هو object مباشر
+    const newCall = res?.data || res;
+
     if (newCall) {
-      set((state) => ({ calls: [newCall, ...state.calls] }));
+      set((state) => ({
+        calls: [newCall, ...state.calls],
+      }));
     }
+
     return newCall;
   },
 
-  // Trigger AI analysis for a call
+  // ─── Process Call ────────────────────
   processCall: async (id) => {
     const res = await callsApi.process(id);
-    // Update call status to processing in local state immediately
+
     set((state) => ({
       calls: state.calls.map((c) =>
         c.id === id ? { ...c, status: 'processing' } : c
-      )
+      ),
     }));
-    return res?.data;
+
+    return res;
   },
 
-  // Update a call after WebSocket notifies analysis is complete
+  // ─── WebSocket Update ────────────────
   updateCallFromWebSocket: (callId) => {
     callsApi.get(callId).then((res) => {
-      const updated = res?.data;
+      const updated = res?.data || res;
+
       if (updated) {
         set((state) => ({
-          calls: state.calls.map((c) => (c.id === callId ? updated : c))
+          calls: state.calls.map((c) =>
+            String(c.id) === String(callId) ? updated : c
+          ),
         }));
       }
     });
   },
 
-  // Mark a call as reviewed
+  // ─── Mark Reviewed ───────────────────
   markReviewed: async (id) => {
     await callsApi.markReviewed(id);
+
     set((state) => ({
       calls: state.calls.map((c) =>
         c.id === id
-          ? { ...c, analysis: { ...c.analysis, is_reviewed: true } }
+          ? {
+              ...c,
+              analysis: {
+                ...c.analysis,
+                is_reviewed: true,
+              },
+            }
           : c
-      )
+      ),
     }));
   },
 
-  // Patch call or analysis fields
+  // ─── Patch Call ──────────────────────
   patchCall: async (id, data) => {
     const res = await callsApi.patch(id, data);
-    const updated = res?.data;
+    const updated = res?.data || res;
+
     if (updated) {
       set((state) => ({
-        calls: state.calls.map((c) => (c.id === id ? updated : c))
+        calls: state.calls.map((c) =>
+          c.id === id ? updated : c
+        ),
       }));
     }
+
     return updated;
   },
 
-  // Remove a call from local state (no delete endpoint exists)
+  // ─── Remove Call ─────────────────────
   removeCall: (id) => {
     set((state) => ({
-      calls: state.calls.filter((c) => c.id !== id)
+      calls: state.calls.filter((c) => c.id !== id),
     }));
-  }
+  },
 }));
 
 export default useCallsStore;

@@ -3,23 +3,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth.models import User
 
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, UserListSerializer
 from .permissions import IsQA, IsManager, IsManagerOrQA
 from .models import UserProfile
 from config.responses import success_response, error_response
 
 
 class RegisterView(APIView):
-    """
-    Public endpoint for creating a new user account.
-    No authentication required.
-    POST /api/accounts/register/
-    """
-
     permission_classes = [AllowAny]
 
     def post(self, request):
-        """Validate input and create a new User + UserProfile."""
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -28,61 +21,21 @@ class RegisterView(APIView):
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    """
-    Public login endpoint.
-    Accepts email and password — looks up the username internally.
-    Returns an access token and a refresh token on valid credentials.
-    POST /api/accounts/login/
-    """
-
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        """
-        Override to allow login with email instead of username.
-        Finds the user by email, then passes the username to the JWT view.
-        Returns a clear error if the email or password is incorrect.
-        """
-        email = request.data.get('username', '').strip()
-
-        # Look up user by email
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return error_response(
-                "Invalid email or password.",
-                code="invalid_credentials",
-                status_code=401
-            )
-
-        # Replace email with actual username for JWT processing
-        data = request.data.copy()
-        data['username'] = user.username
-        request._full_data = data
-
+        # Login using username directly (no email lookup needed)
         return super().post(request, *args, **kwargs)
 
 
 class CustomTokenRefreshView(TokenRefreshView):
-    """
-    Public token refresh endpoint.
-    Exchanges a valid refresh token for a new access token.
-    POST /api/accounts/token/refresh/
-    """
-
     permission_classes = [AllowAny]
 
 
 class AuthenticatedUserView(APIView):
-    """
-    Returns the profile of the currently authenticated user.
-    GET /api/accounts/me/
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Fetch and return the current user's username, email, and role."""
         try:
             profile = UserProfile.objects.get(user=request.user)
             role = profile.role
@@ -96,16 +49,47 @@ class AuthenticatedUserView(APIView):
         })
 
 
-class ManagerOnlyView(APIView):
+class UsersListView(APIView):
     """
-    Test endpoint accessible only by users with the 'manager' role.
-    GET /api/accounts/manager-only/
+    Returns list of all users with their profiles.
+    Only accessible by Manager.
+    GET /api/accounts/users/
     """
-
     permission_classes = [IsAuthenticated, IsManager]
 
     def get(self, request):
-        """Return a confirmation message for manager access."""
+        users = User.objects.select_related('profile').all().order_by('date_joined')
+        serializer = UserListSerializer(users, many=True)
+        return success_response(serializer.data)
+
+
+class UserDeleteView(APIView):
+    """
+    Deletes a user by ID.
+    Only accessible by Manager.
+    DELETE /api/accounts/users/<id>/
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def delete(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return error_response("User not found", code="not_found", status_code=404)
+
+        if user == request.user:
+            return error_response("You cannot delete your own account", code="forbidden", status_code=400)
+
+        user.delete()
+        from rest_framework import status
+        from rest_framework.response import Response
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManagerOnlyView(APIView):
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request):
         return success_response({
             "message": "This is a Manager-only endpoint",
             "user": request.user.username,
@@ -114,15 +98,9 @@ class ManagerOnlyView(APIView):
 
 
 class QAOnlyView(APIView):
-    """
-    Test endpoint accessible only by users with the 'qa' role.
-    GET /api/accounts/qa-only/
-    """
-
     permission_classes = [IsAuthenticated, IsQA]
 
     def get(self, request):
-        """Return a confirmation message for QA access."""
         return success_response({
             "message": "This is a QA-only endpoint",
             "user": request.user.username,
@@ -131,15 +109,9 @@ class QAOnlyView(APIView):
 
 
 class ManagerOrQAView(APIView):
-    """
-    Test endpoint accessible by users with 'manager' or 'qa' role.
-    GET /api/accounts/manager-or-qa/
-    """
-
     permission_classes = [IsAuthenticated, IsManagerOrQA]
 
     def get(self, request):
-        """Return a confirmation message along with the user's actual role."""
         profile = UserProfile.objects.get(user=request.user)
         return success_response({
             "message": "This endpoint is accessible to Managers and QAs",
