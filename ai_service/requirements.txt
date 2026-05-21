@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────
+# AI Service — Core Dependencies
+# ─────────────────────────────────────────
+
+# API Framework
+fastapi==0.136.1
+uvicorn==0.46.0
+python-multipart==0.0.28
+starlette==1.0.0
+
+# Speech Transcription
+whisperx @ git+https://github.com/m-bain/whisperx.git@1c4b23e13d79280a076e98644ac1e38321d253a9
+faster-whisper==1.2.1
+ctranslate2==4.7.1
+
+# Speaker Diarization
+pyannote-audio==4.0.4
+pyannote-core==6.0.1
+pyannote-database==6.1.1
+pyannote-pipeline==4.0.0
+
+# NLP Analysis
+spacy==3.8.14
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz#sha256=1075c2aa2bc2fee105ab6e90a01a5d1a428c9f5b20a1fa003dc2cb6a438d295e
+nltk==3.9.4
+transformers==4.57.6
+torch==2.8.0
+torchaudio==2.8.0
+
+# Data Processing
+numpy==2.2.6
+pandas==2.3.3
+
+# HTTP Client
+httpx==0.28.1
+requests==2.34.0
+
+# Utilities
+huggingface_hub==0.36.2
+accelerate==0.25.0
+onnxruntime==1.23.2
+pydantic==2.13.4
+PyYAML==6.0.3
+tqdm==4.67.3
+
+# Report generation
+openai>=1.0.0

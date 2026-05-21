@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+*.egg
+*.log
+
+# Virtual Environment
+whisper_env/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Docker
+.dockerignore
+
+# Project outputs
+outputs/
+*.json
+*.db
+*.sqlite
+
+# Audio files
+*.mp3
+*.wav
+*.m4a
+*.aac
+
+# Large model files
+*.bin
+*.pt
+*.ckpt
+
+# Temp files
+*.tmp
+*.bak
+*.backup
