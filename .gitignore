@@ -138,3 +138,5 @@ logs/
 # Secrets & tokens
 token.txt
 secrets.json
+
+app/
