@@ -1,10 +1,5 @@
-version: '3.9'
-
 services:
 
-  # ─────────────────────────────────────
-  # Django Backend
-  # ─────────────────────────────────────
   web:
     build:
       context: .
@@ -29,13 +24,14 @@ services:
       - db
       - redis
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  # ─────────────────────────────────────
-  # Celery Worker
-  # ─────────────────────────────────────
+
   celery_worker:
     build:
       context: .
@@ -57,13 +53,14 @@ services:
       - web
       - redis
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  # ─────────────────────────────────────
-  # Celery Beat
-  # ─────────────────────────────────────
+
   celery_beat:
     build:
       context: .
@@ -85,13 +82,14 @@ services:
       - web
       - redis
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  # ─────────────────────────────────────
-  # React Frontend
-  # ─────────────────────────────────────
+
   frontend:
     build:
       context: ./frontend
@@ -109,18 +107,13 @@ services:
     environment:
       - PORT=3000
       - HOST=0.0.0.0
-
-      # IMPORTANT:
-      # Browser must use localhost, not Docker service name
       - REACT_APP_API_URL=http://localhost:8000
       - REACT_APP_WS_URL=ws://localhost:8000
 
     depends_on:
       - web
 
-  # ─────────────────────────────────────
-  # PostgreSQL Database
-  # ─────────────────────────────────────
+
   db:
     image: postgres:15
 
@@ -137,9 +130,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 
-  # ─────────────────────────────────────
-  # PgAdmin
-  # ─────────────────────────────────────
+
   pgadmin:
     image: dpage/pgadmin4
 
@@ -155,9 +146,7 @@ services:
     depends_on:
       - db
 
-  # ─────────────────────────────────────
-  # Redis
-  # ─────────────────────────────────────
+
   redis:
     image: redis:7-alpine
 
@@ -166,8 +155,6 @@ services:
     ports:
       - "6379:6379"
 
-# ─────────────────────────────────────
-# Volumes
-# ─────────────────────────────────────
+
 volumes:
   postgres_data:

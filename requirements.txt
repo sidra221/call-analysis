@@ -25,3 +25,6 @@ drf-yasg
 
 # HTTP Client — for calling AI service
 httpx==0.28.1
+
+# Audio duration
+pydub==0.25.1

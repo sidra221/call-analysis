@@ -3,12 +3,14 @@ import json
 import torch
 import pandas as pd
 import whisperx
+
 from pyannote.audio import Pipeline
 
 # -----------------------------
 # الجهاز = CPU دائماً
 # -----------------------------
 device = "cpu"
+
 print("Device:", device)
 
 
@@ -27,13 +29,25 @@ def transcribe_audio(audio_file):
     # -----------------------------
     print("Loading WhisperX model (CPU)...")
 
-    model = whisperx.load_model("small", device)
+    model = whisperx.load_model(
+        "small",
+        device,
+        compute_type="float32"
+    )
 
     print("Transcribing...")
 
     asr_result = model.transcribe(audio_file)
 
     print("ASR Done.")
+
+    # -----------------------------
+    # مدة المكالمة
+    # -----------------------------
+    duration = 0
+
+    if asr_result.get("segments"):
+        duration = asr_result["segments"][-1]["end"]
 
     # -----------------------------
     # Alignment
@@ -69,6 +83,10 @@ def transcribe_audio(audio_file):
 
     diarization = pipeline(audio_file)
 
+    # -----------------------------
+    # مهم جداً:
+    # الإصدار الجديد يرجع speaker_diarization
+    # -----------------------------
     annotation = diarization.speaker_diarization
 
     # -----------------------------
@@ -101,7 +119,8 @@ def transcribe_audio(audio_file):
     # -----------------------------
     output = {
         "language": asr_result["language"],
-        "segments": aligned_with_speakers["segments"]
+        "segments": aligned_with_speakers["segments"],
+        "duration": duration
     }
 
     # -----------------------------

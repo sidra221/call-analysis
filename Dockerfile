@@ -7,6 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     gcc \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies with retry on timeout
