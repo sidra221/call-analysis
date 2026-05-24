@@ -42,7 +42,9 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
+
+
 
   const validate = () => {
     const newErrors = {};

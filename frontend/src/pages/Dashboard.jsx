@@ -25,7 +25,9 @@ export default function Dashboard() {
   useEffect(() => {
     fetchCalls();
     loadDashboard();
-  }, []);
+  }, [fetchCalls]);
+
+
 
   const loadDashboard = async () => {
     try {

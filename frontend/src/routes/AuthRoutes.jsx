@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+
 import MinimalLayout from 'layout/MinimalLayout';
 import Loadable from 'ui-component/Loadable';
 
@@ -9,8 +10,14 @@ const AuthRoutes = {
   path: '/',
   element: <MinimalLayout />,
   children: [
-    { path: 'login', element: <LoginPage /> },
-    { path: 'register', element: <RegisterPage /> }
+    {
+      path: 'login',
+      element: <LoginPage />
+    },
+    {
+      path: 'register',
+      element: <RegisterPage />
+    }
   ]
 };
 

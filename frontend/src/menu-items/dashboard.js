@@ -1,3 +1,6 @@
+const user = JSON.parse(localStorage.getItem('authUser'));
+const role = user?.role;
+
 import { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings2, IconUpload , IconUsers,IconReportAnalytics } from '@tabler/icons-react';
 
 const icons = { IconDashboard, IconPhone, IconRefresh, IconUser, IconSettings2, IconUpload,  IconUsers,IconReportAnalytics  };
@@ -33,34 +36,39 @@ const dashboard = {
       icon: icons.IconRefresh,
       breadcrumbs: false
     },
-   {
-  id: 'users',
-  title: 'Users',
-  type: 'item',
-  url: '/users',
-  icon: icons.IconUsers,
-   breadcrumbs: false
-},
-    {
-  id: 'reports',
-  title: 'Reports',
-  type: 'item',
-  url: '/reports',
-  icon: IconReportAnalytics ,
-  breadcrumbs: false
-},
-
+  
+    ...(role === 'manager'
+      ? [{
+          id: 'users',
+          title: 'Users',
+          type: 'item',
+          url: '/users',
+          icon: icons.IconUsers,
+          breadcrumbs: false
+        }]
+      : []),
+  
+    ...(['manager', 'qa'].includes(role)
+      ? [{
+          id: 'reports',
+          title: 'Reports',
+          type: 'item',
+          url: '/reports',
+          icon: icons.IconReportAnalytics,
+          breadcrumbs: false
+        }]
+      : []),
+  
     {
       id: 'profile',
-      title: 'profile',
+      title: 'Profile',
       type: 'item',
       url: '/profile',
       icon: icons.IconSettings2,
       breadcrumbs: false
     }
-
-    
   ]
+
 };
 
 export default dashboard;

@@ -1,6 +1,5 @@
 import { lazy } from 'react';
 
-// project imports
 import MainLayout from 'layout/MainLayout';
 import Loadable from 'ui-component/Loadable';
 import ProtectedRoute from './ProtectedRoute';
@@ -9,11 +8,8 @@ const DashboardPage = Loadable(lazy(() => import('pages/Dashboard')));
 const CallsPage = Loadable(lazy(() => import('pages/Calls')));
 const FollowupsPage = Loadable(lazy(() => import('pages/Followups')));
 const ReportsPage = Loadable(lazy(() => import('pages/Reports')));
-
 const ProfilePage = Loadable(lazy(() => import('pages/Profile')));
-const UsersPage = Loadable(lazy(() => import("pages/Users")));
-
-// ==============================|| MAIN ROUTING ||============================== //
+const UsersPage = Loadable(lazy(() => import('pages/Users')));
 
 const MainRoutes = {
   path: '/',
@@ -41,16 +37,23 @@ const MainRoutes = {
     },
     {
       path: 'reports',
-      element: <ReportsPage />
+      element: (
+        <ProtectedRoute allowedRoles={['manager', 'qa']}>
+          <ReportsPage />
+        </ProtectedRoute>
+      )
     },
-    
     {
       path: 'profile',
       element: <ProfilePage />
     },
     {
       path: 'users',
-      element: <UsersPage />
+      element: (
+        <ProtectedRoute allowedRoles={['manager']}>
+          <UsersPage />
+        </ProtectedRoute>
+      )
     }
   ]
 };

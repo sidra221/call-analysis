@@ -119,43 +119,69 @@ export default function Calls() {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
+  
     if (!file) return;
   
     setUploadError('');
   
     try {
+      // ─── Start Processing UI ─────────────────
       setIsProcessing(true);
       setProcessingProgress(10);
   
+      // ─── Prepare FormData ────────────────────
       const formData = new FormData();
       formData.append('audio_file', file);
   
+      // ─── Upload Call ─────────────────────────
       const newCall = await uploadCall(formData);
   
       console.log('UPLOAD RESPONSE:', newCall);
   
       setProcessingProgress(30);
   
-      // ✅ أهم تعديل: نقرأ id أو call_id مباشرة
-      const callId = newCall?.id || newCall?.call_id;
+      // ─── Extract Call ID Safely ──────────────
+      const callId =
+        newCall?.id ||
+        newCall?.call_id ||
+        newCall?.data?.id;
   
-      if (callId) {
-        connectWebSocket(callId);
-        await processCall(callId);   // يشغّل الـ Celery worker
-        setProcessingProgress(50);
-        startPolling(callId);
-      } else {
+      console.log('CALL ID:', callId);
+  
+      // ─── Validate Response ───────────────────
+      if (!callId) {
+        console.error('INVALID BACKEND RESPONSE:', newCall);
         throw new Error('Upload failed — no call ID returned');
       }
   
+      // ─── Connect WebSocket ───────────────────
+      connectWebSocket(callId);
+  
+      // ─── Trigger Backend Processing ──────────
+      await processCall(callId);
+  
+      setProcessingProgress(50);
+  
+      // ─── Start Polling Fallback ──────────────
+      startPolling(callId);
+  
     } catch (err) {
-      console.error(err);
-      setUploadError(err?.response?.data?.message || err?.message || 'Upload failed');
+  
+      console.error('UPLOAD ERROR:', err);
+  
+      setUploadError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Upload failed'
+      );
+  
       setIsProcessing(false);
       setProcessingProgress(0);
+  
       stopPolling();
     }
   
+    // ─── Reset Input ──────────────────────────
     e.target.value = '';
   };
   

@@ -13,7 +13,6 @@ const useCallsStore = create((set) => ({
     try {
       const res = await callsApi.list(params);
 
-      // request() يرجع JSON مباشرة (مش res.data)
       const results = res?.results || res || [];
 
       set({
@@ -30,20 +29,32 @@ const useCallsStore = create((set) => ({
 
   // ─── Upload Call ─────────────────────
   uploadCall: async (formData) => {
-    const res = await callsApi.create(formData);
+    try {
+      const res = await callsApi.create(formData);
 
-    console.log('UPLOAD API RESPONSE:', res);
+      console.log('UPLOAD API RESPONSE:', res);
 
-    // res هو object مباشر
-    const newCall = res?.data || res;
+      // ✅ دعم كل الاحتمالات
+      const newCall =
+        res?.data ||
+        res?.call ||
+        res;
 
-    if (newCall) {
-      set((state) => ({
-        calls: [newCall, ...state.calls],
-      }));
+      if (!newCall?.id) {
+        console.error('NO ID RETURNED FROM BACKEND:', res);
+      }
+
+      if (newCall) {
+        set((state) => ({
+          calls: [newCall, ...state.calls],
+        }));
+      }
+
+      return newCall;
+    } catch (err) {
+      console.error('UPLOAD STORE ERROR:', err);
+      throw err;
     }
-
-    return newCall;
   },
 
   // ─── Process Call ────────────────────
@@ -52,7 +63,9 @@ const useCallsStore = create((set) => ({
 
     set((state) => ({
       calls: state.calls.map((c) =>
-        c.id === id ? { ...c, status: 'processing' } : c
+        c.id === id
+          ? { ...c, status: 'processing' }
+          : c
       ),
     }));
 
@@ -67,7 +80,9 @@ const useCallsStore = create((set) => ({
       if (updated) {
         set((state) => ({
           calls: state.calls.map((c) =>
-            String(c.id) === String(callId) ? updated : c
+            String(c.id) === String(callId)
+              ? updated
+              : c
           ),
         }));
       }
@@ -96,12 +111,15 @@ const useCallsStore = create((set) => ({
   // ─── Patch Call ──────────────────────
   patchCall: async (id, data) => {
     const res = await callsApi.patch(id, data);
+
     const updated = res?.data || res;
 
     if (updated) {
       set((state) => ({
         calls: state.calls.map((c) =>
-          c.id === id ? updated : c
+          c.id === id
+            ? updated
+            : c
         ),
       }));
     }
