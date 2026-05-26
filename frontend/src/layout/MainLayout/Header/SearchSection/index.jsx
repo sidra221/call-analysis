@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -25,7 +25,7 @@ import menuItems from 'menu-items';
 import SearchList from './SearchList';
 
 // assets
-import { IconAdjustmentsHorizontal, IconSearch, IconX, IconCommand } from '@tabler/icons-react';
+import { IconAdjustmentsHorizontal, IconSearch, IconX } from '@tabler/icons-react';
 
 function HeaderAvatar({ children, ref, ...others }) {
   const theme = useTheme();
@@ -117,9 +117,19 @@ function MobileSearch({ value, setValue, popupState }) {
 
 export default function SearchSection() {
   const theme = useTheme();
-  const { search, setSearch, results, setResults, isOpen, setIsOpen } = useSearchStore();
+
+  const {
+    search,
+    setSearch,
+    results,
+    setResults,
+    isOpen,
+    setIsOpen
+  } = useSearchStore();
+
   const { calls } = useCallsStore();
   const { users } = useUsersStore();
+
   const anchorRef = useRef(null);
 
   // Keyboard shortcut Ctrl+K
@@ -130,7 +140,9 @@ export default function SearchSection() {
         document.getElementById('input-search-header')?.focus();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
+
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
@@ -145,12 +157,17 @@ export default function SearchSection() {
     const searchLower = search.toLowerCase();
     const newResults = [];
 
+    // ==============================
     // 1. Search Menu Items
+    // ==============================
     if (Array.isArray(menuItems.items)) {
       menuItems.items.forEach((group) => {
         if (Array.isArray(group.children)) {
           group.children.forEach((item) => {
-            if (item.title.toLowerCase().includes(searchLower)) {
+            if (
+              item?.title &&
+              item.title.toLowerCase().includes(searchLower)
+            ) {
               newResults.push({
                 title: item.title,
                 url: item.url,
@@ -164,45 +181,73 @@ export default function SearchSection() {
       });
     }
 
+    // ==============================
     // 2. Search Calls
+    // ==============================
     if (Array.isArray(calls)) {
       calls.forEach((call) => {
+        const callId = String(call?.id || '').toLowerCase();
+
+        const issue = String(
+          call?.issue ||
+          call?.analysis?.main_issue ||
+          ''
+        ).toLowerCase();
+
+        const transcript = String(
+          call?.transcript ||
+          call?.analysis?.transcript ||
+          ''
+        ).toLowerCase();
+
+        const keywords = Array.isArray(call?.analysis?.keywords)
+          ? call.analysis.keywords.join(', ').toLowerCase()
+          : String(call?.keywords || '').toLowerCase();
+
         if (
-          (call.id && call.id.toLowerCase().includes(searchLower)) ||
-          (call.issue && call.issue.toLowerCase().includes(searchLower)) ||
-          (call.transcript && call.transcript.toLowerCase().includes(searchLower)) ||
-          (call.keywords && call.keywords.toLowerCase().includes(searchLower))
+          callId.includes(searchLower) ||
+          issue.includes(searchLower) ||
+          transcript.includes(searchLower) ||
+          keywords.includes(searchLower)
         ) {
           newResults.push({
-            title: `Call ${call.id}`,
-            description: call.issue,
-            url: `/calls`,
+            title: `Call #${call?.id}`,
+            description:
+              call?.analysis?.main_issue ||
+              call?.issue ||
+              'No issue detected',
+            url: '/calls',
             category: 'Call',
-            type: call.status
+            type: call?.status || 'pending'
           });
         }
       });
     }
 
+    // ==============================
     // 3. Search Users
+    // ==============================
     if (Array.isArray(users)) {
       users.forEach((user) => {
+        const username = String(user?.username || '').toLowerCase();
+        const email = String(user?.email || '').toLowerCase();
+
         if (
-          (user.username && user.username.toLowerCase().includes(searchLower)) ||
-          (user.email && user.email.toLowerCase().includes(searchLower))
+          username.includes(searchLower) ||
+          email.includes(searchLower)
         ) {
           newResults.push({
-            title: user.username,
-            description: user.email,
-            url: `/users`,
+            title: user?.username || 'Unknown User',
+            description: user?.email || '',
+            url: '/users',
             category: 'User',
-            type: user.role
+            type: user?.role || 'user'
           });
         }
       });
     }
 
-    setResults(newResults.slice(0, 10)); // Limit results
+    setResults(newResults.slice(0, 10));
     setIsOpen(true);
   }, [search, calls, users, setResults, setIsOpen]);
 
@@ -217,7 +262,7 @@ export default function SearchSection() {
 
   return (
     <>
-      {/* Mobile */}
+      {/* ================= MOBILE ================= */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         <PopupState variant="popper" popupId="demo-popup-popper">
           {(popupState) => (
@@ -267,8 +312,16 @@ export default function SearchSection() {
                             />
                           </Grid>
                         </Grid>
+
                         {search && (
-                          <Box sx={{ mt: 2, bgcolor: 'background.paper', borderRadius: 2, overflow: 'hidden' }}>
+                          <Box
+                            sx={{
+                              mt: 2,
+                              bgcolor: 'background.paper',
+                              borderRadius: 2,
+                              overflow: 'hidden'
+                            }}
+                          >
                             <SearchList
                               results={results}
                               onItemClick={() => {
@@ -288,8 +341,11 @@ export default function SearchSection() {
         </PopupState>
       </Box>
 
-      {/* Desktop */}
-      <Box sx={{ display: { xs: 'none', md: 'block' } }} ref={anchorRef}>
+      {/* ================= DESKTOP ================= */}
+      <Box
+        sx={{ display: { xs: 'none', md: 'block' } }}
+        ref={anchorRef}
+      >
         <OutlinedInput
           id="input-search-header"
           value={search}
@@ -309,10 +365,18 @@ export default function SearchSection() {
           }
           endAdornment={
             <InputAdornment position="end">
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-             
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
                 <HeaderAvatar>
-                  <IconAdjustmentsHorizontal stroke={1.5} size="20px" />
+                  <IconAdjustmentsHorizontal
+                    stroke={1.5}
+                    size="20px"
+                  />
                 </HeaderAvatar>
               </Box>
             </InputAdornment>
@@ -331,21 +395,23 @@ export default function SearchSection() {
             width: { md: 250, lg: 434 },
             ml: 2,
             px: 2,
-             height: 48,
-  borderRadius: '16px',
-  bgcolor: '#fff',
-   '&:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#90caf9'
-  },
+            height: 48,
+            borderRadius: '16px',
+            bgcolor: '#fff',
 
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#1e88e5',
-    borderWidth: '2px'
-  },
-  '& input': {
-    fontSize: '0.95rem',
-    fontWeight: 500
-  }
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: '#90caf9'
+            },
+
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: '#1e88e5',
+              borderWidth: '2px'
+            },
+
+            '& input': {
+              fontSize: '0.95rem',
+              fontWeight: 500
+            }
           }}
         />
 
@@ -373,7 +439,10 @@ export default function SearchSection() {
               >
                 <ClickAwayListener onClickAway={handleClose}>
                   <Box>
-                    <SearchList results={results} onItemClick={handleSelect} />
+                    <SearchList
+                      results={results}
+                      onItemClick={handleSelect}
+                    />
                   </Box>
                 </ClickAwayListener>
               </Paper>

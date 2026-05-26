@@ -36,14 +36,23 @@ export default function Reports() {
   useEffect(() => {
     loadReports();
   }, []);
-
+  
   const loadReports = async () => {
     try {
       setLoading(true);
+  
       const res = await reportsApi.list();
-      const results = res?.data?.results || res?.data || [];
-      setReports(results);
+  
+      console.log('REPORTS LIST:', res);
+  
+      const reportsData =
+        res?.results ||
+        [];
+  
+      setReports(reportsData);
+  
     } catch (err) {
+      console.error(err);
       setError(err.message || 'Failed to load reports');
     } finally {
       setLoading(false);
