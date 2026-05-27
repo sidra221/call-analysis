@@ -113,6 +113,7 @@ export default function Followups() {
       if (res?.data) {
         setFollowups((prev) => [res.data, ...prev]);
       }
+      await loadFollowups();
       setOpenCreateDialog(false);
       setAssignedTo('');
       setNotes('');

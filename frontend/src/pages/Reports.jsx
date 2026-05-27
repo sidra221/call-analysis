@@ -114,22 +114,19 @@ export default function Reports() {
       setSaving(false);
     }
   };
-
   const confirmDelete = async () => {
-    if (!reportToDelete) return;
-    try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/reports/reports/${reportToDelete.id}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-      });
-      setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
-    } catch (err) {
-      setError(err.message || 'Delete failed');
-    } finally {
-      setDeleteDialog(false);
-      setReportToDelete(null);
-    }
-  };
+  if (!reportToDelete) return;
+  try {
+    await reportsApi.delete(reportToDelete.id);
+    await loadReports(); // ✅ أضف هذا السطر
+  } catch (err) {
+    setError(err.message || 'Delete failed');
+  } finally {
+    setDeleteDialog(false);
+    setReportToDelete(null);
+  }
+};
+
 
   const handleFieldChange = (field, value) => {
     setSelectedReport((prev) => ({ ...prev, [field]: value }));

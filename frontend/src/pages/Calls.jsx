@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   IconEye, IconEdit, IconTrash, IconX, IconDots,
   IconRefresh, IconUpload, IconDeviceFloppy, IconCheck,
-  IconAdjustmentsHorizontal, IconSearch
+  IconAdjustmentsHorizontal, IconSearch, IconTrashX
 } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import {
@@ -12,7 +12,7 @@ import {
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
   Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Popover, Badge, Alert
+  DialogActions, Popover, Badge, Alert, Checkbox
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
 import { callsApi } from 'api/api';
@@ -38,6 +38,10 @@ export default function Calls() {
   const [uploadError, setUploadError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
+
+  const [selectedCalls, setSelectedCalls] = useState([]);
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const location = useLocation();
   const state = location.state;
@@ -97,7 +101,6 @@ export default function Calls() {
     pollRef.current = setInterval(async () => {
       waited += 2;
 
-      // Gradually increase progress from 60 to 90
       setProcessingProgress((prev) => Math.min(prev + 3, 90));
 
       try {
@@ -125,63 +128,35 @@ export default function Calls() {
     setUploadError('');
   
     try {
-      // ─── Start Processing UI ─────────────────
       setIsProcessing(true);
       setProcessingProgress(10);
   
-      // ─── Prepare FormData ────────────────────
       const formData = new FormData();
       formData.append('audio_file', file);
   
-      // ─── Upload Call ─────────────────────────
       const newCall = await uploadCall(formData);
-  
-      console.log('UPLOAD RESPONSE:', newCall);
   
       setProcessingProgress(30);
   
-      // ─── Extract Call ID Safely ──────────────
-      const callId =
-        newCall?.id ||
-        newCall?.call_id ||
-        newCall?.data?.id;
+      const callId = newCall?.id || newCall?.call_id || newCall?.data?.id;
   
-      console.log('CALL ID:', callId);
-  
-      // ─── Validate Response ───────────────────
       if (!callId) {
-        console.error('INVALID BACKEND RESPONSE:', newCall);
         throw new Error('Upload failed — no call ID returned');
       }
   
-      // ─── Connect WebSocket ───────────────────
       connectWebSocket(callId);
-  
-      // ─── Trigger Backend Processing ──────────
       await processCall(callId);
-  
       setProcessingProgress(50);
-  
-      // ─── Start Polling Fallback ──────────────
       startPolling(callId);
   
     } catch (err) {
-  
       console.error('UPLOAD ERROR:', err);
-  
-      setUploadError(
-        err?.response?.data?.message ||
-        err?.message ||
-        'Upload failed'
-      );
-  
+      setUploadError(err?.response?.data?.message || err?.message || 'Upload failed');
       setIsProcessing(false);
       setProcessingProgress(0);
-  
       stopPolling();
     }
   
-    // ─── Reset Input ──────────────────────────
     e.target.value = '';
   };
   
@@ -202,7 +177,24 @@ export default function Calls() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [callToDelete, setCallToDelete] = useState(null);
 
-  const handleDelete = (id) => { removeCall(id); };
+  // دالة الحذف الفردي - باستخدام API مباشر
+  const handleDelete = async (id) => {
+    setDeleting(true);
+    try {
+      // استدعاء API الحذف مباشرة
+      await callsApi.delete(id);
+      // تحديث القائمة محلياً
+      setSelectedCalls(prev => prev.filter(cid => cid !== id));
+      // إعادة تحميل القائمة من الخادم
+      await fetchCalls();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setUploadError(err.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
+      setOpenDeleteDialog(false);
+    }
+  };
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -333,6 +325,7 @@ export default function Calls() {
       setIsDirty(false);
       setIsEditMode(false);
       setOpenDrawer(false);
+      await fetchCalls();
     } catch (err) {
       setUploadError(err.message || 'Save failed');
     }
@@ -344,8 +337,43 @@ export default function Calls() {
       if (selectedCall?.id === callId) {
         setSelectedCall((prev) => ({ ...prev, is_reviewed: true }));
       }
+      await fetchCalls();
     } catch (err) {
       setUploadError(err.message || 'Mark reviewed failed');
+    }
+  };
+
+  const isAllSelected = filteredCalls.length > 0 && selectedCalls.length === filteredCalls.length;
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedCalls(filteredCalls.map((call) => call.id));
+    } else {
+      setSelectedCalls([]);
+    }
+  };
+
+  const handleSelectCall = (id) => {
+    setSelectedCalls((prev) => 
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // دالة الحذف الجماعي - باستخدام API مباشر
+  const handleBulkDelete = async () => {
+    if (selectedCalls.length === 0) return;
+    setDeleting(true);
+    try {
+      for (const callId of selectedCalls) {
+        await callsApi.delete(callId);
+      }
+      await fetchCalls();
+      setSelectedCalls([]);
+      setBulkDeleteDialog(false);
+    } catch (err) {
+      setUploadError(err.message || 'Bulk delete failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -377,7 +405,6 @@ export default function Calls() {
                 fullWidth size="small" placeholder="Search calls ..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                sx={{ borderRadius: '12px', '& .MuiOutlinedInput-notchedOutline': { borderRadius: '12px' } }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -431,7 +458,22 @@ export default function Calls() {
               </Grid>
             )}
 
-            <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto' }}>
+            <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+              {/* زر الحذف الجماعي يظهر على اليسار (أولاً) */}
+              {isManager && selectedCalls.length > 0 && (
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={deleting ? <CircularProgress size={18} color="inherit" /> : <IconTrashX size={18} />}
+                  onClick={() => setBulkDeleteDialog(true)}
+                  disabled={deleting}
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}
+                >
+                  Delete ({selectedCalls.length})
+                </Button>
+              )}
+              
+              {/* زر رفع المكالمة يبقى في مكانه */}
               <Button
                 variant="contained"
                 startIcon={<IconUpload size={18} />}
@@ -518,6 +560,15 @@ export default function Calls() {
             <Table size="small" sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow>
+                  {isManager && (
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={isAllSelected}
+                        indeterminate={selectedCalls.length > 0 && selectedCalls.length < filteredCalls.length}
+                        onChange={handleSelectAll}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>ID</TableCell>
                   <TableCell sx={{ width: 120 }}>Priority</TableCell>
                   <TableCell sx={{ width: 140 }}>Status</TableCell>
@@ -531,7 +582,15 @@ export default function Calls() {
               </TableHead>
               <TableBody>
                 {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => (
-                  <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }}>
+                  <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }} selected={selectedCalls.includes(call.id)}>
+                    {isManager && (
+                      <TableCell padding="checkbox">
+                        <Checkbox 
+                          checked={selectedCalls.includes(call.id)} 
+                          onChange={() => handleSelectCall(call.id)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       #{call.id}
                     </TableCell>
@@ -566,7 +625,7 @@ export default function Calls() {
                 ))}
                 {filteredCalls.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={isManager ? 10 : 9}>
                       <Box sx={{ py: 2, textAlign: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
                           {loading ? 'Loading...' : 'No results found'}
@@ -622,9 +681,25 @@ export default function Calls() {
             sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>
             Cancel
           </Button>
-          <Button onClick={() => { handleDelete(callToDelete); setOpenDeleteDialog(false); }}
-            variant="contained" color="error">
-            Delete
+          <Button onClick={() => handleDelete(callToDelete)} variant="contained" color="error" disabled={deleting}>
+            {deleting ? <CircularProgress size={18} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+        <DialogTitle>Confirm Bulk Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <strong>{selectedCalls.length}</strong> selected call(s)? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setBulkDeleteDialog(false)} variant="outlined"
+            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+          <Button onClick={handleBulkDelete} variant="contained" color="error" disabled={deleting}>
+            {deleting ? <CircularProgress size={18} /> : 'Delete All'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -761,12 +836,11 @@ export default function Calls() {
               <Divider sx={{ mb: 2 }} />
               <Typography variant="subtitle1" gutterBottom>Audio</Typography>
               <Box sx={{ mb: 2 }}>
-              <audio 
-              controls
-              style={{ width: '100%' }} 
-              src={selectedCall.audio_file?.startsWith('http')?selectedCall.audio_file: `${API_URL}${selectedCall.audio_file}`}/>
-              
-                
+                <audio 
+                  controls
+                  style={{ width: '100%' }} 
+                  src={selectedCall.audio_file?.startsWith('http') ? selectedCall.audio_file : `${API_URL}${selectedCall.audio_file}`}
+                />
               </Box>
 
               <Divider sx={{ mb: 2 }} />
