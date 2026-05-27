@@ -146,15 +146,15 @@ export const callsApi = {
   list: (params = {}) => {
     const query = new URLSearchParams(params).toString();
 
-    return request(`/api/calls/${query ? `?${query}` : ''}`);
+    return request(`/api/calls/calls/${query ? `?${query}` : ''}`);
   },
 
   get: (id) =>
-    request(`/api/calls/${id}/`),
+    request(`/api/calls/calls/${id}/`),
 
   create: (formData) =>
     request(
-      '/api/calls/',
+      '/api/calls/calls/',
       {
         method: 'POST',
         body: formData
@@ -163,37 +163,37 @@ export const callsApi = {
     ),
 
   patch: (id, data) =>
-    request(`/api/calls/${id}/`, {
+    request(`/api/calls/calls/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify(data)
     }),
 
   delete: (id) =>
-    request(`/api/calls/${id}/`, {
+    request(`/api/calls/calls/${id}/`, {
       method: 'DELETE'
     }),
 
   process: (id) =>
-    request(`/api/calls/${id}/process/`, {
+    request(`/api/calls/calls/${id}/process/`, {
       method: 'POST'
     }),
 
   markReviewed: (id) =>
-    request(`/api/calls/${id}/mark-reviewed/`, {
+    request(`/api/calls/calls/${id}/mark-reviewed/`, {
       method: 'POST'
     }),
 
   downloadUrl: (id) =>
-    `${API_URL}/api/calls/${id}/download/`,
+    `${API_URL}/api/calls/calls/${id}/download/`,
 
   positive: () =>
-    request('/api/calls/positive/'),
+    request('/api/calls/calls/positive/'),
 
   negative: () =>
-    request('/api/calls/negative/'),
+    request('/api/calls/calls/negative/'),
 
   neutral: () =>
-    request('/api/calls/neutral/')
+    request('/api/calls/calls/neutral/')
 };
 
 // ─────────────────────────────────────────────
@@ -240,6 +240,15 @@ export const dashboardApi = {
 
   live: () =>
     request('/api/dashboard/live/')
+};
+
+// ─────────────────────────────────────────────
+// LOGS API
+// ─────────────────────────────────────────────
+
+export const logsApi = {
+  list: () =>
+    request('/api/logs/')
 };
 
 // ─────────────────────────────────────────────

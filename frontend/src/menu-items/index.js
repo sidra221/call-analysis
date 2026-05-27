@@ -1,9 +1,10 @@
 import dashboard from './dashboard';
 
-// ==============================|| MENU ITEMS ||============================== //
+const user = JSON.parse(localStorage.getItem('authUser'));
+const role = user?.role || 'qa';
 
 const menuItems = {
-  items: [dashboard]
+  items: [dashboard(role)]
 };
 
 export default menuItems;

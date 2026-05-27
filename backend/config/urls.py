@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/accounts/', include('accounts.urls')),
     path('api/dashboard/', include('dashboard.urls')),
     path('api/reports/', include('reports.urls')),
+    path('api/logs/', include('logs.urls')),
 
     # Swagger / Redoc
     re_path(r'^docs/$', schema_view.with_ui('swagger', cache_timeout=0), name='swagger-ui'),

@@ -14,6 +14,7 @@ from .models import Report
 from .serializers import ReportSerializer, ReportGenerateSerializer
 from calls.pagination import LargeDataPagination
 from config.responses import success_response, error_response
+from logs.utils import create_log
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,13 @@ class ReportViewSet(viewsets.ModelViewSet):
         serializer.save()
         return success_response(serializer.data)
 
+    def destroy(self, request, *args, **kwargs):
+        """Delete a report and log the action."""
+        report = self.get_object()
+        report_id = report.id
+        create_log(request.user, 'delete_report', f'Deleted report #{report_id}')
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['post'], url_path='generate')
     def generate(self, request):
         """
@@ -176,6 +184,8 @@ class ReportViewSet(viewsets.ModelViewSet):
             sentiment_stats=sentiment_stats,
         )
 
+        create_log(request.user, 'generate_report', f'Generated report #{report.id} for period {period}')
+
         return success_response(ReportSerializer(report).data, status_code=201)
 
     @action(detail=True, methods=['post'], url_path='publish')
@@ -192,5 +202,11 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         report.status = 'published'
         report.save(update_fields=['status', 'updated_at'])
+
+        create_log(
+            request.user,
+            'publish_report',
+            f'Published report #{report.id}'
+        )
 
         return success_response(ReportSerializer(report).data)

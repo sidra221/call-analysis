@@ -78,6 +78,9 @@ class CallAnalysis(models.Model):
 
     detected_language = models.CharField(max_length=10, null=True, blank=True)
 
+    # ✅ حقل top_issues الجديد - يستخدم في تقارير Reports لعرض المشاكل المتكررة
+    top_issues = models.JSONField(default=list, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

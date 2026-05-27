@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'calls',
     'dashboard',
     'reports',
+    'logs',
 
     # Django default apps
     'django.contrib.admin',

@@ -11,6 +11,9 @@ const ReportsPage = Loadable(lazy(() => import('pages/Reports')));
 const ProfilePage = Loadable(lazy(() => import('pages/Profile')));
 const UsersPage = Loadable(lazy(() => import('pages/Users')));
 
+// Logs page فقط
+const LogsPage = Loadable(lazy(() => import('pages/Logs')));
+
 const MainRoutes = {
   path: '/',
   element: (
@@ -18,23 +21,39 @@ const MainRoutes = {
       <MainLayout />
     </ProtectedRoute>
   ),
+
   children: [
     {
       path: '/',
       element: <DashboardPage />
     },
+
     {
       path: 'dashboard',
       element: <DashboardPage />
     },
+
+    // ================= CALLS =================
     {
       path: 'calls',
-      element: <CallsPage />
+      element: (
+        <ProtectedRoute allowedRoles={['manager', 'qa']}>
+          <CallsPage />
+        </ProtectedRoute>
+      )
     },
+
+    // ================= FOLLOWUPS =================
     {
       path: 'followups',
-      element: <FollowupsPage />
+      element: (
+        <ProtectedRoute allowedRoles={['qa']}>
+          <FollowupsPage />
+        </ProtectedRoute>
+      )
     },
+
+    // ================= REPORTS =================
     {
       path: 'reports',
       element: (
@@ -43,10 +62,8 @@ const MainRoutes = {
         </ProtectedRoute>
       )
     },
-    {
-      path: 'profile',
-      element: <ProfilePage />
-    },
+
+    // ================= USERS =================
     {
       path: 'users',
       element: (
@@ -54,6 +71,22 @@ const MainRoutes = {
           <UsersPage />
         </ProtectedRoute>
       )
+    },
+
+    // ================= LOGS =================
+    {
+      path: 'logs',
+      element: (
+        <ProtectedRoute allowedRoles={['manager']}>
+          <LogsPage />
+        </ProtectedRoute>
+      )
+    },
+
+    // ================= PROFILE =================
+    {
+      path: 'profile',
+      element: <ProfilePage />
     }
   ]
 };

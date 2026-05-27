@@ -7,6 +7,7 @@ from .serializers import RegisterSerializer, UserListSerializer
 from .permissions import IsQA, IsManager, IsManagerOrQA
 from .models import UserProfile
 from config.responses import success_response, error_response
+from logs.utils import create_log
 
 
 class RegisterView(APIView):
@@ -15,7 +16,8 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            create_log(user, 'user_created', f'User {user.username} registered')
             return success_response({"message": "User registered successfully"}, status_code=201)
         return error_response(str(serializer.errors), code="validation_error", status_code=400)
 
@@ -24,7 +26,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        # Login using username directly (no email lookup needed)
         return super().post(request, *args, **kwargs)
 
 
@@ -80,7 +81,15 @@ class UserDeleteView(APIView):
         if user == request.user:
             return error_response("You cannot delete your own account", code="forbidden", status_code=400)
 
+        # Save username before deletion
+        username = user.username
+        
+        # Create log BEFORE deleting the user
+        create_log(request.user, 'user_deleted', f'Deleted user {username}')
+        
+        # Then delete the user
         user.delete()
+        
         from rest_framework import status
         from rest_framework.response import Response
         return Response(status=status.HTTP_204_NO_CONTENT)
