@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   IconEye, IconEdit, IconTrash, IconX, IconDots,
   IconRefresh, IconUpload, IconDeviceFloppy, IconCheck,
-  IconAdjustmentsHorizontal, IconSearch, IconTrashX
+  IconAdjustmentsHorizontal, IconSearch, IconTrashX,
+  IconArrowUp, IconArrowDown
 } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import {
@@ -12,7 +13,7 @@ import {
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
   Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Popover, Badge, Alert, Checkbox
+  DialogActions, Popover, Badge, Alert, Checkbox, Avatar
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
 import { callsApi } from 'api/api';
@@ -30,6 +31,12 @@ const sentimentColor = { positive: 'success', negative: 'error', neutral: 'defau
 const priorityColor = { high: 'error', medium: 'warning', low: 'success', critical: 'error' };
 const rowsPerPage = 6;
 
+const roleColors = {
+  manager: { bg: '#ede7f6', color: '#5e35b1' },
+  agent: { bg: '#e3f2fd', color: '#1e88e5' },
+  qa: { bg: '#fff3e0', color: '#ef6c00' }
+};
+
 export default function Calls() {
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
@@ -43,10 +50,14 @@ export default function Calls() {
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [sortByDate, setSortByDate] = useState('desc');
+  const [sortByUploader, setSortByUploader] = useState(null);
+
   const location = useLocation();
   const state = location.state;
   const wsRef = useRef(null);
   const pollRef = useRef(null);
+  const audioRef = useRef(null);
 
   const {
     calls, loading, error,
@@ -54,7 +65,6 @@ export default function Calls() {
     updateCallFromWebSocket, markReviewed, patchCall, removeCall
   } = useCallsStore();
 
-  // Stop polling helper
   const stopPolling = () => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -62,7 +72,6 @@ export default function Calls() {
     }
   };
 
-  // Finish processing — show 100% then close
   const finishProcessing = (callId) => {
     stopPolling();
     updateCallFromWebSocket(callId);
@@ -86,11 +95,11 @@ export default function Calls() {
           } else if (data.type === 'analysis_started') {
             setProcessingProgress(60);
           }
-        } catch { /* ignore parse errors */ }
+        } catch { }
       };
-      ws.onerror = () => { /* WebSocket failed — polling will handle it */ };
+      ws.onerror = () => { };
       wsRef.current = ws;
-    } catch { /* ignore WS errors */ }
+    } catch { }
   };
 
   const startPolling = (callId) => {
@@ -100,7 +109,6 @@ export default function Calls() {
 
     pollRef.current = setInterval(async () => {
       waited += 2;
-
       setProcessingProgress((prev) => Math.min(prev + 3, 90));
 
       try {
@@ -110,7 +118,7 @@ export default function Calls() {
           finishProcessing(callId);
           return;
         }
-      } catch { /* ignore polling errors */ }
+      } catch { }
 
       if (waited >= maxWait) {
         stopPolling();
@@ -122,33 +130,24 @@ export default function Calls() {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
-  
     if (!file) return;
-  
     setUploadError('');
-  
+
     try {
       setIsProcessing(true);
       setProcessingProgress(10);
-  
       const formData = new FormData();
       formData.append('audio_file', file);
-  
       const newCall = await uploadCall(formData);
-  
       setProcessingProgress(30);
-  
       const callId = newCall?.id || newCall?.call_id || newCall?.data?.id;
-  
       if (!callId) {
         throw new Error('Upload failed — no call ID returned');
       }
-  
       connectWebSocket(callId);
       await processCall(callId);
       setProcessingProgress(50);
       startPolling(callId);
-  
     } catch (err) {
       console.error('UPLOAD ERROR:', err);
       setUploadError(err?.response?.data?.message || err?.message || 'Upload failed');
@@ -156,10 +155,8 @@ export default function Calls() {
       setProcessingProgress(0);
       stopPolling();
     }
-  
     e.target.value = '';
   };
-  
 
   useEffect(() => {
     fetchCalls();
@@ -176,16 +173,21 @@ export default function Calls() {
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [callToDelete, setCallToDelete] = useState(null);
+  const [openViewDrawer, setOpenViewDrawer] = useState(false);
+  const [viewingCall, setViewingCall] = useState(null);
 
-  // دالة الحذف الفردي - باستخدام API مباشر
+  // Force reload audio when viewingCall changes
+  useEffect(() => {
+    if (audioRef.current && viewingCall) {
+      audioRef.current.load();
+    }
+  }, [viewingCall]);
+
   const handleDelete = async (id) => {
     setDeleting(true);
     try {
-      // استدعاء API الحذف مباشرة
       await callsApi.delete(id);
-      // تحديث القائمة محلياً
       setSelectedCalls(prev => prev.filter(cid => cid !== id));
-      // إعادة تحميل القائمة من الخادم
       await fetchCalls();
     } catch (err) {
       console.error('Delete failed:', err);
@@ -232,6 +234,10 @@ export default function Calls() {
   const [editablePriority, setEditablePriority] = useState('medium');
   const [editableKeywords, setEditableKeywords] = useState('');
 
+  const getUserRoleColor = (roleName) => {
+    return roleColors[roleName] || { bg: '#f5f5f5', color: '#757575' };
+  };
+
   const normalizedCalls = useMemo(() => {
     if (!Array.isArray(calls)) return [];
     return calls.map((call) => ({
@@ -245,6 +251,7 @@ export default function Calls() {
         ? call.analysis.keywords.join(', ')
         : '',
       uploadedBy: call.uploaded_by_username || '',
+      uploadedByRole: call.uploaded_by_role || 'agent',
       createdAt: call.created_at ? call.created_at.split('T')[0] : '',
       duration: call.duration
         ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`
@@ -253,7 +260,7 @@ export default function Calls() {
   }, [calls]);
 
   const filteredCalls = useMemo(() => {
-    return normalizedCalls.filter((call) => {
+    let result = normalizedCalls.filter((call) => {
       const searchStr = search.toLowerCase();
       const matchesSearch =
         String(call.id).toLowerCase().includes(searchStr) ||
@@ -278,10 +285,46 @@ export default function Calls() {
       }
 
       return matchesSearch && matchesStatus && matchesSentiment &&
-             matchesPriority && matchesReviewed && matchesDate;
+        matchesPriority && matchesReviewed && matchesDate;
     });
+
+    result = [...result].sort((a, b) => {
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      if (sortByDate === 'desc') {
+        return dateB - dateA;
+      } else {
+        return dateA - dateB;
+      }
+    });
+
+    if (sortByUploader === 'asc') {
+      result = [...result].sort((a, b) => a.uploadedBy.localeCompare(b.uploadedBy));
+    } else if (sortByUploader === 'desc') {
+      result = [...result].sort((a, b) => b.uploadedBy.localeCompare(a.uploadedBy));
+    }
+
+    return result;
   }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter,
-      startDate, endDate, normalizedCalls]);
+    startDate, endDate, normalizedCalls, sortByDate, sortByUploader]);
+
+  const toggleSortByDate = () => {
+    setSortByDate(prev => prev === 'desc' ? 'asc' : 'desc');
+    setSortByUploader(null);
+    setPage(0);
+  };
+
+  const toggleSortByUploader = () => {
+    if (sortByUploader === null) {
+      setSortByUploader('asc');
+    } else if (sortByUploader === 'asc') {
+      setSortByUploader('desc');
+    } else {
+      setSortByUploader(null);
+    }
+    setSortByDate('desc');
+    setPage(0);
+  };
 
   const openCallDrawer = (call, edit = false) => {
     setSelectedCall(call);
@@ -292,6 +335,11 @@ export default function Calls() {
     setEditableKeywords(call.keywords || '');
     setIsEditMode(edit);
     setOpenDrawer(true);
+  };
+
+  const openViewDrawerFunc = (call) => {
+    setViewingCall(call);
+    setOpenViewDrawer(true);
   };
 
   useEffect(() => {
@@ -337,6 +385,9 @@ export default function Calls() {
       if (selectedCall?.id === callId) {
         setSelectedCall((prev) => ({ ...prev, is_reviewed: true }));
       }
+      if (viewingCall?.id === callId) {
+        setViewingCall((prev) => ({ ...prev, is_reviewed: true }));
+      }
       await fetchCalls();
     } catch (err) {
       setUploadError(err.message || 'Mark reviewed failed');
@@ -354,12 +405,11 @@ export default function Calls() {
   };
 
   const handleSelectCall = (id) => {
-    setSelectedCalls((prev) => 
+    setSelectedCalls((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  // دالة الحذف الجماعي - باستخدام API مباشر
   const handleBulkDelete = async () => {
     if (selectedCalls.length === 0) return;
     setDeleting(true);
@@ -450,6 +500,8 @@ export default function Calls() {
                     setStatusFilter('all'); setSentimentFilter('all');
                     setPriorityFilter('all'); setReviewedFilter('all');
                     setStartDate(''); setEndDate('');
+                    setSortByDate('desc');
+                    setSortByUploader(null);
                   }}
                   sx={{ textTransform: 'none', fontWeight: 600 }}
                 >
@@ -459,7 +511,6 @@ export default function Calls() {
             )}
 
             <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-              {/* زر الحذف الجماعي يظهر على اليسار (أولاً) */}
               {isManager && selectedCalls.length > 0 && (
                 <Button
                   variant="contained"
@@ -472,8 +523,6 @@ export default function Calls() {
                   Delete ({selectedCalls.length})
                 </Button>
               )}
-              
-              {/* زر رفع المكالمة يبقى في مكانه */}
               <Button
                 variant="contained"
                 startIcon={<IconUpload size={18} />}
@@ -574,55 +623,100 @@ export default function Calls() {
                   <TableCell sx={{ width: 140 }}>Status</TableCell>
                   <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
                   <TableCell sx={{ width: 100, display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
-                  <TableCell sx={{ width: 140, display: { xs: 'none', lg: 'table-cell' } }}>Created At</TableCell>
+                  <TableCell sx={{ width: 140, display: { xs: 'none', lg: 'table-cell' } }}>
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <Typography variant="body2" fontWeight={600}>Created At</Typography>
+                      <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0 }}>
+                        {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
                   <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
-                  <TableCell sx={{ width: 150, display: { xs: 'none', lg: 'table-cell' } }}>Uploaded By</TableCell>
-                  <TableCell align="center" sx={{ width: 160 }}>Actions</TableCell>
+                  <TableCell sx={{ width: 180, display: { xs: 'none', lg: 'table-cell' } }}>
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <Typography variant="body2" fontWeight={600}>Uploaded By</Typography>
+                      <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0 }}>
+                        {sortByUploader === 'asc' ? <IconArrowUp size={16} /> :
+                          sortByUploader === 'desc' ? <IconArrowDown size={16} /> :
+                            <IconArrowUp size={16} style={{ opacity: 0.5 }} />}
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
+                  <TableCell align="center" sx={{ width: 120 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => (
-                  <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }} selected={selectedCalls.includes(call.id)}>
-                    {isManager && (
-                      <TableCell padding="checkbox">
-                        <Checkbox 
-                          checked={selectedCalls.includes(call.id)} 
-                          onChange={() => handleSelectCall(call.id)}
+                {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => {
+                  const roleColor = getUserRoleColor(call.uploadedByRole);
+                  return (
+                    <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }} selected={selectedCalls.includes(call.id)}>
+                      {isManager && (
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedCalls.includes(call.id)}
+                            onChange={() => handleSelectCall(call.id)}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        #{call.id}
+                      </TableCell>
+                      <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
+                      <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
+                      <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                        <Box component="span" sx={{ direction: 'ltr', unicodeBidi: 'isolate', display: 'inline-block', whiteSpace: 'nowrap' }}>
+                          {call.createdAt}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={call.is_reviewed ? 'Yes' : 'No'}
+                          color={call.is_reviewed ? 'success' : 'error'}
+                          size="small"
                         />
                       </TableCell>
-                    )}
-                    <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      #{call.id}
-                    </TableCell>
-                    <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
-                    <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
-                    <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
-                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
-                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                      <Box component="span" sx={{ direction: 'ltr', unicodeBidi: 'isolate', display: 'inline-block' }}>
-                        {call.createdAt}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={call.is_reviewed ? 'Yes' : 'No'}
-                        color={call.is_reviewed ? 'success' : 'error'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.uploadedBy}</TableCell>
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center">
-                        <IconButton size="small" onClick={() => openCallDrawer(call, false)} sx={{ color: '#673ab7' }}>
-                          <IconEye size={18} />
-                        </IconButton>
-                        <IconButton size="small" onClick={(e) => openMenu(e, call.id)} sx={{ color: '#1e88e5' }}>
-                          <IconDots size={18} />
-                        </IconButton>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Avatar
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              bgcolor: roleColor.bg,
+                              color: roleColor.color,
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            {call.uploadedBy?.[0]?.toUpperCase() || '?'}
+                          </Avatar>
+                          <Typography variant="body2">{call.uploadedBy}</Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Stack direction="row" spacing={1} justifyContent="center">
+                          <IconButton
+                            size="small"
+                            sx={{ color: '#0288d1' }}
+                            onClick={() => openViewDrawerFunc(call)}
+                            title="View Call"
+                          >
+                            <IconEye size={18} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => openCallDrawer(call, true)}
+                            title="Edit Call"
+                          >
+                            <IconEdit size={18} />
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {filteredCalls.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={isManager ? 10 : 9}>
@@ -650,25 +744,6 @@ export default function Calls() {
           </Box>
         </CardContent>
       </Card>
-
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-        <MenuItem onClick={() => {
-          const call = normalizedCalls.find((c) => c.id === menuCallId);
-          if (call) openCallDrawer(call, true);
-          closeMenu();
-        }}>
-          <ListItemIcon><IconEdit size={16} /></ListItemIcon>
-          <ListItemText>Edit</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => {
-          setCallToDelete(menuCallId);
-          setOpenDeleteDialog(true);
-          closeMenu();
-        }}>
-          <ListItemIcon><IconTrash size={16} /></ListItemIcon>
-          <ListItemText>Delete</ListItemText>
-        </MenuItem>
-      </Menu>
 
       <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}
         maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
@@ -704,52 +779,124 @@ export default function Calls() {
         </DialogActions>
       </Dialog>
 
-      <Backdrop
-        sx={{
-          color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1,
-          flexDirection: 'column', backdropFilter: 'blur(4px)',
-        }}
-        open={isProcessing}
-      >
-        <Card sx={{ p: 4, borderRadius: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
-          <Stack spacing={3} alignItems="center">
-            {processingProgress < 100 ? (
-              <>
-                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                  <CircularProgress
-                    variant="determinate"
-                    value={processingProgress}
-                    size={80} thickness={4}
-                    sx={{ color: 'primary.main' }}
-                  />
+      {/* ================================================================
+          View Call Drawer - مع Audio يعمل بشكل صحيح
+          ================================================================ */}
+      <Drawer anchor="right" open={openViewDrawer} onClose={() => setOpenViewDrawer(false)}>
+        <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
+          {viewingCall && (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{
-                    top: 0, left: 0, bottom: 0, right: 0, position: 'absolute',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '1rem' }}>
-                      {`${Math.round(processingProgress)}%`}
-                    </Typography>
-                  </Box>
+                    width: 10, height: 10, borderRadius: '50%',
+                    backgroundColor: (theme) => theme.palette[stateColor[viewingCall.status]]?.main || '#999'
+                  }} />
+                  <Typography variant="h5">Call #{viewingCall.id}</Typography>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>Processing...</Typography>
-              </>
-            ) : (
-              <>
-                <Box sx={{
-                  width: 90, height: 90, borderRadius: '50%', bgcolor: 'success.main',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <IconCheck size={50} stroke={3} />
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  Completed
-                </Typography>
-              </>
-            )}
-          </Stack>
-        </Card>
-      </Backdrop>
+                <IconButton onClick={() => setOpenViewDrawer(false)} size="small"><IconX size={18} /></IconButton>
+              </Box>
 
+              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">{viewingCall.createdAt}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Uploaded by <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {viewingCall.uploadedBy}
+                  </Box>
+                </Typography>
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Main Issue</Typography>
+              <Typography variant="body2" sx={{ mb: 3 }}>
+                {viewingCall.issue || '—'}
+              </Typography>
+
+              <Typography variant="subtitle1" gutterBottom>Analysis</Typography>
+              <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+                <Chip label={viewingCall.sentiment} color={sentimentColor[viewingCall.sentiment]} size="small" />
+                <Chip label={`${viewingCall.priority} Priority`} color={priorityColor[viewingCall.priority]} size="small" />
+              </Stack>
+
+              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>Keywords</Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3, gap: 1 }}>
+                {(viewingCall.keywords || '').split(',').filter(Boolean).map((k, i) => (
+                  <Chip key={i} label={k.trim()} size="small" color="primary" />
+                ))}
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
+              <TextField
+                fullWidth
+                multiline
+                minRows={4}
+                maxRows={8}
+                value={viewingCall.transcript || '—'}
+                InputProps={{ readOnly: true }}
+                variant="outlined"
+                size="small"
+                sx={{
+                  mb: 2,
+                  '& .MuiInputBase-input': {
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    lineHeight: 1.5
+                  }
+                }}
+              />
+
+              <Divider sx={{ my: 2 }} />
+
+              {/* Audio Player - Fixed with useRef */}
+              <Typography variant="subtitle1" gutterBottom>Audio</Typography>
+              <Box sx={{ mb: 2, width: '100%' }}>
+                {viewingCall.audio_file && (
+                  <audio
+                    ref={audioRef}
+                    controls
+                    preload="metadata"
+                    style={{ width: '100%', height: '40px', display: 'block' }}
+                    key={`audio-${viewingCall.id}`}
+                  >
+                    <source
+                      src={viewingCall.audio_file?.startsWith('http') ? viewingCall.audio_file : `${API_URL}${viewingCall.audio_file}`}
+                      type="audio/wav"
+                    />
+                    Your browser does not support the audio element.
+                  </audio>
+                )}
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" gutterBottom>Actions</Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                <Button variant="contained" size="small"
+                  onClick={() => navigate('/followups', {
+                    state: { openCreateFollowup: true, callId: viewingCall.id }
+                  })}>
+                  {isManager ? 'Assign Follow-up' : 'Needs Follow-up'}
+                </Button>
+                <Button
+                  variant={viewingCall.is_reviewed ? 'contained' : 'outlined'}
+                  size="small"
+                  color={viewingCall.is_reviewed ? 'success' : 'primary'}
+                  disabled={viewingCall.is_reviewed}
+                  onClick={() => handleMarkReviewed(viewingCall.id)}>
+                  {viewingCall.is_reviewed ? 'Reviewed ✓' : 'Mark Reviewed'}
+                </Button>
+              </Stack>
+            </>
+          )}
+        </Box>
+      </Drawer>
+
+      {/* ================================================================
+          Edit Call Drawer
+          ================================================================ */}
       <Drawer anchor="right" open={openDrawer} onClose={closeCallDrawer}>
         <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
           {selectedCall && (
@@ -820,9 +967,9 @@ export default function Calls() {
                   value={editableKeywords}
                   onChange={(e) => { setEditableKeywords(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
               ) : (
-                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3 }}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3, gap: 1 }}>
                   {(editableKeywords || '').split(',').filter(Boolean).map((k, i) => (
-                    <Chip key={i} label={k.trim()} size="small" />
+                    <Chip key={i} label={k.trim()} size="small" variant="outlined" />
                   ))}
                 </Stack>
               )}
@@ -836,9 +983,9 @@ export default function Calls() {
               <Divider sx={{ mb: 2 }} />
               <Typography variant="subtitle1" gutterBottom>Audio</Typography>
               <Box sx={{ mb: 2 }}>
-                <audio 
+                <audio
                   controls
-                  style={{ width: '100%' }} 
+                  style={{ width: '100%' }}
                   src={selectedCall.audio_file?.startsWith('http') ? selectedCall.audio_file : `${API_URL}${selectedCall.audio_file}`}
                 />
               </Box>
@@ -865,6 +1012,53 @@ export default function Calls() {
           )}
         </Box>
       </Drawer>
+
+      {/* Processing Backdrop */}
+      <Backdrop
+        sx={{
+          color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1,
+          flexDirection: 'column', backdropFilter: 'blur(4px)',
+        }}
+        open={isProcessing}
+      >
+        <Card sx={{ p: 4, borderRadius: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
+          <Stack spacing={3} alignItems="center">
+            {processingProgress < 100 ? (
+              <>
+                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                  <CircularProgress
+                    variant="determinate"
+                    value={processingProgress}
+                    size={80} thickness={4}
+                    sx={{ color: 'primary.main' }}
+                  />
+                  <Box sx={{
+                    top: 0, left: 0, bottom: 0, right: 0, position: 'absolute',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '1rem' }}>
+                      {`${Math.round(processingProgress)}%`}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>Processing...</Typography>
+              </>
+            ) : (
+              <>
+                <Box sx={{
+                  width: 90, height: 90, borderRadius: '50%', bgcolor: 'success.main',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <IconCheck size={50} stroke={3} />
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                  Completed
+                </Typography>
+              </>
+            )}
+          </Stack>
+        </Card>
+      </Backdrop>
     </>
   );
 }
