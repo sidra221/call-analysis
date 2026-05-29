@@ -9,6 +9,7 @@ from .views import (
     ManagerOnlyView,
     QAOnlyView,
     ManagerOrQAView,
+    UsersForFollowupsView,
 )
 
 urlpatterns = [
@@ -23,6 +24,9 @@ urlpatterns = [
     # Users management (Manager only)
     path('users/', UsersListView.as_view(), name='users-list'),
     path('users/<int:pk>/', UserDeleteView.as_view(), name='user-delete'),
+
+    # Users for followups (Manager and QA)
+    path('users-for-followups/', UsersForFollowupsView.as_view(), name='users-for-followups'),
 
     # Role-based test endpoints
     path('manager-only/', ManagerOnlyView.as_view(), name='manager-only'),

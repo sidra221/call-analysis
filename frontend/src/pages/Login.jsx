@@ -180,6 +180,9 @@ export default function Login() {
                 setUsername(e.target.value)
               }
               sx={{ mb: 3 }}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
             />
 
             {/* Password */}
@@ -198,6 +201,7 @@ export default function Login() {
                 setPassword(e.target.value)
               }
               sx={{ mb: 3 }}
+              autoComplete="new-password"
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">

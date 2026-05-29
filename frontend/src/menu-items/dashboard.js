@@ -20,6 +20,9 @@ const icons = {
 
 const dashboard = (role) => ({
   type: 'group',
+  id: 'dashboard-group',
+  // Remove or empty title to hide it
+  title: '',
 
   children:
     role === 'manager'
@@ -32,7 +35,6 @@ const dashboard = (role) => ({
             icon: icons.IconDashboard,
             breadcrumbs: false
           },
-
           {
             id: 'calls',
             title: 'Calls',
@@ -41,7 +43,6 @@ const dashboard = (role) => ({
             icon: icons.IconPhone,
             breadcrumbs: false
           },
-
           {
             id: 'reports',
             title: 'Published Reports',
@@ -50,7 +51,6 @@ const dashboard = (role) => ({
             icon: icons.IconReportAnalytics,
             breadcrumbs: false
           },
-
           {
             id: 'logs',
             title: 'Logs',
@@ -59,7 +59,6 @@ const dashboard = (role) => ({
             icon: icons.IconClipboardList,
             breadcrumbs: false
           },
-
           {
             id: 'users',
             title: 'Users',
@@ -68,7 +67,6 @@ const dashboard = (role) => ({
             icon: icons.IconUsers,
             breadcrumbs: false
           },
-
           {
             id: 'profile',
             title: 'Profile',
@@ -87,7 +85,6 @@ const dashboard = (role) => ({
             icon: icons.IconDashboard,
             breadcrumbs: false
           },
-
           {
             id: 'calls',
             title: 'Calls',
@@ -96,7 +93,6 @@ const dashboard = (role) => ({
             icon: icons.IconPhone,
             breadcrumbs: false
           },
-
           {
             id: 'followups',
             title: 'Follow-ups',
@@ -105,7 +101,6 @@ const dashboard = (role) => ({
             icon: icons.IconRefresh,
             breadcrumbs: false
           },
-
           {
             id: 'reports',
             title: 'Reports',
@@ -114,7 +109,6 @@ const dashboard = (role) => ({
             icon: icons.IconReportAnalytics,
             breadcrumbs: false
           },
-
           {
             id: 'profile',
             title: 'Profile',

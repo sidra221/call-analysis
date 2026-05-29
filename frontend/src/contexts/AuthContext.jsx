@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ========================================
-  // Login
+  // Login - Using original endpoint
   // ========================================
 
   const login = useCallback(async ({ username, password }) => {
@@ -77,18 +77,14 @@ export function AuthProvider({ children }) {
     );
 
     if (!tokenResponse.ok) {
-      throw new Error('Invalid username or password');
+      const errorData = await tokenResponse.json();
+      throw new Error(errorData?.detail || 'Invalid username or password');
     }
 
     const tokenData = await tokenResponse.json();
 
-    const access =
-      tokenData?.access ||
-      tokenData?.data?.access;
-
-    const refresh =
-      tokenData?.refresh ||
-      tokenData?.data?.refresh;
+    const access = tokenData?.access;
+    const refresh = tokenData?.refresh;
 
     if (!access) {
       throw new Error('Login failed');
@@ -117,14 +113,10 @@ export function AuthProvider({ children }) {
 
     const meData = await meResponse.json();
 
-    const userData =
-      meData?.data || meData;
+    const userData = meData?.data || meData;
 
     // Save user
-    localStorage.setItem(
-      'authUser',
-      JSON.stringify(userData)
-    );
+    localStorage.setItem('authUser', JSON.stringify(userData));
 
     setUser(userData);
     setIsLoggedIn(true);
@@ -173,18 +165,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ========================================
-  // Logout
+  // Logout - Force reload to clear all state
   // ========================================
-
   const logout = useCallback(() => {
-
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('authUser');
-
+  
     setUser(null);
     setIsLoggedIn(false);
-
+    
+    // Force reload to clear all routes and state
+    window.location.href = '/login';
   }, []);
 
   // ========================================
@@ -221,9 +213,7 @@ export function AuthProvider({ children }) {
 
     const data = await response.json();
 
-    const access =
-      data?.access ||
-      data?.data?.access;
+    const access = data?.access;
 
     if (!access) {
       logout();

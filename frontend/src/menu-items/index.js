@@ -1,10 +1,12 @@
 import dashboard from './dashboard';
 
-const user = JSON.parse(localStorage.getItem('authUser'));
-const role = user?.role || 'qa';
-
-const menuItems = {
-  items: [dashboard(role)]
+// Export as function instead of object
+const getMenuItems = (user) => {
+  const role = user?.role || 'qa';
+  
+  return {
+    items: [dashboard(role)]
+  };
 };
 
-export default menuItems;
+export default getMenuItems;

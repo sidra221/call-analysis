@@ -12,11 +12,13 @@ import NavCollapse from '../NavCollapse';
 import NavItem from '../NavItem';
 
 import { useGetMenuMaster } from 'api/menu';
+import useAuth from 'hooks/useAuth';
 
 // ==============================|| SIDEBAR MENU LIST GROUP ||============================== //
 
 export default function NavGroup({ item, lastItem, remItems, lastItemId, setSelectedID }) {
   const { pathname } = useLocation();
+  const { user } = useAuth(); // Add this
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
@@ -25,6 +27,11 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
   const [currentItem, setCurrentItem] = useState(item);
 
   const openMini = Boolean(anchorEl);
+
+  // Force re-initialize when user changes
+  useEffect(() => {
+    setCurrentItem(item);
+  }, [item, user?.id, user?.role]); // Add user dependency
 
   useEffect(() => {
     if (lastItem) {
@@ -37,7 +44,7 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
         setCurrentItem(item);
       }
     }
-  }, [item, lastItem, remItems, lastItemId]);
+  }, [item, lastItem, remItems, lastItemId, user?.id]); // Add user dependency
 
   const checkOpenForParent = (child, id) => {
     child.forEach((ele) => {
@@ -71,15 +78,15 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
     checkSelectedOnload(currentItem);
     if (openMini) setAnchorEl(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, currentItem]);
+  }, [pathname, currentItem, user?.id]); // Add user dependency
 
   // menu list collapse & items
   const items = currentItem.children?.map((menu) => {
     switch (menu?.type) {
       case 'collapse':
-        return <NavCollapse key={menu.id} menu={menu} level={1} parentId={currentItem.id} />;
+        return <NavCollapse key={`${menu.id}-${user?.id || 'guest'}`} menu={menu} level={1} parentId={currentItem.id} />;
       case 'item':
-        return <NavItem key={menu.id} item={menu} level={1} />;
+        return <NavItem key={`${menu.id}-${user?.id || 'guest'}`} item={menu} level={1} />;
       default:
         return (
           <Typography key={menu?.id} variant="h6" align="center" sx={{ color: 'error.main' }}>
@@ -131,8 +138,6 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
       >
         {items}
       </List>
-
-    
     </>
   );
 }

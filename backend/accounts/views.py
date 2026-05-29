@@ -127,3 +127,23 @@ class ManagerOrQAView(APIView):
             "user": request.user.username,
             "role": profile.role,
         })
+
+
+class UsersForFollowupsView(APIView):
+    """
+    Returns list of users (agents and managers) for follow-up assignment.
+    Accessible by QA and Manager.
+    GET /api/accounts/users-for-followups/
+    """
+    permission_classes = [IsAuthenticated, IsManagerOrQA]
+
+    def get(self, request):
+        from django.contrib.auth.models import User
+        from .models import UserProfile
+        
+        users = User.objects.filter(
+            profile__role__in=['agent', 'manager']
+        ).select_related('profile').order_by('username')
+        
+        serializer = UserListSerializer(users, many=True)
+        return success_response(serializer.data)

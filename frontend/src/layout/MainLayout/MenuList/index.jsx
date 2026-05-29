@@ -1,4 +1,4 @@
-import { Activity, memo, useState } from 'react';
+import { Activity, memo, useState, useEffect, useMemo } from 'react';
 
 import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
@@ -8,17 +8,24 @@ import Box from '@mui/material/Box';
 // project imports
 import NavItem from './NavItem';
 import NavGroup from './NavGroup';
-import menuItems from 'menu-items';
+import getMenuItems from 'menu-items'; // function import
 
 import { useGetMenuMaster } from 'api/menu';
+import useAuth from 'hooks/useAuth';
 
 // ==============================|| SIDEBAR MENU LIST ||============================== //
 
 function MenuList() {
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
+  const { user } = useAuth();
 
   const [selectedID, setSelectedID] = useState('');
+
+  // Get fresh menu items based on current user
+  const menuItems = useMemo(() => {
+    return getMenuItems(user);
+  }, [user?.id, user?.role]);
 
   const lastItem = null;
 
@@ -29,7 +36,9 @@ function MenuList() {
   if (lastItem && lastItem < menuItems.items.length) {
     lastItemId = menuItems.items[lastItem - 1].id;
     lastItemIndex = lastItem - 1;
-    remItems = menuItems.items.slice(lastItem - 1, menuItems.items.length).map((item) => ({
+    remItems = menuItems.items.slice(lastItem - 1, menuItems.items.length).map((item, idx) => ({
+      ...item,
+      key: `${item.id}-${idx}`,
       title: item.title,
       elements: item.children,
       icon: item.icon,
@@ -44,7 +53,7 @@ function MenuList() {
       case 'group':
         if (item.url && item.id !== lastItemId) {
           return (
-            <List key={item.id}>
+            <List key={`${item.id}-${user?.id}`}>
               <NavItem item={item} level={1} isParents setSelectedID={() => setSelectedID('')} />
               <Activity mode={index !== 0 ? 'visible' : 'hidden'}>
                 <Divider sx={{ py: 0.5 }} />
@@ -55,7 +64,7 @@ function MenuList() {
 
         return (
           <NavGroup
-            key={item.id}
+            key={`${item.id}-${user?.id || 'guest'}`}
             setSelectedID={setSelectedID}
             selectedID={selectedID}
             item={item}

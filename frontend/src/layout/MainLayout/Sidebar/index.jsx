@@ -1,4 +1,5 @@
-import { memo, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Drawer from '@mui/material/Drawer';
@@ -10,12 +11,15 @@ import LogoSection from '../LogoSection';
 import MiniDrawerStyled from './MiniDrawerStyled';
 
 import useConfig from 'hooks/useConfig';
+import useAuth from 'hooks/useAuth';
 import { drawerWidth } from 'store/constant';
 import SimpleBar from 'ui-component/third-party/SimpleBar';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
 
 function Sidebar() {
+  const location = useLocation();
+  const { user } = useAuth(); // Add this
   const downMD = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   const { menuMaster } = useGetMenuMaster();
@@ -39,7 +43,8 @@ function Sidebar() {
       ? { paddingLeft: '16px', paddingRight: '16px', marginTop: '0px' }
       : { paddingLeft: '0px', paddingRight: '0px', marginTop: '20px' };
 
-    const content = <MenuList />;
+    // Add key to force re-render when user changes
+    const content = <MenuList key={user?.id || user?.role || 'guest'} />;
 
     return downMD ? (
       <Box sx={drawerSX}>{content}</Box>
@@ -48,7 +53,7 @@ function Sidebar() {
         {content}
       </SimpleBar>
     );
-  }, [downMD, drawerOpen]);
+  }, [downMD, drawerOpen, user?.id, user?.role]); // Add dependencies
 
   return (
     <Box component="nav" sx={{ flexShrink: { md: 0 }, width: { xs: 'auto', md: drawerWidth } }}>
@@ -85,4 +90,4 @@ function Sidebar() {
   );
 }
 
-export default memo(Sidebar);
+export default Sidebar;

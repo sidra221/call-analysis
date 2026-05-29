@@ -10,11 +10,28 @@ export default function ProtectedRoute({
 
   const {
     isLoggedIn,
-    user
+    user,
+    loading
   } = useAuth();
 
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
   // Redirect unauthenticated users
+
   if (!isLoggedIn) {
+    console.log('🔴 Not logged in, redirecting to /login');
     return (
       <Navigate
         to="/login"
@@ -23,6 +40,7 @@ export default function ProtectedRoute({
       />
     );
   }
+
 
   // Role-based protection
   if (
