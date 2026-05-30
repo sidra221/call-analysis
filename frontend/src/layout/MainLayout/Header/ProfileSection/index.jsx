@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // material-ui
@@ -20,10 +20,9 @@ import User1 from 'assets/images/users/user-round.svg';
 import {
   IconLogout,
   IconLanguage,
-  IconArrowLeft,
   IconMoon,
   IconSun,
-  IconUser
+  IconChevronRight
 } from '@tabler/icons-react';
 
 // hooks
@@ -44,14 +43,15 @@ export default function ProfileSection() {
   const { mode, setMode } = useColorScheme();
 
   const [anchorEl, setAnchorEl] = useState(null);
-  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const [languageAnchorEl, setLanguageAnchorEl] = useState(null);
 
   const open = Boolean(anchorEl);
+  const languageOpen = Boolean(languageAnchorEl);
 
-  // ─────────────────────────────────────
+  // Get username from user object
+  const displayName = user?.user || user?.username || 'User';
+
   // Dynamic avatar by role
-  // ─────────────────────────────────────
-
   const avatarSrc = useMemo(() => {
     const role = user?.role?.toLowerCase();
 
@@ -66,21 +66,24 @@ export default function ProfileSection() {
     return User1;
   }, [user]);
 
-  // ─────────────────────────────────────
-  // Apply default theme by role
-  // ─────────────────────────────────────
-
-  const applyRoleTheme = (role) => {
-    if (role === 'manager') {
-      setMode('light');
-    } else if (role === 'qa') {
-      setMode('dark');
-    }
+  // Get role color for avatar border
+  const getRoleColor = () => {
+    const role = user?.role?.toLowerCase();
+    if (role === 'manager') return '#5e35b1';
+    if (role === 'qa') return '#ef6c00';
+    return '#1e88e5';
   };
 
   const handleClose = () => {
     setAnchorEl(null);
-    setShowLanguageMenu(false);
+  };
+
+  const handleLanguageClose = () => {
+    setLanguageAnchorEl(null);
+  };
+
+  const handleLanguageClick = (event) => {
+    setLanguageAnchorEl(event.currentTarget);
   };
 
   return (
@@ -125,11 +128,11 @@ export default function ProfileSection() {
           },
 
           '&:hover .MuiAvatar-root': {
-            boxShadow: '0 0 8px 2px rgba(255, 193, 7, 0.7)'
+            boxShadow: '0 0 8px 2px rgba(30, 136, 229, 0.5)'
           },
 
           '&:active .MuiAvatar-root': {
-            boxShadow: '0 0 8px 2px rgba(255, 193, 7, 0.7)'
+            boxShadow: '0 0 8px 2px rgba(30, 136, 229, 0.5)'
           }
         }}
         icon={
@@ -143,108 +146,143 @@ export default function ProfileSection() {
         }
         label=""
         onClick={(event) => {
-          applyRoleTheme(user?.role?.toLowerCase());
           setAnchorEl(event.currentTarget);
         }}
       />
 
-      {/* Main Menu */}
+      {/* Profile Menu */}
       <Menu
-  anchorEl={anchorEl}
-  open={open}
-  onClose={handleClose}
-  PaperProps={{
-    sx: {
-      width: 220,
-      borderRadius: 3
-    }
-  }}
->
-  {!showLanguageMenu && (
-    [
-      <MenuItem key="profile-name" disabled>
-        <ListItemText
-          primary={user?.username || 'User'}
-          secondary={user?.role || ''}
-        />
-      </MenuItem>,
-
-      <MenuItem key="language" onClick={() => setShowLanguageMenu(true)}>
-        <ListItemIcon>
-          <IconLanguage size={18} />
-        </ListItemIcon>
-        <ListItemText>Language</ListItemText>
-      </MenuItem>,
-
-      <MenuItem key="theme">
-        <ListItemIcon>
-          {mode === 'dark' ? <IconMoon size={18} /> : <IconSun size={18} />}
-        </ListItemIcon>
-
-        <ListItemText>
-          {mode === 'dark' ? 'Dark Mode' : 'Light Mode'}
-        </ListItemText>
-
-        <Switch
-          checked={mode === 'dark'}
-          onChange={() =>
-            setMode(mode === 'light' ? 'dark' : 'light')
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        PaperProps={{
+          sx: {
+            width: 260,
+            borderRadius: 3,
+            mt: 1
           }
-        />
-      </MenuItem>,
-
-      <MenuItem
-        key="logout"
-        onClick={() => {
-          handleClose();
-          logout();
-          navigate('/login');
         }}
       >
-        <ListItemIcon>
-          <IconLogout size={18} />
-        </ListItemIcon>
+        {/* User Info Section */}
+        <Box sx={{ px: 2, py: 2, textAlign: 'center' }}>
+          <Avatar
+            src={avatarSrc}
+            alt={displayName}
+            sx={{
+              width: 60,
+              height: 60,
+              mx: 'auto',
+              mb: 1,
+              border: `2px solid ${getRoleColor()}`
+            }}
+          />
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {displayName}
+          </Typography>
+          <Chip
+            label={user?.role?.toUpperCase() || 'Unknown'}
+            size="small"
+            sx={{
+              mt: 1,
+              bgcolor: user?.role === 'manager' ? '#ede7f6' : user?.role === 'qa' ? '#fff3e0' : '#e3f2fd',
+              color: user?.role === 'manager' ? '#5e35b1' : user?.role === 'qa' ? '#ef6c00' : '#1e88e5',
+              fontWeight: 600
+            }}
+          />
+        </Box>
 
-        <ListItemText>Logout</ListItemText>
-      </MenuItem>
-    ]
-  )}
+        <Divider />
 
-  {showLanguageMenu && (
-    [
-      <MenuItem
-        key="back"
-        onClick={() => setShowLanguageMenu(false)}
-      >
-        <ListItemIcon>
-          <IconArrowLeft size={18} />
-        </ListItemIcon>
+        {/* Language Option with chevron - opens separate menu */}
+        <MenuItem 
+          onClick={handleLanguageClick}
+          sx={{ py: 1.5 }}
+        >
+          <ListItemIcon>
+            <IconLanguage size={18} />
+          </ListItemIcon>
+          <ListItemText primary="Language" />
+          <IconChevronRight size={16} />
+        </MenuItem>
 
-        <ListItemText>Back</ListItemText>
-      </MenuItem>,
+        {/* Dark Mode Option */}
+        <MenuItem sx={{ py: 1.5 }}>
+          <ListItemIcon>
+            {mode === 'dark' ? <IconMoon size={18} /> : <IconSun size={18} />}
+          </ListItemIcon>
+          <ListItemText primary={mode === 'dark' ? 'Dark Mode' : 'Light Mode'} />
+          <Switch
+            checked={mode === 'dark'}
+            onChange={() => setMode(mode === 'light' ? 'dark' : 'light')}
+            size="small"
+          />
+        </MenuItem>
 
-      <MenuItem
-        key="ar"
-        onClick={() => {
-          setField('language', 'ar');
-          handleClose();
+        <Divider />
+
+        {/* Logout Option */}
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            logout();
+            navigate('/login');
+          }}
+          sx={{ color: 'error.main', py: 1.5 }}
+        >
+          <ListItemIcon>
+            <IconLogout size={18} color="currentColor" />
+          </ListItemIcon>
+          <ListItemText primary="Logout" />
+        </MenuItem>
+      </Menu>
+
+      {/* Language Submenu - appears as nested menu */}
+      <Menu
+        anchorEl={languageAnchorEl}
+        open={languageOpen}
+        onClose={handleLanguageClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right'
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left'
+        }}
+        PaperProps={{
+          sx: {
+            width: 160,
+            borderRadius: 3
+          }
         }}
       >
-        <ListItemText>العربية</ListItemText>
-      </MenuItem>,
-
-      <MenuItem
-        key="en"
-        onClick={() => {
-          setField('language', 'en');
-          handleClose();
-        }}
-      >
-        <ListItemText>English</ListItemText>
-      </MenuItem>
-    ]
-  )}
-</Menu>
+        <MenuItem
+          onClick={() => {
+            setField('language', 'en');
+            handleLanguageClose();
+            handleClose();
+          }}
+          sx={{ justifyContent: 'space-between', py: 1.5 }}
+        >
+          English
+          {language === 'en' && (
+            <Typography variant="caption" color="primary.main">✓</Typography>
+          )}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setField('language', 'ar');
+            handleLanguageClose();
+            handleClose();
+          }}
+          sx={{ justifyContent: 'space-between', py: 1.5 }}
+        >
+          العربية
+          {language === 'ar' && (
+            <Typography variant="caption" color="primary.main">✓</Typography>
+          )}
+        </MenuItem>
+      </Menu>
     </>
   );
 }
