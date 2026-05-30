@@ -308,6 +308,36 @@ export default function Calls() {
   }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter,
     startDate, endDate, normalizedCalls, sortByDate, sortByUploader]);
 
+  // Apply filter from navigation state (from Dashboard)
+  useEffect(() => {
+    const filter = state?.filter;
+    const filterValue = state?.value;
+    
+    if (filter && filterValue) {
+      // Reset all filters first
+      setStatusFilter('all');
+      setSentimentFilter('all');
+      setPriorityFilter('all');
+      setReviewedFilter('all');
+      setSearch('');
+      setStartDate('');
+      setEndDate('');
+      
+      // Apply the specific filter
+      if (filter === 'priority') {
+        setPriorityFilter(filterValue);
+      } else if (filter === 'sentiment') {
+        setSentimentFilter(filterValue);
+      } else if (filter === 'needs_followup') {
+        setReviewedFilter(filterValue === 'true' ? 'No' : 'all');
+      } else if (filter === 'issue') {
+        setSearch(filterValue);
+      }
+      // Clear the state after applying to avoid re-applying on re-render
+      window.history.replaceState({}, document.title);
+    }
+  }, [state]);
+
   const toggleSortByDate = () => {
     setSortByDate(prev => prev === 'desc' ? 'asc' : 'desc');
     setSortByUploader(null);
@@ -780,7 +810,7 @@ export default function Calls() {
       </Dialog>
 
       {/* ================================================================
-          View Call Drawer - مع Audio يعمل بشكل صحيح
+          View Call Drawer
           ================================================================ */}
       <Drawer anchor="right" open={openViewDrawer} onClose={() => setOpenViewDrawer(false)}>
         <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
@@ -850,7 +880,6 @@ export default function Calls() {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Audio Player - Fixed with useRef */}
               <Typography variant="subtitle1" gutterBottom>Audio</Typography>
               <Box sx={{ mb: 2, width: '100%' }}>
                 {viewingCall.audio_file && (

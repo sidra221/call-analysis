@@ -87,9 +87,10 @@ class DashboardSummaryView(APIView):
         negative_count = sentiment_dict.get('negative', 0)
         neutral_count = sentiment_dict.get('neutral', 0)
 
-        # --- Priority distribution ---
+        # --- Priority distribution (including critical) ---
         priority_stats = CallAnalysis.objects.values('priority').annotate(count=Count('id'))
         priority_dict = {item['priority']: item['count'] for item in priority_stats}
+        critical_priority = priority_dict.get('critical', 0)  # Added critical
         high_priority = priority_dict.get('high', 0)
         medium_priority = priority_dict.get('medium', 0)
         low_priority = priority_dict.get('low', 0)
@@ -136,10 +137,11 @@ class DashboardSummaryView(APIView):
                 'average_score': round(avg_sentiment_score, 2),
             },
             'priority': {
+                'critical': critical_priority,  # Added critical
                 'high': high_priority,
                 'medium': medium_priority,
                 'low': low_priority,
-                'total': high_priority + medium_priority + low_priority,
+                'total': critical_priority + high_priority + medium_priority + low_priority,
             },
             'follow_ups': {
                 'needs_followup': needs_followup,
