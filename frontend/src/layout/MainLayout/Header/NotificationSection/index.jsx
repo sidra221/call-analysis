@@ -18,6 +18,8 @@ import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import CircularProgress from '@mui/material/CircularProgress';
+
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import Transitions from 'ui-component/extended/Transitions';
@@ -26,48 +28,222 @@ import NotificationList from './NotificationList';
 // assets
 import { IconBell } from '@tabler/icons-react';
 
+// API
+import { callsApi, followupsApi, reportsApi } from 'api/api';
+import useAuth from 'hooks/useAuth';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 export default function NotificationSection() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
+  const { user } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
 
   const anchorRef = useRef(null);
+  let intervalRef = useRef(null);
 
-  // 🔥 Notifications State
-const [notifications, setNotifications] = useState([
-  {
-    id: 1,
-    user: 'frankie',
-    text: 'started following your workspace',
-    time: '2 hours ago',
-    unread: true
-  },
-  
-  {
-    id: 3,
-    user: 'eleanor_mac',
-    text: 'reviewed a call transcript',
-    time: '3 hours ago',
-    unread: false
-  },
-  {
-    id: 4,
-    user: 'ollie_diggs',
-    text: 'invited you to join the Admin Dashboard',
-    type: 'invite',
-    time: '4 hours ago',
-    unread: false
-  },
-  {
-    id: 5,
-    user: 'system',
-    text: 'new call recording has been processed successfully',
-    time: '5 hours ago',
-    unread: true
-  }
-]);
+  // Helper: time ago formatter
+  const timeAgo = (dateString) => {
+    if (!dateString) return 'unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffSecs < 60) return 'just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Check if notification was already read (store in localStorage)
+  const isUnread = (type, id) => {
+    const readKey = `read_${type}_${id}`;
+    return !localStorage.getItem(readKey);
+  };
+
+  const markAsRead = (type, id) => {
+    const readKey = `read_${type}_${id}`;
+    localStorage.setItem(readKey, 'true');
+  };
+
+  // Get current username from localStorage
+  const getCurrentUsername = () => {
+    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+    return authUser?.user || authUser?.username || user?.user || user?.username;
+  };
+
+  // Fetch real notifications from API
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const newNotifications = [];
+      const currentUser = getCurrentUsername();
+      const currentRole = user?.role;
+
+      // 1. Get recent calls (last 24 hours) - PUBLIC (show to everyone)
+      const callsRes = await callsApi.list();
+      const recentCalls = (callsRes?.results || []).filter(call => {
+        const callDate = new Date(call.created_at);
+        const hoursAgo = (new Date() - callDate) / (1000 * 60 * 60);
+        return hoursAgo <= 24 && call.status === 'completed';
+      });
+
+      recentCalls.forEach(call => {
+        newNotifications.push({
+          id: `call-${call.id}`,
+          user: call.uploaded_by_username || 'System',
+          text: `uploaded a new call #${call.id}`,
+          time: timeAgo(call.created_at),
+          createdAt: new Date(call.created_at).getTime(),
+          unread: isUnread('call', call.id),
+          type: 'call',
+          link: `/calls`,
+          callId: call.id
+        });
+      });
+
+      // 2. Get followups assigned to current user - PRIVATE (only for assigned user)
+      const followupsRes = await followupsApi.list();
+      const assignedFollowups = (followupsRes?.results || []).filter(
+        f => f.assigned_to_username === currentUser
+      );
+
+      assignedFollowups.forEach(followup => {
+        newNotifications.push({
+          id: `followup-${followup.id}`,
+          user: 'System',
+          text: `You have a follow-up assigned for call #${followup.call_id}`,
+          time: timeAgo(followup.created_at),
+          createdAt: new Date(followup.created_at).getTime(),
+          unread: isUnread('followup', followup.id),
+          type: 'followup',
+          link: `/followups`,
+          followupId: followup.id,
+          private: true
+        });
+      });
+
+      // 3. Get followup status changes - PRIVATE (only for assigned user)
+      const followupsForChanges = await followupsApi.list();
+      const recentFollowupChanges = (followupsForChanges?.results || []).filter(f => {
+        const updateDate = new Date(f.updated_at);
+        const hoursAgo = (new Date() - updateDate) / (1000 * 60 * 60);
+        return hoursAgo <= 24 && f.assigned_to_username === currentUser && f.updated_at !== f.created_at;
+      });
+
+      recentFollowupChanges.forEach(followup => {
+        const statusText = followup.status === 'done' ? 'completed' : `updated to ${followup.status}`;
+        newNotifications.push({
+          id: `followup-status-${followup.id}-${followup.updated_at}`,
+          user: followup.updated_by_username || 'Someone',
+          text: `changed status of your follow-up for call #${followup.call_id} to ${statusText}`,
+          time: timeAgo(followup.updated_at),
+          createdAt: new Date(followup.updated_at).getTime(),
+          unread: isUnread('followup-status', `${followup.id}-${followup.updated_at}`),
+          type: 'followup-status',
+          link: `/followups`,
+          followupId: followup.id,
+          private: true
+        });
+      });
+
+      // 4. Get published reports - ONLY FOR MANAGER (QA publishes, Manager reviews)
+      const reportsRes = await reportsApi.list();
+      const recentReports = (reportsRes?.results || []).filter(report => {
+        const reportDate = new Date(report.created_at);
+        const hoursAgo = (new Date() - reportDate) / (1000 * 60 * 60);
+        return hoursAgo <= 168 && report.status === 'published' && currentRole === 'manager';
+      });
+
+      recentReports.forEach(report => {
+        newNotifications.push({
+          id: `report-${report.id}`,
+          user: report.created_by_username || 'QA',
+          text: `published a new report "${report.period || 'Report'}"`,
+          time: timeAgo(report.created_at),
+          createdAt: new Date(report.created_at).getTime(),
+          unread: isUnread('report', report.id),
+          type: 'report',
+          link: `/reports`,
+          reportId: report.id
+        });
+      });
+
+      // 5. Get report reviews/updates - PRIVATE (only for report creator - QA)
+      const reportsForReviews = await reportsApi.list();
+      const recentReportUpdates = (reportsForReviews?.results || []).filter(report => {
+        const updateDate = new Date(report.updated_at);
+        const hoursAgo = (new Date() - updateDate) / (1000 * 60 * 60);
+        return hoursAgo <= 48 && 
+               report.updated_at !== report.created_at && 
+               report.created_by_username === currentUser &&
+               report.status === 'published' &&
+               currentRole === 'qa';
+      });
+
+      recentReportUpdates.forEach(report => {
+        newNotifications.push({
+          id: `report-review-${report.id}-${report.updated_at}`,
+          user: 'Manager',
+          text: `reviewed your report "${report.period || 'Report'}"`,
+          time: timeAgo(report.updated_at),
+          createdAt: new Date(report.updated_at).getTime(),
+          unread: isUnread('report-review', `${report.id}-${report.updated_at}`),
+          type: 'report-review',
+          link: `/reports`,
+          reportId: report.id,
+          private: true
+        });
+      });
+
+      // Sort by createdAt (newest first)
+      newNotifications.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      setNotifications(newNotifications.slice(0, 30));
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAllRead = () => {
+    notifications.forEach(notif => {
+      const idParts = notif.id.split('-');
+      const type = notif.type;
+      let id;
+      if (type === 'followup-status' || type === 'report-review') {
+        id = notif.id.split('-')[2] + '-' + notif.id.split('-')[3];
+      } else {
+        id = idParts[1];
+      }
+      markAsRead(type, id);
+    });
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    fetchNotifications();
+    
+    intervalRef.current = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [user]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -78,10 +254,6 @@ const [notifications, setNotifications] = useState([
     setOpen(false);
   };
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
-  };
-
   const prevOpen = useRef(open);
   useEffect(() => {
     if (prevOpen.current === true && open === false) {
@@ -90,11 +262,10 @@ const [notifications, setNotifications] = useState([
     prevOpen.current = open;
   }, [open]);
 
-  // 🔥 filter حسب التاب
-  const filteredNotifications =
-    tab === 'unread'
-      ? notifications.filter((n) => n.unread)
-      : notifications;
+  // Filter by tab
+  const filteredNotifications = Array.isArray(notifications)
+    ? (tab === 'unread' ? notifications.filter((n) => n.unread) : notifications)
+    : [];
 
   return (
     <>
@@ -102,24 +273,21 @@ const [notifications, setNotifications] = useState([
       <Box sx={{ ml: 2 }}>
         <Badge badgeContent={unreadCount} color="error">
           <Avatar
-  variant="rounded"
-  sx={{
-    ...theme.typography.commonAvatar,
-    ...theme.typography.mediumAvatar,
-    cursor: 'pointer',
-
-    color: '#1e88e5',                // لون الأيقونة
-    backgroundColor: '#e3f2fd',      // اللون العادي
-
-    transition: 'all 0.2s ease-in-out',
-
-    '&:hover': {
-      color: '#e3f2fd',
-      backgroundColor: '#1e88e5'
-    }
-  }}
-  ref={anchorRef}
-  onClick={handleToggle}
+            variant="rounded"
+            sx={{
+              ...theme.typography.commonAvatar,
+              ...theme.typography.mediumAvatar,
+              cursor: 'pointer',
+              color: '#1e88e5',
+              backgroundColor: '#e3f2fd',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                color: '#e3f2fd',
+                backgroundColor: '#1e88e5'
+              }
+            }}
+            ref={anchorRef}
+            onClick={handleToggle}
           >
             <IconBell stroke={1.5} size="20px" />
           </Avatar>
@@ -138,21 +306,20 @@ const [notifications, setNotifications] = useState([
           <ClickAwayListener onClickAway={handleClose}>
             <Transitions in={open} {...TransitionProps}>
               <Paper>
-<MainCard
- border={false}
-  content={false}
-  sx={{
-    width: 360,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0px 8px 24px rgba(0,0,0,0.20)',
-    
-    '&:hover': {
-      boxShadow: '0px 8px 24px rgba(0,0,0,0.20)' // 🔥 يثبت الشادو
-    }
-  }}
->
+                <MainCard
+                  border={false}
+                  content={false}
+                  sx={{
+                    width: 360,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxShadow: '0px 8px 24px rgba(0,0,0,0.20)',
+                    '&:hover': {
+                      boxShadow: '0px 8px 24px rgba(0,0,0,0.20)'
+                    }
+                  }}
+                >
                   <Stack>
 
                     {/* HEADER */}
@@ -160,23 +327,23 @@ const [notifications, setNotifications] = useState([
                       <Typography variant="h6">
                         Your notifications
                       </Typography>
-<Typography
-  sx={{
-    cursor: 'pointer',
-    color: 'primary.main',
-    fontSize: 13,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 0.5,
-    '&:hover': {
-      opacity: 0.8
-    }
-  }}
-  onClick={markAllRead}
->
-  <DoneAllIcon sx={{ fontSize: 18 }} />
-  Mark all as read
-</Typography>
+                      <Typography
+                        sx={{
+                          cursor: 'pointer',
+                          color: 'primary.main',
+                          fontSize: 13,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          '&:hover': {
+                            opacity: 0.8
+                          }
+                        }}
+                        onClick={markAllRead}
+                      >
+                        <DoneAllIcon sx={{ fontSize: 18 }} />
+                        Mark all as read
+                      </Typography>
                     </Stack>
 
                     {/* TABS */}
@@ -193,23 +360,30 @@ const [notifications, setNotifications] = useState([
 
                     {/* LIST */}
                     <Box
-  sx={{
-    maxHeight: 400,
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    '&::-webkit-scrollbar': {
-      width: 6
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      borderRadius: 3
-    }
-  }}
->
-                      <NotificationList
-                        notifications={filteredNotifications}
-                        setNotifications={setNotifications}
-                      />
+                      sx={{
+                        maxHeight: 400,
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        '&::-webkit-scrollbar': {
+                          width: 6
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          backgroundColor: 'rgba(0,0,0,0.2)',
+                          borderRadius: 3
+                        }
+                      }}
+                    >
+                      {loading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                          <CircularProgress size={32} />
+                        </Box>
+                      ) : (
+                        <NotificationList
+                          notifications={filteredNotifications}
+                          setNotifications={setNotifications}
+                          onMarkAsRead={markAsRead}
+                        />
+                      )}
                     </Box>
 
                   </Stack>
