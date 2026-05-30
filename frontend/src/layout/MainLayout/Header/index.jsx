@@ -6,7 +6,6 @@ import Box from '@mui/material/Box';
 
 // project imports
 import LogoSection from '../LogoSection';
-import SearchSection from './SearchSection';
 import ProfileSection from './ProfileSection';
 import NotificationSection from './NotificationSection';
 import useConfig from 'hooks/useConfig';
@@ -15,8 +14,6 @@ import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
 
 // assets
 import { IconMenu2 } from '@tabler/icons-react';
-
-// ==============================|| MAIN NAVBAR / HEADER ||============================== //
 
 export default function Header() {
   const theme = useTheme();
@@ -29,10 +26,7 @@ export default function Header() {
   return (
     <>
       {/* logo & toggler button */}
-      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex', mr: language === 'ar' ? 0 : 2, ml: language === 'ar' ? 2 : 0 }}>
-        <Box component="span" sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
-          <LogoSection />
-        </Box>
+      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex', alignItems: 'center', mr: language === 'ar' ? 0 : 2, ml: language === 'ar' ? 2 : 0 }}>
         <Avatar
           variant="rounded"
           sx={{
@@ -51,11 +45,11 @@ export default function Header() {
         >
           <IconMenu2 stroke={1.5} size="20px" />
         </Avatar>
+        <Box component="span" sx={{ ml: 2, display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
+          <LogoSection />
+        </Box>
       </Box>
 
-      {/* header search */}
-      <SearchSection />
-      <Box sx={{ flexGrow: 1 }} />
       <Box sx={{ flexGrow: 1 }} />
 
       {/* notification */}

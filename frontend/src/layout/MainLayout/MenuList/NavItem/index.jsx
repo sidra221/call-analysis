@@ -45,7 +45,7 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
   useEffect(() => {
     compareSize();
     window.addEventListener('resize', compareSize);
-    window.removeEventListener('resize', compareSize);
+    return () => window.removeEventListener('resize', compareSize);
   }, []);
 
   const Icon = item?.icon;
@@ -68,58 +68,80 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
     }
   };
 
+  // Show tooltip when sidebar is closed (mini drawer)
+  const showTooltip = !drawerOpen;
+
   return (
     <>
-      <ListItemButton
-        component={Link}
-        to={item.url}
-        target={itemTarget}
-        disabled={item.disabled}
-        disableRipple={!drawerOpen}
-        sx={{
-          zIndex: 1201,
-          borderRadius: `${borderRadius}px`,
-          mb: 0.5,
-          ...(drawerOpen && level !== 1 && { ml: `${level * 18}px` }),
-          ...(!drawerOpen && { pl: 1.25 }),
-          ...((!drawerOpen || level !== 1) && {
-            py: level === 1 ? 0 : 1,
-            '&:hover': { bgcolor: 'transparent' },
-            '&.Mui-selected': {
-              '&:hover': { bgcolor: 'transparent' },
-              bgcolor: 'transparent'
+      <Tooltip
+        title={item.title}
+        placement="right"
+        arrow
+        disableHoverListener={!showTooltip}
+        PopperProps={{
+          sx: {
+            '& .MuiTooltip-tooltip': {
+              backgroundColor: theme.vars.palette.grey[500],
+              color: theme.vars.palette.common.white,
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              padding: '6px 12px'
+            },
+            '& .MuiTooltip-arrow': {
+              color: theme.vars.palette.grey[500]
             }
-          })
+          }
         }}
-        selected={isSelected}
-        onClick={() => itemHandler()}
       >
-        <ButtonBase aria-label="theme-icon" sx={{ borderRadius: `${borderRadius}px` }} disableRipple={drawerOpen}>
-          <ListItemIcon
-            sx={{
-              minWidth: level === 1 ? 36 : 18,
-              color: isSelected ? 'primary.main' : 'text.primary',
-              ...(!drawerOpen &&
-                level === 1 && {
-                  borderRadius: `${borderRadius}px`,
-                  width: 46,
-                  height: 46,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  '&:hover': { bgcolor: 'primary.light' },
-                  ...(isSelected && {
-                    bgcolor: 'primary.light',
-                    '&:hover': { bgcolor: 'primary.light' }
+        <ListItemButton
+          component={Link}
+          to={item.url}
+          target={itemTarget}
+          disabled={item.disabled}
+          disableRipple={!drawerOpen}
+          sx={{
+            zIndex: 1201,
+            borderRadius: `${borderRadius}px`,
+            mb: 0.5,
+            ...(drawerOpen && level !== 1 && { ml: `${level * 18}px` }),
+            ...(!drawerOpen && { pl: 1.25 }),
+            ...((!drawerOpen || level !== 1) && {
+              py: level === 1 ? 0 : 1,
+              '&:hover': { bgcolor: 'transparent' },
+              '&.Mui-selected': {
+                '&:hover': { bgcolor: 'transparent' },
+                bgcolor: 'transparent'
+              }
+            })
+          }}
+          selected={isSelected}
+          onClick={() => itemHandler()}
+        >
+          <ButtonBase aria-label="theme-icon" sx={{ borderRadius: `${borderRadius}px` }} disableRipple={drawerOpen}>
+            <ListItemIcon
+              sx={{
+                minWidth: level === 1 ? 36 : 18,
+                color: isSelected ? 'primary.main' : 'text.primary',
+                ...(!drawerOpen &&
+                  level === 1 && {
+                    borderRadius: `${borderRadius}px`,
+                    width: 46,
+                    height: 46,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    '&:hover': { bgcolor: 'primary.light' },
+                    ...(isSelected && {
+                      bgcolor: 'primary.light',
+                      '&:hover': { bgcolor: 'primary.light' }
+                    })
                   })
-                })
-            }}
-          >
-            {itemIcon}
-          </ListItemIcon>
-        </ButtonBase>
+              }}
+            >
+              {itemIcon}
+            </ListItemIcon>
+          </ButtonBase>
 
-        {(drawerOpen || (!drawerOpen && level !== 1)) && (
-          <Tooltip title={item.title} disableHoverListener={!hoverStatus}>
+          {(drawerOpen || (!drawerOpen && level !== 1)) && (
             <ListItemText
               primary={
                 <Typography
@@ -155,23 +177,23 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
                 )
               }
             />
-          </Tooltip>
-        )}
+          )}
 
-        <Activity mode={drawerOpen && item.chip ? 'visible' : 'hidden'}>
-          <Chip
-            color={item.chip?.color}
-            variant={item.chip?.variant}
-            size={item.chip?.size}
-            label={item.chip?.label}
-            avatar={
-              <Activity mode={item.chip?.avatar ? 'visible' : 'hidden'}>
-                <Avatar>{item.chip?.avatar}</Avatar>
-              </Activity>
-            }
-          />
-        </Activity>
-      </ListItemButton>
+          <Activity mode={drawerOpen && item.chip ? 'visible' : 'hidden'}>
+            <Chip
+              color={item.chip?.color}
+              variant={item.chip?.variant}
+              size={item.chip?.size}
+              label={item.chip?.label}
+              avatar={
+                <Activity mode={item.chip?.avatar ? 'visible' : 'hidden'}>
+                  <Avatar>{item.chip?.avatar}</Avatar>
+                </Activity>
+              }
+            />
+          </Activity>
+        </ListItemButton>
+      </Tooltip>
     </>
   );
 }
