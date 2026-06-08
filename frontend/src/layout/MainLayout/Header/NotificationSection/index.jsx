@@ -76,10 +76,37 @@ export default function NotificationSection() {
     localStorage.setItem(readKey, 'true');
   };
 
-  // Get current username from localStorage
+  // Get current user info from auth context / localStorage
+  const getAuthUser = () => {
+    try {
+      return JSON.parse(localStorage.getItem('authUser') || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const getCurrentUserId = () => {
+    const authUser = getAuthUser();
+    return user?.id || authUser?.id || null;
+  };
+
   const getCurrentUsername = () => {
-    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
-    return authUser?.user || authUser?.username || user?.user || user?.username;
+    const authUser = getAuthUser();
+    const username = authUser?.user || authUser?.username || user?.user || user?.username || '';
+    return username.toLowerCase();
+  };
+
+  const getCurrentRole = () => {
+    const authUser = getAuthUser();
+    return (user?.role || authUser?.role || '').toLowerCase();
+  };
+
+  const isReportOwner = (report) => {
+    const currentUserId = getCurrentUserId();
+    if (currentUserId && report.created_by) {
+      return Number(report.created_by) === Number(currentUserId);
+    }
+    return (report.created_by_username || '').toLowerCase() === getCurrentUsername();
   };
 
   // Fetch real notifications from API
@@ -88,7 +115,9 @@ export default function NotificationSection() {
       setLoading(true);
       const newNotifications = [];
       const currentUser = getCurrentUsername();
-      const currentRole = user?.role;
+      const currentRole = getCurrentRole();
+
+      const getReportsList = (res) => res?.data || res?.results || [];
 
       // 1. Get recent calls (last 24 hours) - PUBLIC (show to everyone)
       const callsRes = await callsApi.list();
@@ -159,7 +188,7 @@ export default function NotificationSection() {
 
       // 4. Get published reports - ONLY FOR MANAGER (QA publishes, Manager reviews)
       const reportsRes = await reportsApi.list();
-      const recentReports = (reportsRes?.results || []).filter(report => {
+      const recentReports = getReportsList(reportsRes).filter(report => {
         const reportDate = new Date(report.created_at);
         const hoursAgo = (new Date() - reportDate) / (1000 * 60 * 60);
         return hoursAgo <= 168 && report.status === 'published' && currentRole === 'manager';
@@ -179,26 +208,35 @@ export default function NotificationSection() {
         });
       });
 
-      // 5. Get report reviews/updates - PRIVATE (only for report creator - QA)
+      // 5. Get report reviews/notes - PRIVATE (only for report creator - QA)
       const reportsForReviews = await reportsApi.list();
-      const recentReportUpdates = (reportsForReviews?.results || []).filter(report => {
-        const updateDate = new Date(report.updated_at);
-        const hoursAgo = (new Date() - updateDate) / (1000 * 60 * 60);
-        return hoursAgo <= 48 && 
-               report.updated_at !== report.created_at && 
-               report.created_by_username === currentUser &&
-               report.status === 'published' &&
-               currentRole === 'qa';
+      const recentReportUpdates = getReportsList(reportsForReviews).filter(report => {
+        if (currentRole !== 'qa' || !isReportOwner(report)) {
+          return false;
+        }
+        if (!report.reviewed_at) {
+          return false;
+        }
+        const reviewDate = new Date(report.reviewed_at);
+        const hoursAgo = (new Date() - reviewDate) / (1000 * 60 * 60);
+        return hoursAgo <= 48 && report.status !== 'draft';
       });
 
       recentReportUpdates.forEach(report => {
+        const hasNotes = Boolean((report.manager_notes || '').trim());
+        const notificationKey = hasNotes
+          ? `${report.id}-${report.reviewed_at}-notes`
+          : `${report.id}-${report.reviewed_at}-approve`;
+
         newNotifications.push({
-          id: `report-review-${report.id}-${report.updated_at}`,
-          user: 'Manager',
-          text: `reviewed your report "${report.period || 'Report'}"`,
-          time: timeAgo(report.updated_at),
-          createdAt: new Date(report.updated_at).getTime(),
-          unread: isUnread('report-review', `${report.id}-${report.updated_at}`),
+          id: `report-review-${notificationKey}`,
+          user: report.reviewed_by_username || 'Manager',
+          text: hasNotes
+            ? `added notes to your ${report.period || 'report'} report`
+            : `reviewed your ${report.period || 'report'} report`,
+          time: timeAgo(report.reviewed_at),
+          createdAt: new Date(report.reviewed_at).getTime(),
+          unread: isUnread('report-review', notificationKey),
           type: 'report-review',
           link: `/reports`,
           reportId: report.id,

@@ -259,6 +259,9 @@ export const reportsApi = {
   list: () =>
     request('/api/reports/reports/'),
 
+  downloadUrl: (id) =>
+    `${API_URL}/api/reports/reports/${id}/download/`,
+
   get: (id) =>
     request(`/api/reports/reports/${id}/`),
 
@@ -277,6 +280,17 @@ export const reportsApi = {
   publish: (id) =>
     request(`/api/reports/reports/${id}/publish/`, {
       method: 'POST'
+    }),
+
+  approve: (id) =>
+    request(`/api/reports/reports/${id}/approve/`, {
+      method: 'POST'
+    }),
+
+  addNotes: (id, notes) =>
+    request(`/api/reports/reports/${id}/add-notes/`, {
+      method: 'POST',
+      body: JSON.stringify({ notes })
     }),
 
   delete: (id) =>

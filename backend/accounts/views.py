@@ -44,6 +44,7 @@ class AuthenticatedUserView(APIView):
             role = None
 
         return success_response({
+            "id": request.user.id,
             "user": request.user.username,
             "email": request.user.email,
             "role": role,

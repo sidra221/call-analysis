@@ -1,17 +1,22 @@
 import logging
 import httpx
 from datetime import date
+from io import BytesIO
 
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count
 from django.conf import settings
+from django.http import FileResponse
+from django.utils import timezone
 
 from calls.models import CallAnalysis
-from accounts.permissions import IsQA, IsManagerOrQA
+from accounts.permissions import IsQA, IsManager, IsManagerOrQA
+from accounts.models import UserProfile
 from .models import Report
-from .serializers import ReportSerializer, ReportGenerateSerializer
+from .serializers import ReportSerializer, ReportGenerateSerializer, ReportAddNotesSerializer
+from .pdf_utils import generate_report_pdf
 from calls.pagination import LargeDataPagination
 from config.responses import success_response, error_response
 from logs.utils import create_log
@@ -57,9 +62,40 @@ class ReportViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Return appropriate permissions based on the current action."""
-        if self.action in ('create', 'partial_update', 'generate', 'publish'):
+        if self.action in ('create', 'partial_update', 'generate', 'publish', 'destroy'):
             return [IsAuthenticated(), IsQA()]
+        if self.action in ('download', 'approve', 'add_notes'):
+            return [IsAuthenticated(), IsManager()]
         return [IsAuthenticated(), IsManagerOrQA()]
+
+    def get_queryset(self):
+        """Managers see published QA reports; QA sees only their own reports."""
+        queryset = super().get_queryset()
+        try:
+            profile = UserProfile.objects.get(user=self.request.user)
+            role = profile.role.lower()
+            if role == 'manager':
+                queryset = queryset.filter(
+                    status__in=['published', 'reviewed'],
+                    created_by__profile__role='qa',
+                )
+            elif role == 'qa':
+                queryset = queryset.filter(created_by=self.request.user)
+        except UserProfile.DoesNotExist:
+            pass
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """Return all reports without DRF pagination wrapper."""
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Return a single report in the standard response format."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return success_response(serializer.data)
 
     def perform_create(self, serializer):
         """Compute stats before saving a manually created report."""
@@ -105,11 +141,27 @@ class ReportViewSet(viewsets.ModelViewSet):
         return success_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
-        """Delete a report and log the action."""
+        """Delete a draft report owned by the QA user."""
         report = self.get_object()
+
+        if report.created_by_id != request.user.id:
+            return error_response(
+                "You can only delete your own reports.",
+                code="not_owner",
+                status_code=403,
+            )
+
+        if report.status != 'draft':
+            return error_response(
+                "Only draft reports can be deleted.",
+                code="not_draft",
+                status_code=400,
+            )
+
         report_id = report.id
+        report.delete()
         create_log(request.user, 'delete_report', f'Deleted report #{report_id}')
-        return super().destroy(request, *args, **kwargs)
+        return success_response({"message": f"Report #{report_id} deleted"})
 
     @action(detail=False, methods=['post'], url_path='generate')
     def generate(self, request):
@@ -210,3 +262,90 @@ class ReportViewSet(viewsets.ModelViewSet):
         )
 
         return success_response(ReportSerializer(report).data)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """Mark a published report as reviewed by the Manager."""
+        report = self.get_object()
+
+        if report.status == 'draft':
+            return error_response(
+                "Cannot review a draft report.",
+                code="report_draft",
+                status_code=400,
+            )
+
+        if report.status == 'reviewed':
+            return error_response(
+                "Report is already reviewed.",
+                code="already_reviewed",
+                status_code=400,
+            )
+
+        report.status = 'reviewed'
+        report.reviewed_by = request.user
+        report.reviewed_at = timezone.now()
+        report.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'updated_at'])
+
+        create_log(
+            request.user,
+            'review_report',
+            f'Reviewed report #{report.id}',
+        )
+
+        return success_response(ReportSerializer(report).data)
+
+    @action(detail=True, methods=['post'], url_path='add-notes')
+    def add_notes(self, request, pk=None):
+        """Add manager feedback notes and notify the QA report creator."""
+        report = self.get_object()
+
+        if report.status == 'draft':
+            return error_response(
+                "Cannot add notes to a draft report.",
+                code="report_draft",
+                status_code=400,
+            )
+
+        input_serializer = ReportAddNotesSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+
+        report.manager_notes = input_serializer.validated_data['notes']
+        report.reviewed_by = request.user
+        report.reviewed_at = timezone.now()
+        report.save(update_fields=['manager_notes', 'reviewed_by', 'reviewed_at', 'updated_at'])
+
+        create_log(
+            request.user,
+            'add_report_notes',
+            f'Added notes to report #{report.id}',
+        )
+
+        return success_response(ReportSerializer(report).data)
+
+    @action(detail=True, methods=['get'], url_path='download')
+    def download(self, request, pk=None):
+        """Download report as a PDF file (Manager only)."""
+        report = self.get_object()
+        report_data = ReportSerializer(report).data
+
+        try:
+            pdf_bytes = generate_report_pdf(report_data)
+        except Exception as exc:
+            logger.exception('[REPORT PDF] generation failed')
+            return error_response(
+                f'Could not generate PDF: {exc}',
+                code='pdf_generation_failed',
+                status_code=500,
+            )
+
+        filename = f'report_{report.id}_{report.period}.pdf'
+        buffer = BytesIO(pdf_bytes)
+        response = FileResponse(
+            buffer,
+            content_type='application/pdf',
+            as_attachment=True,
+            filename=filename,
+        )
+        response['Content-Length'] = len(pdf_bytes)
+        return response

@@ -7,13 +7,14 @@ import {
   IconArrowUp, IconArrowDown
 } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
+import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer,
   FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Select,
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
   Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Popover, Badge, Alert, Checkbox, Avatar
+  DialogActions, Popover, Badge, Alert, Checkbox
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
 import { callsApi } from 'api/api';
@@ -30,12 +31,6 @@ const statusLabel = {
 const sentimentColor = { positive: 'success', negative: 'error', neutral: 'default' };
 const priorityColor = { high: 'error', medium: 'warning', low: 'success', critical: 'error' };
 const rowsPerPage = 6;
-
-const roleColors = {
-  manager: { bg: '#ede7f6', color: '#5e35b1' },
-  agent: { bg: '#e3f2fd', color: '#1e88e5' },
-  qa: { bg: '#fff3e0', color: '#ef6c00' }
-};
 
 export default function Calls() {
   const [page, setPage] = useState(0);
@@ -234,10 +229,6 @@ export default function Calls() {
   const [editablePriority, setEditablePriority] = useState('medium');
   const [editableKeywords, setEditableKeywords] = useState('');
 
-  const getUserRoleColor = (roleName) => {
-    return roleColors[roleName] || { bg: '#f5f5f5', color: '#757575' };
-  };
-
   const normalizedCalls = useMemo(() => {
     if (!Array.isArray(calls)) return [];
     return calls.map((call) => ({
@@ -251,7 +242,7 @@ export default function Calls() {
         ? call.analysis.keywords.join(', ')
         : '',
       uploadedBy: call.uploaded_by_username || '',
-      uploadedByRole: call.uploaded_by_role || 'agent',
+      uploadedByRole: call.uploaded_by_role,
       createdAt: call.created_at ? call.created_at.split('T')[0] : '',
       duration: call.duration
         ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`
@@ -676,9 +667,7 @@ export default function Calls() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => {
-                  const roleColor = getUserRoleColor(call.uploadedByRole);
-                  return (
+                {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => (
                     <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }} selected={selectedCalls.includes(call.id)}>
                       {isManager && (
                         <TableCell padding="checkbox">
@@ -708,21 +697,10 @@ export default function Calls() {
                         />
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Avatar
-                            sx={{
-                              width: 28,
-                              height: 28,
-                              bgcolor: roleColor.bg,
-                              color: roleColor.color,
-                              fontSize: 12,
-                              fontWeight: 600
-                            }}
-                          >
-                            {call.uploadedBy?.[0]?.toUpperCase() || '?'}
-                          </Avatar>
-                          <Typography variant="body2">{call.uploadedBy}</Typography>
-                        </Stack>
+                        <UserAvatarWithName
+                          username={call.uploadedBy}
+                          role={call.uploadedByRole}
+                        />
                       </TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
@@ -745,8 +723,7 @@ export default function Calls() {
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                ))}
                 {filteredCalls.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={isManager ? 10 : 9}>

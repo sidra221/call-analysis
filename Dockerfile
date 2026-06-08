@@ -1,24 +1,23 @@
+# syntax=docker/dockerfile:1
 # Base image with Python 3.11
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Use host network during build so apt/pip can resolve DNS on restricted networks
+RUN --network=host apt-get update && apt-get install -y --no-install-recommends \
+    -o Acquire::Retries=10 \
+    -o Acquire::http::Timeout=120 \
     libpq-dev \
     gcc \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies with retry on timeout
 COPY requirements.txt .
-RUN pip install --no-cache-dir --timeout=120 --retries=5 -r requirements.txt
+RUN --network=host pip install --no-cache-dir --timeout=120 --retries=5 -r requirements.txt
 
-# Copy application source code
 COPY . .
 
-# Expose the Django port
 EXPOSE 8000
 
-# Default command — overridden by docker-compose per service
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]

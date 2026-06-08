@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      network: host
 
     container_name: call_analysis_backend
 
@@ -36,6 +37,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      network: host
 
     container_name: call_analysis_celery_worker
 
@@ -65,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      network: host
 
     container_name: call_analysis_celery_beat
 
@@ -94,6 +97,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      network: host
 
     container_name: call_analysis_frontend
 

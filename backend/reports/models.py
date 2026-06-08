@@ -19,6 +19,7 @@ class Report(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),         # Created by AI, pending QA review
         ('published', 'Published'), # Reviewed by QA and visible to Manager
+        ('reviewed', 'Reviewed'),     # Reviewed by Manager
     ]
 
     # The QA user who generated and owns this report
@@ -42,6 +43,17 @@ class Report(models.Model):
     # Statistics computed at generation time and saved as JSON
     top_issues = models.JSONField(default=list)       # Top 5 recurring issues in the period
     sentiment_stats = models.JSONField(default=dict)  # Sentiment label distribution counts
+
+    # Manager review feedback sent back to QA
+    manager_notes = models.TextField(blank=True, default='')
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_reports',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

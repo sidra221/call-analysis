@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from accounts.models import UserProfile
 from .models import Call, CallAnalysis, FollowUp
 
 
@@ -20,15 +21,22 @@ class CallSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(
         source='uploaded_by.username', read_only=True
     )
+    uploaded_by_role = serializers.SerializerMethodField()
     analysis = CallAnalysisSerializer(read_only=True)
 
     class Meta:
         model = Call
         fields = [
-            'id', 'uploaded_by', 'uploaded_by_username',
+            'id', 'uploaded_by', 'uploaded_by_username', 'uploaded_by_role',
             'audio_file', 'file_path', 'status', 'duration',
             'created_at', 'updated_at', 'analysis',
         ]
+
+    def get_uploaded_by_role(self, obj):
+        try:
+            return obj.uploaded_by.profile.role
+        except (UserProfile.DoesNotExist, AttributeError):
+            return None
         read_only_fields = ['uploaded_by', 'status', 'created_at', 'updated_at']
 
 
@@ -47,6 +55,7 @@ class CallListSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(
         source='uploaded_by.username', read_only=True
     )
+    uploaded_by_role = serializers.SerializerMethodField()
     sentiment = serializers.SerializerMethodField()
     priority = serializers.SerializerMethodField()
     is_reviewed = serializers.SerializerMethodField()
@@ -55,10 +64,16 @@ class CallListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Call
         fields = [
-            'id', 'uploaded_by_username', 'audio_file', 'file_path',
+            'id', 'uploaded_by_username', 'uploaded_by_role', 'audio_file', 'file_path',
             'status', 'duration', 'sentiment', 'priority',
             'is_reviewed', 'created_at', 'updated_at', 'analysis',
         ]
+
+    def get_uploaded_by_role(self, obj):
+        try:
+            return obj.uploaded_by.profile.role
+        except (UserProfile.DoesNotExist, AttributeError):
+            return None
 
     def get_sentiment(self, obj):
         try:

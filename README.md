@@ -1,13 +1,90 @@
 # Call Analysis System
 
-Graduation Project – Backend / Frontend / AI
+> منصة ويب لإدارة وتحليل المكالمات الصوتية — من رفع التسجيل إلى التقرير الدوري.
 
-## Project Structure
-- backend/ → Django Backend
-- frontend/ → Frontend Application
-- ai/ → AI models & analysis
+---
 
-## Team Workflow
-- Each member works on their own branch
-- No direct commits to main
-- All changes go through Pull Requests
+## نبذة عن المشروع
+
+يواجه فرق خدمة العملاء تحدياً في مراجعة كميات كبيرة من المكالمات يدوياً. **Call Analysis System** يعالج هذه المشكلة عبر أتمتة التحليل باستخدام الذكاء الاصطناعي، وتنظيم سير العمل بين فريق ضمان الجودة (QA) والمدير (Manager) في منصة واحدة.
+
+يرفع فريق QA تسجيلات المكالمات، فيحلّلها النظام آلياً (نسخ نصي، مشاعر، أولوية، مشاكل رئيسية). بعد المراجعة، يُنشَأ تقرير دوري يُنشر للمدير الذي يراجعه ويضيف ملاحظاته ويحمّل نسخة PDF. تُعرض كل البيانات في لوحة تحكم مع تحديثات حية وإشعارات فورية.
+
+---
+
+## الميزات الرئيسية
+
+### تحليل المكالمات
+- رفع ملفات الصوت ومعالجتها في الخلفية عبر Celery
+- نسخ نصي وتحليل مشاعر وأولوية تلقائياً
+- استخراج المشاكل الرئيسية والكلمات المفتاحية
+- تحديث حالة المعالجة لحظياً عبر WebSockets
+
+### إدارة الجودة والمتابعات
+- مراجعة نتائج التحليل واعتماد المكالمات
+- إنشاء مهام متابعة (Follow-ups) وتعيينها للمستخدمين
+- تتبع حالة كل متابعة (pending → in_progress → done)
+
+### التقارير الدورية
+- توليد تقارير يومية وأسبوعية بالذكاء الاصطناعي
+- دورة حياة واضحة: مسودة → منشور → مُراجَع
+- مراجعة المدير، إضافة ملاحظات، وتحميل PDF
+
+### لوحة التحكم والإشعارات
+- إحصائيات شاملة عن المكالمات والمشاعر والمواضيع
+- إشعارات فورية للتقارير الجديدة وملاحظات المدير
+- واجهة حديثة مبنية بـ React و Material UI
+
+### الأمان والصلاحيات
+- مصادقة JWT مع تجديد تلقائي للرمز
+- صلاحيات حسب الدور: Manager، QA، Agent
+- حماية على مستوى الـ API والواجهة الأمامية والقائمة الجانبية
+
+---
+
+## التقنيات
+
+| الطبقة | التقنيات |
+|--------|----------|
+| **Backend** | Django 5, DRF, SimpleJWT, PostgreSQL, Celery, Redis, Channels |
+| **Frontend** | React 19, Vite, Material UI, Zustand |
+| **AI Service** | FastAPI, Whisper |
+| **Infrastructure** | Docker Compose |
+
+---
+
+## التثبيت والتشغيل
+
+**المتطلبات:** Docker و Docker Compose، ملف `.env` مُعدّ مسبقاً.
+
+```bash
+docker compose up --build
+docker compose exec web python manage.py migrate
+```
+
+| الخدمة | الرابط |
+|--------|--------|
+| API | http://localhost:8000 |
+| Swagger | http://localhost:8000/docs/ |
+| Frontend | http://localhost:3000 |
+| pgAdmin | http://localhost:5050 |
+
+---
+
+## هيكل المشروع
+
+```
+call_analysis/
+├── backend/       # Django REST API
+├── frontend/      # React SPA
+├── ai_service/    # خدمة التحليل بالذكاء الاصطناعي
+└── docker-compose.yml
+```
+
+---
+
+## التوثيق
+
+للتفاصيل الكاملة — البنية، واجهات البرمجة، الواجهات الأمامية، وسير العمل:
+
+**[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)**
