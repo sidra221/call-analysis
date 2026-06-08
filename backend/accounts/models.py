@@ -20,6 +20,8 @@ class UserProfile(models.Model):
     # Role determines what endpoints and data the user can access
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
 
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

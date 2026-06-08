@@ -14,41 +14,18 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Lege
 import { useState, useMemo, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { dashboardApi } from 'api/api';
+import { sentimentColor, priorityColor } from 'constants/status';
+import StatusChip from 'ui-component/StatusChip';
+import UserAvatarWithName from 'ui-component/UserAvatarWithName';
+import {
+  TABLE_LAYOUT_SX,
+  TABLE_ACTIONS_CELL_SX,
+  TABLE_HEADER_CELL_SX,
+  TABLE_HEADER_SORT_SX,
+  TABLE_BODY_CELL_SX
+} from 'constants/table';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
-
-const stateColor = {
-  pending: 'warning',
-  processing: 'info',
-  completed: 'success',
-  failed: 'error'
-};
-
-const statusLabel = {
-  pending: 'Pending',
-  processing: 'Processing',
-  completed: 'Completed',
-  failed: 'Failed'
-};
-
-const sentimentColor = {
-  positive: 'success',
-  negative: 'error',
-  neutral: 'default'
-};
-
-const priorityColor = {
-  high: 'error',
-  medium: 'warning',
-  low: 'success',
-  critical: 'error'
-};
-
-const roleColors = {
-  manager: { bg: '#ede7f6', color: '#5e35b1' },
-  agent: { bg: '#e3f2fd', color: '#1e88e5' },
-  qa: { bg: '#fff3e0', color: '#ef6c00' }
-};
 
 const getCircularColor = (percent, theme, type) => {
   if (type === 'negative') {
@@ -108,10 +85,6 @@ export default function Dashboard() {
 
   const navigateToCallsWithFilter = (filterType, filterValue) => {
     navigate("/calls", { state: { filter: filterType, value: filterValue } });
-  };
-
-  const getUserRoleColor = (roleName) => {
-    return roleColors[roleName] || { bg: '#f5f5f5', color: '#757575' };
   };
 
   const getFilteredCallsForChart = () => {
@@ -279,7 +252,7 @@ export default function Dashboard() {
       {/* Priority Cards */}
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: theme.palette.error.light, width: 48, height: 48 }}>
               <WarningIcon sx={{ color: theme.palette.error.main, fontSize: 28 }} />
@@ -300,7 +273,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: theme.palette.error.light, width: 48, height: 48 }}>
               <PriorityHighIcon sx={{ color: theme.palette.error.main, fontSize: 28 }} />
@@ -321,7 +294,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: theme.palette.warning.light, width: 48, height: 48 }}>
               <ReportProblemIcon sx={{ color: theme.palette.warning.main, fontSize: 28 }} />
@@ -342,7 +315,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar sx={{ bgcolor: theme.palette.success.light, width: 48, height: 48 }}>
               <LowPriorityIcon sx={{ color: theme.palette.success.main, fontSize: 28 }} />
@@ -367,7 +340,7 @@ export default function Dashboard() {
       {/* Overview + Sentiment Section */}
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
             <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>Overview</Typography>
             <Box sx={{ width: "100%", p: 3, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
@@ -448,7 +421,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
         
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>Sentiment Analysis</Typography>
@@ -473,59 +446,52 @@ export default function Dashboard() {
       </Box>
 
       {/* Latest Calls Table */}
-      <Card sx={{ width: "100%", borderRadius: 2 }}>
+      <Card sx={{ width: "100%" }}>
         <CardContent>
           <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>Latest Calls</Typography>
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 800 }}>
+            <Table size="small" sx={{ ...TABLE_LAYOUT_SX, minWidth: 900 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Priority</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Sentiment</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Created At</Typography>
-                      <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0 }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '8%' }}>ID</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Priority</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>Status</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Sentiment</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '9%', display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '13%', display: { xs: 'none', lg: 'table-cell' } }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Created At
+                      <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell>Reviewed</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Uploaded By</Typography>
-                      <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0 }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '10%' }}>Reviewed</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '15%', display: { xs: 'none', lg: 'table-cell' } }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Uploaded By
+                      <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByUploader === 'asc' ? <IconArrowUp size={16} /> :
                           sortByUploader === 'desc' ? <IconArrowDown size={16} /> :
                             <IconArrowUp size={16} style={{ opacity: 0.5 }} />}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell align="center">Actions</TableCell>
+                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {sortedCalls.map((call) => {
-                  const roleColor = getUserRoleColor(call.uploadedByRole);
-                  return (
-                    <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }}>
-                      <TableCell>#{call.id}</TableCell>
+                {sortedCalls.map((call) => (
+                    <TableRow key={call.id} hover>
+                      <TableCell sx={TABLE_BODY_CELL_SX}>#{call.id}</TableCell>
                       <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
-                      <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
+                      <TableCell><StatusChip status={call.status} /></TableCell>
                       <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.createdAt}</TableCell>
                       <TableCell><Chip label={call.is_reviewed ? 'Yes' : 'No'} color={call.is_reviewed ? 'success' : 'error'} size="small" /></TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Avatar sx={{ width: 28, height: 28, bgcolor: roleColor.bg, color: roleColor.color, fontSize: 12, fontWeight: 600 }}>
-                            {call.uploadedBy?.[0]?.toUpperCase() || '?'}
-                          </Avatar>
-                          <Typography variant="body2">{call.uploadedBy}</Typography>
-                        </Stack>
+                        <UserAvatarWithName username={call.uploadedBy} role={call.uploadedByRole} />
                       </TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
@@ -538,8 +504,7 @@ export default function Dashboard() {
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                ))}
                 {sortedCalls.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
@@ -556,7 +521,7 @@ export default function Dashboard() {
       {/* Top Issues Section */}
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>Top Negative Issues</Typography>
@@ -610,7 +575,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card sx={{ flex: 1, minWidth: 0, borderRadius: 2 }}>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>Positive Highlights</Typography>

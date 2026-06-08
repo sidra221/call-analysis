@@ -316,12 +316,12 @@ export default function NotificationSection() {
               ...theme.typography.commonAvatar,
               ...theme.typography.mediumAvatar,
               cursor: 'pointer',
-              color: '#1e88e5',
-              backgroundColor: '#e3f2fd',
+              color: theme.vars.palette.primary.dark,
+              backgroundColor: theme.vars.palette.primary.light,
               transition: 'all 0.2s ease-in-out',
               '&:hover': {
-                color: '#e3f2fd',
-                backgroundColor: '#1e88e5'
+                color: theme.vars.palette.primary.contrastText || '#fff',
+                backgroundColor: theme.vars.palette.primary.main
               }
             }}
             ref={anchorRef}

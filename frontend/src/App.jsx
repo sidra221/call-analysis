@@ -2,7 +2,6 @@ import { RouterProvider } from 'react-router-dom';
 import { createBrowserRouter } from 'react-router-dom';
 import NavigationScroll from 'layout/NavigationScroll';
 import ThemeCustomization from 'themes';
-import { AuthProvider } from 'contexts/AuthContext';
 import useAuth from 'hooks/useAuth';
 import AuthRoutes from 'routes/AuthRoutes';
 import getMainRoutes from 'routes/MainRoutes';
@@ -32,11 +31,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeCustomization>
-      <AuthProvider>
-        <NavigationScroll>
-          <AppContent />
-        </NavigationScroll>
-      </AuthProvider>
+      <NavigationScroll>
+        <AppContent />
+      </NavigationScroll>
     </ThemeCustomization>
   );
 }

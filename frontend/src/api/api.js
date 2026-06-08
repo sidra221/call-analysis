@@ -307,6 +307,16 @@ export const accountsApi = {
   me: () =>
     request('/api/accounts/me/'),
 
+  uploadAvatar: (formData) =>
+    request(
+      '/api/accounts/me/avatar/',
+      {
+        method: 'POST',
+        body: formData
+      },
+      true
+    ),
+
   managerOnly: () =>
     request('/api/accounts/manager-only/'),
 

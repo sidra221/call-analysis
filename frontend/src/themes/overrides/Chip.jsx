@@ -12,6 +12,7 @@ export default function Chip(theme) {
       },
       styleOverrides: {
         root: {
+          borderRadius: '8px',
           variants: [
             {
               props: { variant: 'light' }, // Variant for light Chip

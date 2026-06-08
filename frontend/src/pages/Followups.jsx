@@ -1,20 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  Avatar, Box, Button, Card, CardContent, Chip, Dialog, DialogActions,
+  Avatar, Box, Button, Chip, Dialog, DialogActions,
   DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem,
   Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TextField, Typography, alpha, useTheme, Drawer, Divider,
-  IconButton, CircularProgress, Alert, Popover, Badge, InputAdornment,
-  TablePagination, Autocomplete
+  IconButton, CircularProgress, Alert, TablePagination, Autocomplete
 } from '@mui/material';
 import {
-  IconChecks, IconClipboardText, IconPlus, IconUser,
-  IconClockHour4, IconRefresh, IconX, IconEdit, IconDeviceFloppy,
-  IconEye, IconSearch, IconAdjustmentsHorizontal,
-  IconArrowUp, IconArrowDown
+  IconChecks, IconClipboardText, IconPlus,
+  IconClockHour4, IconX, IconEdit, IconDeviceFloppy,
+  IconEye, IconArrowUp, IconArrowDown, IconUser
 } from '@tabler/icons-react';
 import { followupsApi } from 'api/api';
+import PageCard from 'ui-component/PageCard';
+import PageTitle from 'ui-component/PageTitle';
+import FilterToolbar from 'ui-component/FilterToolbar';
+import FilterPopover from 'ui-component/FilterPopover';
+import StatSummaryCard from 'ui-component/StatSummaryCard';
+import {
+  TABLE_LAYOUT_SX,
+  TABLE_ACTIONS_CELL_SX,
+  TABLE_HEADER_CELL_SX,
+  TABLE_HEADER_SORT_SX,
+  TABLE_BODY_CELL_SX
+} from 'constants/table';
+import StatusChip from 'ui-component/StatusChip';
+import DialogCancelButton from 'ui-component/DialogCancelButton';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const rowsPerPage = 6;
@@ -241,238 +253,106 @@ export default function Followups() {
 
   const uniqueAssignees = [...new Set(followups.map((f) => f.assigned_to_username).filter(Boolean))];
 
-  const statusChip = (status) => {
-    if (status === 'pending') {
-      return (
-        <Chip label="Pending" size="small" sx={{
-          borderRadius: '10px',
-          bgcolor: alpha(theme.palette.warning.main, 0.12),
-          color: theme.palette.warning.dark,
-        }} />
-      );
-    }
-    if (status === 'in_progress') {
-      return (
-        <Chip label="In Progress" size="small" sx={{
-          borderRadius: '10px',
-          bgcolor: alpha(theme.palette.info.main, 0.12),
-          color: theme.palette.info.dark,
-        }} />
-      );
-    }
-    return (
-      <Chip label="Done" size="small" sx={{
-        borderRadius: '10px',
-        bgcolor: alpha(theme.palette.success.main, 0.12),
-        color: theme.palette.success.dark,
-      }} />
-    );
-  };
-
   return (
     <>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
       )}
 
-      <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>
-            Follow-ups Management
-          </Typography>
+      <PageCard bordered>
+          <PageTitle title="Follow-ups Management" />
 
-          {/* Stats Cards */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
-                      <IconClipboardText size={20} />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Total Follow-ups</Typography>
-                      <Typography variant="h4" fontWeight={700}>{followups.length}</Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
+              <StatSummaryCard icon={<IconClipboardText size={20} />} label="Total Follow-ups" value={followups.length} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.warning.main, 0.12), color: theme.palette.warning.main }}>
-                      <IconClockHour4 size={20} />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Pending</Typography>
-                      <Typography variant="h4" fontWeight={700}>{pendingCount}</Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
+              <StatSummaryCard icon={<IconClockHour4 size={20} />} label="Pending" value={pendingCount} color="warning" />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.12), color: theme.palette.success.main }}>
-                      <IconChecks size={20} />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Completed</Typography>
-                      <Typography variant="h4" fontWeight={700}>{doneCount}</Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
+              <StatSummaryCard icon={<IconChecks size={20} />} label="Completed" value={doneCount} color="success" />
             </Grid>
           </Grid>
 
-          {/* Filters Row */}
-          <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth size="small" placeholder="Search by date..."
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconSearch size={18} style={{ color: '#9e9e9e' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      {dateFilter ? (
-                        <IconButton size="small" onClick={() => setDateFilter('')}>
-                          <IconX size={14} />
-                        </IconButton>
-                      ) : null}
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 6, md: 'auto' }}>
-              <Badge badgeContent={activeFilterCount} color="primary">
-                <Button
-                  variant="outlined"
-                  startIcon={<IconAdjustmentsHorizontal size={18} />}
-                  onClick={openFilters}
-                  sx={{
-                    borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
-                    borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
-                    bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent'
-                  }}
-                >
-                  Filters
-                </Button>
-              </Badge>
-            </Grid>
-
-            {activeFilterCount > 0 && (
-              <Grid size={{ xs: 6, md: 'auto' }}>
-                <Button
-                  variant="text" color="error"
-                  startIcon={<IconRefresh size={18} />}
-                  onClick={handleReset}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
-                >
-                  Reset All
-                </Button>
-              </Grid>
-            )}
-
-            <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-              <Button
-                variant="contained"
-                startIcon={<IconPlus size={18} />}
-                onClick={() => setOpenCreateDialog(true)}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}
-              >
+          <FilterToolbar
+            search={dateFilter}
+            onSearchChange={(e) => setDateFilter(e.target.value)}
+            searchPlaceholder="Search by date..."
+            activeFilterCount={activeFilterCount}
+            onOpenFilters={openFilters}
+            onResetFilters={handleReset}
+            actions={(
+              <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={() => setOpenCreateDialog(true)}>
                 Create
               </Button>
-            </Grid>
-          </Grid>
+            )}
+          />
 
-          {/* Filters Popover */}
-          <Popover
+          <FilterPopover
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-            PaperProps={{ sx: { p: 3, width: 280, borderRadius: 3, mt: 1.5 } }}
+            title="Filter Follow-ups"
           >
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Filter Follow-ups</Typography>
-            <Stack spacing={2.5}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="in_progress">In Progress</MenuItem>
-                  <MenuItem value="done">Done</MenuItem>
-                </Select>
-              </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="in_progress">In Progress</MenuItem>
+                <MenuItem value="done">Done</MenuItem>
+              </Select>
+            </FormControl>
 
-              <FormControl fullWidth size="small">
-                <InputLabel>Assigned To</InputLabel>
-                <Select value={assignedFilter} label="Assigned To" onChange={(e) => setAssignedFilter(e.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
-                  {uniqueAssignees.map((name) => (
-                    <MenuItem key={name} value={name}>{name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>Assigned To</InputLabel>
+              <Select value={assignedFilter} label="Assigned To" onChange={(e) => setAssignedFilter(e.target.value)}>
+                <MenuItem value="all">All</MenuItem>
+                {uniqueAssignees.map((name) => (
+                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-              <TextField
-                fullWidth size="small" type="date" label="Date"
-                value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <Button variant="contained" fullWidth onClick={closeFilters} sx={{ borderRadius: 2, textTransform: 'none' }}>
-                Apply Filters
-              </Button>
-            </Stack>
-          </Popover>
+            <TextField
+              fullWidth size="small" type="date" label="Date"
+              value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </FilterPopover>
 
           {/* Table */}
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 650, tableLayout: 'fixed' }}>
+            <Table size="small" sx={TABLE_LAYOUT_SX}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: '14%', whiteSpace: 'nowrap' }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Call ID</Typography>
-                      <IconButton size="small" onClick={() => handleSort('call_id')} sx={{ p: 0 }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%' }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Call ID
+                      <IconButton size="small" onClick={() => handleSort('call_id')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('call_id')}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell sx={{ width: '16%', whiteSpace: 'nowrap' }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Assigned To</Typography>
-                      <IconButton size="small" onClick={() => handleSort('assigned_to')} sx={{ p: 0 }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Assigned To
+                      <IconButton size="small" onClick={() => handleSort('assigned_to')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('assigned_to')}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell sx={{ width: '12%', whiteSpace: 'nowrap' }}>Status</TableCell>
-                  <TableCell sx={{ width: '28%', whiteSpace: 'nowrap' }}>Notes</TableCell>
-                  <TableCell sx={{ width: '14%', whiteSpace: 'nowrap' }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Created At</Typography>
-                      <IconButton size="small" onClick={() => handleSort('created_at')} sx={{ p: 0 }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%' }}>Status</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '26%' }}>Notes</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%' }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Created At
+                      <IconButton size="small" onClick={() => handleSort('created_at')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('created_at')}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell align="center" sx={{ width: '16%', whiteSpace: 'nowrap' }}>Actions</TableCell>
+                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -483,9 +363,9 @@ export default function Followups() {
                     </TableCell>
                   </TableRow>
                 ) : paginatedFollowups.map((item) => (
-                  <TableRow key={item.id} sx={{ '& td': { py: 1.5 } }}>
-                    <TableCell>
-                      <Typography sx={{ whiteSpace: 'nowrap' }}>#{item.call_id || item.call}</Typography>
+                  <TableRow key={item.id} hover>
+                    <TableCell sx={TABLE_BODY_CELL_SX}>
+                      #{item.call_id || item.call}
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">
@@ -495,7 +375,7 @@ export default function Followups() {
                         <Typography sx={{ whiteSpace: 'nowrap' }}>{item.assigned_to_username}</Typography>
                       </Stack>
                     </TableCell>
-                    <TableCell>{statusChip(item.status)}</TableCell>
+                    <TableCell><StatusChip status={item.status} /></TableCell>
                     <TableCell>
                       <Typography
                         sx={{
@@ -517,7 +397,7 @@ export default function Followups() {
                       <Stack direction="row" spacing={0.5} justifyContent="center">
                         <IconButton 
                           size="small" 
-                          sx={{ color: '#0288d1' }}
+                          sx={{ color: 'info.main' }}
                           onClick={() => openFollowupDrawer(item)}
                           title="View Follow-up"
                         >
@@ -561,12 +441,9 @@ export default function Followups() {
               rowsPerPageOptions={[]}
             />
           </Box>
-        </CardContent>
-      </Card>
+      </PageCard>
 
-      {/* Create Dialog - مع Autocomplete للكتابة والاختيار */}
-      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)}
-        fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 700 }}>Create Follow-up</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -619,13 +496,10 @@ export default function Followups() {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setOpenCreateDialog(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>
-            Cancel
-          </Button>
+          <DialogCancelButton onClick={() => setOpenCreateDialog(false)} />
           <Button variant="contained" onClick={handleCreateFollowup}
             disabled={!assignedTo || !notes.trim() || !callIdInput || creating}
-            sx={{ borderRadius: 2, textTransform: 'none', px: 2.5 }}>
+            sx={{ px: 2.5 }}>
             {creating ? <CircularProgress size={18} color="inherit" /> : 'Create'}
           </Button>
         </DialogActions>
@@ -658,7 +532,7 @@ export default function Followups() {
                   <MenuItem value="done">Done</MenuItem>
                 </Select>
               ) : (
-                <Box sx={{ mb: 2 }}>{statusChip(selectedFollowup.status)}</Box>
+                <Box sx={{ mb: 2 }}><StatusChip status={selectedFollowup.status} /></Box>
               )}
 
               <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Notes</Typography>

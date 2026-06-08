@@ -1,20 +1,16 @@
 // ==============================|| OVERRIDES - BUTTON ||============================== //
 
-export default function Button(theme) {
+export default function Button(borderRadius) {
   return {
-    MuiSlider: {
+    MuiButton: {
       styleOverrides: {
         root: {
-          '&.Mui-disabled': {
-            color: theme.vars.palette.grey[300]
-          }
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: `${borderRadius}px`
         },
-        mark: {
-          backgroundColor: theme.vars.palette.background.paper,
-          width: '4px'
-        },
-        valueLabel: {
-          color: theme.vars.palette.primary.light
+        sizeMedium: {
+          height: 40
         }
       }
     }

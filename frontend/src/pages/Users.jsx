@@ -2,25 +2,32 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, IconButton, Dialog,
   DialogTitle, DialogContent, DialogContentText, DialogActions,
-  TextField, MenuItem, Stack, Avatar, Checkbox, Chip, Grid,
+  TextField, MenuItem, Stack, Avatar, Checkbox, Chip,
   FormControl, InputLabel, Select, Drawer, Divider,
   CircularProgress, Alert, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Popover, Badge, InputAdornment,
-  TablePagination
+  TableContainer, TableHead, TableRow, TablePagination
 } from '@mui/material';
 import {
-  IconEdit, IconTrash, IconPlus, IconRefresh, IconClipboardList, 
-  IconFileAnalytics, IconTrashX, IconSearch, IconX,
-  IconArrowUp, IconArrowDown, IconAdjustmentsHorizontal, IconEye
+  IconEdit, IconTrash, IconPlus, IconClipboardList,
+  IconFileAnalytics, IconTrashX, IconArrowUp, IconArrowDown, IconEye
 } from '@tabler/icons-react';
 import useUsersStore from 'hooks/useUsersStore';
 import useAuth from 'hooks/useAuth';
-
-const roleColors = {
-  manager: { bg: '#ede7f6', color: '#5e35b1' },
-  agent:   { bg: '#e3f2fd', color: '#1e88e5' },
-  qa:      { bg: '#fff3e0', color: '#ef6c00' }
-};
+import PageCard from 'ui-component/PageCard';
+import PageTitle from 'ui-component/PageTitle';
+import FilterToolbar from 'ui-component/FilterToolbar';
+import FilterPopover from 'ui-component/FilterPopover';
+import DialogCancelButton from 'ui-component/DialogCancelButton';
+import UserAvatarWithName from 'ui-component/UserAvatarWithName';
+import { getRoleColor } from 'constants/colors';
+import {
+  TABLE_LAYOUT_SX,
+  TABLE_CHECKBOX_CELL_SX,
+  TABLE_ACTIONS_CELL_SX,
+  TABLE_HEADER_CELL_SX,
+  TABLE_HEADER_SORT_SX,
+  TABLE_BODY_CELL_SX
+} from 'constants/table';
 
 const rowsPerPage = 6;
 
@@ -203,157 +210,89 @@ export default function UsersPage() {
   };
 
   return (
-    <Card sx={{ borderRadius: 3 }}>
-      <CardContent>
-        <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>
-          Users Management
-        </Typography>
+    <PageCard>
+        <PageTitle title="Users Management" />
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
         )}
 
-        {/* Filters Row */}
-        <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
-              fullWidth size="small" placeholder="Search user..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <IconSearch size={18} style={{ color: '#9e9e9e' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    {search ? (
-                      <IconButton size="small" onClick={() => setSearch('')}>
-                        <IconX size={14} />
-                      </IconButton>
-                    ) : null}
-                  </InputAdornment>
-                )
-              }}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 6, md: 'auto' }}>
-            <Badge badgeContent={activeFilterCount} color="primary">
-              <Button
-                variant="outlined"
-                startIcon={<IconAdjustmentsHorizontal size={18} />}
-                onClick={openFilters}
-                sx={{
-                  borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
-                  borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
-                  bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent'
-                }}
-              >
-                Filters
-              </Button>
-            </Badge>
-          </Grid>
-
-          {activeFilterCount > 0 && (
-            <Grid size={{ xs: 6, md: 'auto' }}>
-              <Button
-                variant="text" color="error"
-                startIcon={<IconRefresh size={18} />}
-                onClick={handleReset}
-                sx={{ textTransform: 'none', fontWeight: 600 }}
-              >
-                Reset All
-              </Button>
-            </Grid>
-          )}
-
-          <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-            {role === 'manager' && selected.length > 0 && (
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<IconTrashX size={18} />}
-                onClick={openDeleteConfirmation}
-                sx={{ borderRadius: 2, textTransform: 'none', height: 40 }}
-              >
-                Delete Selected ({selected.length})
-              </Button>
-            )}
-            
-            {role === 'manager' && (
-              <Button
-                variant="contained"
-                startIcon={<IconPlus size={18} />}
-                onClick={() => setOpen(true)}
-                sx={{ borderRadius: 2, textTransform: 'none', height: 40 }}
-              >
+        <FilterToolbar
+          search={search}
+          onSearchChange={(e) => setSearch(e.target.value)}
+          searchPlaceholder="Search user..."
+          activeFilterCount={activeFilterCount}
+          onOpenFilters={openFilters}
+          onResetFilters={handleReset}
+          actions={role === 'manager' ? (
+            <>
+              {selected.length > 0 && (
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<IconTrashX size={18} />}
+                  onClick={openDeleteConfirmation}
+                >
+                  Delete Selected ({selected.length})
+                </Button>
+              )}
+              <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={() => setOpen(true)}>
                 Add User
               </Button>
-            )}
-          </Grid>
-        </Grid>
+            </>
+          ) : null}
+        />
 
-        {/* Filters Popover */}
-        <Popover
+        <FilterPopover
           open={Boolean(filterAnchorEl)}
           anchorEl={filterAnchorEl}
           onClose={closeFilters}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-          PaperProps={{ sx: { p: 3, width: 280, borderRadius: 3, mt: 1.5 } }}
+          title="Filter Users"
         >
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Filter Users</Typography>
-          <Stack spacing={2.5}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Role</InputLabel>
-              <Select value={roleFilter} label="Role" onChange={(e) => setRoleFilter(e.target.value)}>
-                <MenuItem value="All">All</MenuItem>
-                <MenuItem value="manager">Manager</MenuItem>
-                <MenuItem value="agent">Agent</MenuItem>
-                <MenuItem value="qa">QA</MenuItem>
-              </Select>
-            </FormControl>
-
-            <Button variant="contained" fullWidth onClick={closeFilters} sx={{ borderRadius: 2, textTransform: 'none' }}>
-              Apply Filters
-            </Button>
-          </Stack>
-        </Popover>
+          <FormControl fullWidth size="small">
+            <InputLabel>Role</InputLabel>
+            <Select value={roleFilter} label="Role" onChange={(e) => setRoleFilter(e.target.value)}>
+              <MenuItem value="All">All</MenuItem>
+              <MenuItem value="manager">Manager</MenuItem>
+              <MenuItem value="agent">Agent</MenuItem>
+              <MenuItem value="qa">QA</MenuItem>
+            </Select>
+          </FormControl>
+        </FilterPopover>
 
         <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
-          <Table size="small" sx={{ minWidth: 700 }}>
+          <Table size="small" sx={TABLE_LAYOUT_SX}>
             <TableHead>
               <TableRow>
                 {role === 'manager' && (
-                  <TableCell padding="checkbox">
+                  <TableCell padding="checkbox" sx={TABLE_CHECKBOX_CELL_SX}>
                     <Checkbox
+                      size="small"
                       checked={isAllSelected}
                       indeterminate={selected.length > 0 && selected.length < filteredUsers.length}
                       onChange={handleSelectAll}
                     />
                   </TableCell>
                 )}
-                <TableCell>
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
-                    <Typography variant="body2" fontWeight={600}>Username</Typography>
-                    <IconButton size="small" onClick={toggleSortByUsername} sx={{ p: 0 }}>
+                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: role === 'manager' ? '24%' : '28%' }}>
+                  <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                    Username
+                    <IconButton size="small" onClick={toggleSortByUsername} sx={{ p: 0, flexShrink: 0 }}>
                       {sortByUsername === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
                     </IconButton>
-                  </Stack>
+                  </Box>
                 </TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Role</TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
-                    <Typography variant="body2" fontWeight={600}>Created At</Typography>
-                    <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0 }}>
+                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: role === 'manager' ? '26%' : '30%' }}>Email</TableCell>
+                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%', display: { xs: 'none', sm: 'table-cell' } }}>Role</TableCell>
+                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '16%', display: { xs: 'none', md: 'table-cell' } }}>
+                  <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                    Created At
+                    <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0, flexShrink: 0 }}>
                       {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
                     </IconButton>
-                  </Stack>
+                  </Box>
                 </TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -370,25 +309,20 @@ export default function UsersPage() {
                     <TableRow key={u.id} hover selected={selected.includes(u.id)}>
                       {role === 'manager' && (
                         <TableCell padding="checkbox">
-                          <Checkbox 
-                            checked={selected.includes(u.id)} 
-                            onChange={() => handleSelect(u.id)} 
+                          <Checkbox
+                            checked={selected.includes(u.id)}
+                            onChange={() => handleSelect(u.id)}
                             disabled={u.username === currentUser?.user}
                           />
                         </TableCell>
                       )}
                       <TableCell>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Avatar sx={{ width: 32, height: 32, bgcolor: roleColors[u.role]?.bg || '#eee', color: roleColors[u.role]?.color || '#333', fontSize: 14 }}>
-                            {u.username?.[0]?.toUpperCase()}
-                          </Avatar>
-                          <Typography variant="subtitle2">{u.username}</Typography>
-                        </Stack>
+                        <UserAvatarWithName username={u.username} role={u.role} />
                       </TableCell>
-                      <TableCell>{u.email}</TableCell>
+                      <TableCell sx={TABLE_BODY_CELL_SX}>{u.email}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                         <Chip label={u.role} size="small"
-                          sx={{ bgcolor: roleColors[u.role]?.bg, color: roleColors[u.role]?.color }} />
+                          sx={{ bgcolor: getRoleColor(u.role).bg, color: getRoleColor(u.role).color }} />
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                         <Box component="span" sx={{ unicodeBidi: 'isolate', display: 'inline-block' }}>
@@ -442,7 +376,7 @@ export default function UsersPage() {
 
         {/* Bulk Delete Dialog */}
         <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth
-          PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+          >
           <DialogTitle>Confirm Bulk Delete</DialogTitle>
           <DialogContent>
             <DialogContentText>
@@ -450,8 +384,7 @@ export default function UsersPage() {
             </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button onClick={() => setBulkDeleteDialog(false)} variant="outlined"
-              sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+            <DialogCancelButton onClick={() => setBulkDeleteDialog(false)} />
             <Button onClick={handleBulkDelete} variant="contained" color="error">Delete All</Button>
           </DialogActions>
         </Dialog>
@@ -483,8 +416,7 @@ export default function UsersPage() {
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            <Button onClick={() => { setOpen(false); setFormError(''); }} variant="outlined"
-              sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+            <DialogCancelButton onClick={() => { setOpen(false); setFormError(''); }} />
             <Button variant="contained" onClick={handleAddUser} disabled={submitting}>
               {submitting ? <CircularProgress size={18} color="inherit" /> : 'Add'}
             </Button>
@@ -493,7 +425,7 @@ export default function UsersPage() {
 
         {/* Delete Single User Dialog */}
         <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="sm" fullWidth
-          PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+          >
           <DialogTitle>Confirm Delete</DialogTitle>
           <DialogContent>
             <DialogContentText>
@@ -501,22 +433,21 @@ export default function UsersPage() {
             </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button onClick={() => setOpenDeleteDialog(false)} variant="outlined"
-              sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+            <DialogCancelButton onClick={() => setOpenDeleteDialog(false)} />
             <Button onClick={handleDeleteUser} variant="contained" color="error">Delete</Button>
           </DialogActions>
         </Dialog>
 
         {/* User Drawer - View/Edit User */}
         <Drawer anchor="right" open={openUserDrawer} onClose={() => setOpenUserDrawer(false)}>
-          <Box sx={{ width: 380, p: 3, height: '100%', bgcolor: '#fafafa' }}>
+          <Box sx={{ width: 380, p: 3, height: '100%', bgcolor: 'grey.50' }}>
             {selectedUser && (
               <>
                 <Stack alignItems="center" spacing={2}>
                   <Avatar sx={{
                     width: 90, height: 90, fontSize: 32, fontWeight: 700,
-                    bgcolor: roleColors[selectedUser.role]?.bg || '#eee',
-                    color: roleColors[selectedUser.role]?.color || '#333'
+                    bgcolor: getRoleColor(selectedUser.role).bg,
+                    color: getRoleColor(selectedUser.role).color
                   }}>
                     {selectedUser.username?.[0]?.toUpperCase()}
                   </Avatar>
@@ -525,8 +456,8 @@ export default function UsersPage() {
                     <Typography color="text.secondary">{selectedUser.email}</Typography>
                     <Chip label={selectedUser.role} sx={{
                       mt: 1,
-                      bgcolor: roleColors[selectedUser.role]?.bg,
-                      color: roleColors[selectedUser.role]?.color,
+                      bgcolor: getRoleColor(selectedUser.role).bg,
+                      color: getRoleColor(selectedUser.role).color,
                       fontWeight: 600
                     }} />
                   </Box>
@@ -546,7 +477,7 @@ export default function UsersPage() {
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Role</Typography>
                     <Chip label={selectedUser.role} size="small"
-                      sx={{ bgcolor: roleColors[selectedUser.role]?.bg, color: roleColors[selectedUser.role]?.color }} />
+                      sx={{ bgcolor: getRoleColor(selectedUser.role).bg, color: getRoleColor(selectedUser.role).color }} />
                   </Box>
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Created At</Typography>
@@ -564,14 +495,14 @@ export default function UsersPage() {
 
                 <Grid container spacing={2}>
                   <Grid size={6}>
-                    <Card sx={{ borderRadius: 3, textAlign: 'center', py: 2 }}>
+                    <Card sx={{ textAlign: 'center', py: 2 }}>
                       <IconClipboardList size={28} />
                       <Typography variant="h6" fontWeight={700}>—</Typography>
                       <Typography variant="body2" color="text.secondary">Tasks</Typography>
                     </Card>
                   </Grid>
                   <Grid size={6}>
-                    <Card sx={{ borderRadius: 3, textAlign: 'center', py: 2 }}>
+                    <Card sx={{ textAlign: 'center', py: 2 }}>
                       <IconFileAnalytics size={28} />
                       <Typography variant="h6" fontWeight={700}>—</Typography>
                       <Typography variant="body2" color="text.secondary">Reports</Typography>
@@ -582,7 +513,6 @@ export default function UsersPage() {
             )}
           </Box>
         </Drawer>
-      </CardContent>
-    </Card>
+    </PageCard>
   );
 }

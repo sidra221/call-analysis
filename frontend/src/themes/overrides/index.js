@@ -5,6 +5,7 @@ import { merge } from 'lodash-es';
 import Alert from './Alert';
 import Avatar from './Avatar';
 import Button from './Button';
+import Card from './Card';
 import CardActions from './CardActions';
 import CardContent from './CardContent';
 import CardHeader from './CardHeader';
@@ -17,6 +18,7 @@ import DateTimePickerToolbar from './DateTimePickerToolbar';
 import Dialog from './Dialog';
 import DialogTitle from './DialogTitle';
 import InputBase from './InputBase';
+import OutlinedInput from './OutlinedInput';
 import ListItemButton from './ListItemButton';
 import ListItemIcon from './ListItemIcon';
 import ListItemText from './ListItemText';
@@ -33,7 +35,8 @@ export default function ComponentsOverrides(theme, borderRadius, outlinedFilled)
   return merge(
     Alert(theme),
     Avatar(theme),
-    Button(theme),
+    Button(borderRadius),
+    Card(borderRadius),
     CardActions,
     CardContent(),
     CardHeader(theme),
@@ -42,10 +45,11 @@ export default function ComponentsOverrides(theme, borderRadius, outlinedFilled)
     DataGrid(theme),
     DatePicker(),
     DateTimePickerToolbar(),
-    Dialog(),
+    Dialog(borderRadius),
     DialogTitle(),
     Divider(theme),
     InputBase(theme),
+    OutlinedInput(borderRadius, outlinedFilled),
     ListItemButton(theme),
     ListItemIcon(theme),
     ListItemText(theme),

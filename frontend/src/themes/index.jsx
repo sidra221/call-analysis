@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 // material-ui
 import { createTheme, ThemeProvider, StyledEngineProvider } from '@mui/material/styles';
@@ -9,6 +9,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { CSS_VAR_PREFIX, DEFAULT_THEME_MODE } from 'config';
 import CustomShadows from './custom-shadows';
 import useConfig from 'hooks/useConfig';
+import useAuth from 'hooks/useAuth';
+import { getRoleDefaultTheme, isLegacyPreset, resolvePresetColor } from 'constants/themes';
 import { buildPalette } from './palette';
 import Typography from './typography';
 import componentsOverrides from './overrides';
@@ -17,10 +19,24 @@ import componentsOverrides from './overrides';
 
 export default function ThemeCustomization({ children }) {
   const {
-    state: { borderRadius, fontFamily, outlinedFilled, presetColor }
+    state: { borderRadius, fontFamily, outlinedFilled, presetColor },
+    setField
   } = useConfig();
+  const { user } = useAuth();
 
-  const palette = useMemo(() => buildPalette(presetColor), [presetColor]);
+  useEffect(() => {
+    if (!user?.role) return;
+    if (isLegacyPreset(presetColor)) {
+      setField('presetColor', getRoleDefaultTheme(user.role));
+    }
+  }, [user?.role, presetColor, setField]);
+
+  const activePreset = useMemo(
+    () => resolvePresetColor(presetColor, user?.role),
+    [presetColor, user?.role]
+  );
+
+  const palette = useMemo(() => buildPalette(activePreset), [activePreset]);
 
   const themeTypography = useMemo(() => Typography(fontFamily), [fontFamily]);
 
@@ -37,6 +53,9 @@ export default function ThemeCustomization({ children }) {
         }
       },
       typography: themeTypography,
+      shape: {
+        borderRadius
+      },
       colorSchemes: {
         light: {
           palette: palette.light,
@@ -62,7 +81,13 @@ export default function ThemeCustomization({ children }) {
 
   return (
     <StyledEngineProvider injectFirst>
-      <ThemeProvider disableTransitionOnChange theme={themes} modeStorageKey="theme-mode" defaultMode={DEFAULT_THEME_MODE}>
+      <ThemeProvider
+        key={activePreset}
+        disableTransitionOnChange
+        theme={themes}
+        modeStorageKey="theme-mode"
+        defaultMode={DEFAULT_THEME_MODE}
+      >
         <CssBaseline enableColorScheme />
         {children}
       </ThemeProvider>

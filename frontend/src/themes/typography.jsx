@@ -48,7 +48,8 @@ export default function Typography(fontFamily) {
       lineHeight: '1.5em'
     },
     button: {
-      textTransform: 'capitalize'
+      textTransform: 'none',
+      fontWeight: 600
     },
     commonAvatar: {
       cursor: 'pointer',

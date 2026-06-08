@@ -57,11 +57,11 @@ export default function Register() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f4f5fa',
+        bgcolor: 'grey.50',
         p: 2
       }}
     >
-      <Card sx={{ width: '100%', maxWidth: 520, borderRadius: 2 }}>
+      <Card sx={{ width: '100%', maxWidth: 520 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h4" gutterBottom>
             Register
@@ -144,7 +144,7 @@ export default function Register() {
                   variant="contained"
                   type="submit"
                   disabled={loading}
-                  sx={{ py: 1.4, fontWeight: 600, borderRadius: 1.5 }}
+                  sx={{ py: 1.4 }}
                 >
                   {loading ? <CircularProgress size={24} color="inherit" /> : 'Register'}
                 </Button>

@@ -4,6 +4,8 @@ from .views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     AuthenticatedUserView,
+    ChangePasswordView,
+    AvatarUploadView,
     UsersListView,
     UserDeleteView,
     ManagerOnlyView,
@@ -20,6 +22,8 @@ urlpatterns = [
 
     # Authenticated user
     path('me/', AuthenticatedUserView.as_view(), name='authenticated-user'),
+    path('me/change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('me/avatar/', AvatarUploadView.as_view(), name='avatar-upload'),
 
     # Users management (Manager only)
     path('users/', UsersListView.as_view(), name='users-list'),

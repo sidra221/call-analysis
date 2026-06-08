@@ -5,7 +5,10 @@ export const CSS_VAR_PREFIX = '';
 
 const config = {
   fontFamily: `'Roboto', sans-serif`,
-  borderRadius: 8
+  borderRadius: 8,
+  presetColor: '',
+  language: 'en',
+  notificationsEnabled: true
 };
 
 export default config;

@@ -106,7 +106,7 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f4f5fa',
+        bgcolor: 'grey.50',
         p: 2
       }}
     >
@@ -116,9 +116,7 @@ export default function Login() {
         sx={{
           width: '100%',
           maxWidth: 420,
-          borderRadius: 3,
-          boxShadow:
-            '0 2px 14px rgba(32,40,45,0.08)',
+          boxShadow: '0 2px 14px rgba(32,40,45,0.08)',
           animation: 'fadeIn 0.5s ease'
         }}
       >
@@ -132,7 +130,7 @@ export default function Login() {
             sx={{
               mb: 1,
               fontWeight: 700,
-              color: '#1e88e5',
+              color: 'primary.main',
               textAlign: 'center'
             }}
           >
@@ -229,17 +227,7 @@ export default function Login() {
               variant="contained"
               type="submit"
               disabled={loading}
-              sx={{
-                py: 1.4,
-                fontWeight: 600,
-                borderRadius: 2,
-                background: '#1e88e5',
-                '&:hover': {
-                  background: '#1565c0',
-                  boxShadow:
-                    '0 4px 12px rgba(0,0,0,0.15)'
-                }
-              }}
+              sx={{ py: 1.4 }}
             >
 
               {loading

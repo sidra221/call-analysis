@@ -2,35 +2,75 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   IconEye, IconEdit, IconTrash, IconX, IconDots,
-  IconRefresh, IconUpload, IconDeviceFloppy, IconCheck,
-  IconAdjustmentsHorizontal, IconSearch, IconTrashX,
-  IconArrowUp, IconArrowDown
+  IconUpload, IconDeviceFloppy, IconCheck,
+  IconTrashX, IconArrowUp, IconArrowDown
 } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
+import PageCard from 'ui-component/PageCard';
+import PageTitle from 'ui-component/PageTitle';
+import FilterToolbar from 'ui-component/FilterToolbar';
+import FilterPopover from 'ui-component/FilterPopover';
+import StatusChip from 'ui-component/StatusChip';
+import DialogCancelButton from 'ui-component/DialogCancelButton';
+import { stateColor, sentimentColor, priorityColor } from 'constants/status';
 import {
-  Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Drawer,
-  FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Select,
+  Box, Button, Card, Chip, CircularProgress, Divider, Drawer,
+  FormControl, IconButton, InputLabel, MenuItem, Select,
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
   Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Popover, Badge, Alert, Checkbox
+  DialogActions, Alert, Checkbox
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
 import { callsApi } from 'api/api';
+import {
+  TABLE_LAYOUT_SX,
+  TABLE_CHECKBOX_CELL_SX,
+  TABLE_HEADER_CELL_SX,
+  TABLE_HEADER_SORT_SX,
+  TABLE_BODY_CELL_SX
+} from 'constants/table';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
-
-const stateColor = {
-  pending: 'warning', processing: 'info', completed: 'success', failed: 'error'
-};
-const statusLabel = {
-  pending: 'Pending', processing: 'Processing', completed: 'Completed', failed: 'Failed'
-};
-const sentimentColor = { positive: 'success', negative: 'error', neutral: 'default' };
-const priorityColor = { high: 'error', medium: 'warning', low: 'success', critical: 'error' };
 const rowsPerPage = 6;
+
+const CALLS_CHECKBOX_CELL_SX = {
+  ...TABLE_CHECKBOX_CELL_SX,
+  width: 68,
+  minWidth: 68,
+  maxWidth: 68,
+  pr: 3.5
+};
+
+const CALLS_ID_PL = 2.5;
+
+const CALLS_ID_CELL_SX = {
+  ...TABLE_HEADER_CELL_SX,
+  width: '8%',
+  pl: CALLS_ID_PL
+};
+
+const CALLS_ID_BODY_SX = {
+  ...TABLE_BODY_CELL_SX,
+  pl: CALLS_ID_PL
+};
+
+const CALLS_UPLOADED_BY_CELL_SX = {
+  ...TABLE_HEADER_CELL_SX,
+  width: '12%',
+  pr: 0.5,
+  display: { xs: 'none', lg: 'table-cell' }
+};
+
+const CALLS_ACTIONS_CELL_SX = {
+  ...TABLE_HEADER_CELL_SX,
+  width: '11%',
+  minWidth: 84,
+  pl: 0.5,
+  pr: 1
+};
 
 export default function Calls() {
   const [page, setPage] = useState(0);
@@ -464,107 +504,55 @@ export default function Calls() {
         </Alert>
       )}
 
-      <Card sx={{ borderRadius: 3 }}>
-        <CardContent>
-          <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>
-            Calls Management
-          </Typography>
+      <PageCard>
+          <PageTitle title="Calls Management" />
 
-          <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
-            <Grid size={{ xs: 12, md: 5 }}>
-              <TextField
-                fullWidth size="small" placeholder="Search calls ..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconSearch size={18} style={{ color: '#9e9e9e' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      {loading ? <CircularProgress size={16} /> : search ? (
-                        <IconButton size="small" onClick={() => setSearch('')}>
-                          <IconX size={14} />
-                        </IconButton>
-                      ) : null}
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 6, md: 'auto' }}>
-              <Badge badgeContent={activeFilterCount} color="primary">
-                <Button
-                  variant="outlined"
-                  startIcon={<IconAdjustmentsHorizontal size={18} />}
-                  onClick={openFilters}
-                  sx={{
-                    borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
-                    borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
-                    bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent'
-                  }}
-                >
-                  Filters
-                </Button>
-              </Badge>
-            </Grid>
-
-            {activeFilterCount > 0 && (
-              <Grid size={{ xs: 6, md: 'auto' }}>
-                <Button
-                  variant="text" color="error"
-                  startIcon={<IconRefresh size={18} />}
-                  onClick={() => {
-                    setStatusFilter('all'); setSentimentFilter('all');
-                    setPriorityFilter('all'); setReviewedFilter('all');
-                    setStartDate(''); setEndDate('');
-                    setSortByDate('desc');
-                    setSortByUploader(null);
-                  }}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
-                >
-                  Reset All
-                </Button>
-              </Grid>
-            )}
-
-            <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-              {isManager && selectedCalls.length > 0 && (
+          <FilterToolbar
+            search={search}
+            onSearchChange={(event) => setSearch(event.target.value)}
+            searchPlaceholder="Search calls ..."
+            searchLoading={loading}
+            activeFilterCount={activeFilterCount}
+            onOpenFilters={openFilters}
+            onResetFilters={() => {
+              setStatusFilter('all'); setSentimentFilter('all');
+              setPriorityFilter('all'); setReviewedFilter('all');
+              setStartDate(''); setEndDate('');
+              setSortByDate('desc');
+              setSortByUploader(null);
+            }}
+            searchGridSize={{ xs: 12, md: 5 }}
+            actions={(
+              <>
+                {isManager && selectedCalls.length > 0 && (
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={deleting ? <CircularProgress size={18} color="inherit" /> : <IconTrashX size={18} />}
+                    onClick={() => setBulkDeleteDialog(true)}
+                    disabled={deleting}
+                  >
+                    Delete ({selectedCalls.length})
+                  </Button>
+                )}
                 <Button
                   variant="contained"
-                  color="error"
-                  startIcon={deleting ? <CircularProgress size={18} color="inherit" /> : <IconTrashX size={18} />}
-                  onClick={() => setBulkDeleteDialog(true)}
-                  disabled={deleting}
-                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}
+                  startIcon={<IconUpload size={18} />}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  Delete ({selectedCalls.length})
+                  Upload Call
                 </Button>
-              )}
-              <Button
-                variant="contained"
-                startIcon={<IconUpload size={18} />}
-                onClick={() => fileInputRef.current?.click()}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}
-              >
-                Upload Call
-              </Button>
-            </Grid>
-          </Grid>
+              </>
+            )}
+          />
 
-          <Popover
+          <FilterPopover
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-            PaperProps={{ sx: { p: 3, width: 320, borderRadius: 3, mt: 1.5 } }}
+            title="Filter Calls"
+            width={320}
           >
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Filter Calls</Typography>
-            <Stack spacing={2.5}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
@@ -620,68 +608,66 @@ export default function Calls() {
                 </Stack>
               </Box>
 
-              <Button variant="contained" fullWidth onClick={closeFilters} sx={{ borderRadius: 2, textTransform: 'none' }}>
-                Apply Filters
-              </Button>
-            </Stack>
-          </Popover>
+          </FilterPopover>
 
           <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
-            <Table size="small" sx={{ minWidth: 800 }}>
+            <Table size="small" sx={{ ...TABLE_LAYOUT_SX, minWidth: 900 }}>
               <TableHead>
                 <TableRow>
                   {isManager && (
-                    <TableCell padding="checkbox">
+                    <TableCell padding="checkbox" sx={CALLS_CHECKBOX_CELL_SX}>
                       <Checkbox
+                        size="small"
                         checked={isAllSelected}
                         indeterminate={selectedCalls.length > 0 && selectedCalls.length < filteredCalls.length}
                         onChange={handleSelectAll}
                       />
                     </TableCell>
                   )}
-                  <TableCell>ID</TableCell>
-                  <TableCell sx={{ width: 120 }}>Priority</TableCell>
-                  <TableCell sx={{ width: 140 }}>Status</TableCell>
-                  <TableCell sx={{ width: 120 }}>Sentiment</TableCell>
-                  <TableCell sx={{ width: 100, display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
-                  <TableCell sx={{ width: 140, display: { xs: 'none', lg: 'table-cell' } }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Created At</Typography>
-                      <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0 }}>
+                  <TableCell sx={CALLS_ID_CELL_SX}>ID</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Priority</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>Status</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Sentiment</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '9%', display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '13%', display: { xs: 'none', lg: 'table-cell' } }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Created At
+                      <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell sx={{ width: 120 }}>Reviewed</TableCell>
-                  <TableCell sx={{ width: 180, display: { xs: 'none', lg: 'table-cell' } }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Uploaded By</Typography>
-                      <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0 }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '10%' }}>Reviewed</TableCell>
+                  <TableCell sx={CALLS_UPLOADED_BY_CELL_SX}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Uploaded By
+                      <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByUploader === 'asc' ? <IconArrowUp size={16} /> :
                           sortByUploader === 'desc' ? <IconArrowDown size={16} /> :
                             <IconArrowUp size={16} style={{ opacity: 0.5 }} />}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell align="center" sx={{ width: 120 }}>Actions</TableCell>
+                  <TableCell align="center" sx={CALLS_ACTIONS_CELL_SX}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredCalls.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((call) => (
-                    <TableRow key={call.id} sx={{ '& td': { py: 1.5 } }} selected={selectedCalls.includes(call.id)}>
+                    <TableRow key={call.id} hover selected={selectedCalls.includes(call.id)}>
                       {isManager && (
-                        <TableCell padding="checkbox">
+                        <TableCell padding="checkbox" sx={CALLS_CHECKBOX_CELL_SX}>
                           <Checkbox
+                            size="small"
                             checked={selectedCalls.includes(call.id)}
                             onChange={() => handleSelectCall(call.id)}
                           />
                         </TableCell>
                       )}
-                      <TableCell sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <TableCell sx={CALLS_ID_BODY_SX}>
                         #{call.id}
                       </TableCell>
                       <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
-                      <TableCell><Chip label={statusLabel[call.status] || call.status} color={stateColor[call.status]} size="small" /></TableCell>
+                      <TableCell><StatusChip status={call.status} /></TableCell>
                       <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
@@ -696,17 +682,17 @@ export default function Calls() {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                      <TableCell sx={{ ...CALLS_UPLOADED_BY_CELL_SX, pl: 1 }}>
                         <UserAvatarWithName
                           username={call.uploadedBy}
                           role={call.uploadedByRole}
                         />
                       </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
+                      <TableCell align="center" sx={{ ...CALLS_ACTIONS_CELL_SX, pl: 0.5, pr: 1 }}>
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
                           <IconButton
                             size="small"
-                            sx={{ color: '#0288d1' }}
+                            sx={{ color: 'info.main' }}
                             onClick={() => openViewDrawerFunc(call)}
                             title="View Call"
                           >
@@ -749,28 +735,22 @@ export default function Calls() {
               rowsPerPageOptions={[]}
             />
           </Box>
-        </CardContent>
-      </Card>
+      </PageCard>
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}
-        maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <DialogContentText>Are you sure you want to delete call #{callToDelete}?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>
-            Cancel
-          </Button>
+          <DialogCancelButton onClick={() => setOpenDeleteDialog(false)} />
           <Button onClick={() => handleDelete(callToDelete)} variant="contained" color="error" disabled={deleting}>
             {deleting ? <CircularProgress size={18} /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+      <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirm Bulk Delete</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -778,8 +758,7 @@ export default function Calls() {
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setBulkDeleteDialog(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+          <DialogCancelButton onClick={() => setBulkDeleteDialog(false)} />
           <Button onClick={handleBulkDelete} variant="contained" color="error" disabled={deleting}>
             {deleting ? <CircularProgress size={18} /> : 'Delete All'}
           </Button>
@@ -1027,7 +1006,7 @@ export default function Calls() {
         }}
         open={isProcessing}
       >
-        <Card sx={{ p: 4, borderRadius: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
+        <Card sx={{ p: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
           <Stack spacing={3} alignItems="center">
             {processingProgress < 100 ? (
               <>

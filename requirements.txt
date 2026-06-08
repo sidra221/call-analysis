@@ -26,6 +26,9 @@ drf-yasg
 # HTTP Client — for calling AI service
 httpx==0.28.1
 
+# Images (profile avatars)
+Pillow==11.1.0
+
 # PDF reports
 reportlab==4.2.5
 

@@ -45,15 +45,31 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('access_token');
     const savedUser = localStorage.getItem('authUser');
 
-    if (token) {
-      setIsLoggedIn(true);
-    }
-
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
 
-    setLoading(false);
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    setIsLoggedIn(true);
+
+    fetch(`${API_URL}/api/accounts/me/`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const userData = data?.data || data;
+        localStorage.setItem('authUser', JSON.stringify(userData));
+        setUser(userData);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   // ========================================
@@ -227,6 +243,19 @@ export function AuthProvider({ children }) {
   }, [logout]);
 
   // ========================================
+  // Update user (e.g. after avatar upload)
+  // ========================================
+
+  const updateUser = useCallback((partial) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...partial };
+      localStorage.setItem('authUser', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // ========================================
   // Context value
   // ========================================
 
@@ -237,7 +266,8 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    refreshToken
+    refreshToken,
+    updateUser
   }), [
     isLoggedIn,
     user,
@@ -245,7 +275,8 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    refreshToken
+    refreshToken,
+    updateUser
   ]);
 
   return (

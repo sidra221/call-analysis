@@ -1,16 +1,8 @@
 import PropTypes from 'prop-types';
 import { Avatar, Stack, Typography } from '@mui/material';
+import { getRoleColor } from 'constants/colors';
 
-export const roleColors = {
-  manager: { bg: '#ede7f6', color: '#5e35b1' },
-  agent: { bg: '#e3f2fd', color: '#1e88e5' },
-  qa: { bg: '#fff3e0', color: '#ef6c00' },
-};
-
-export const getUserRoleColor = (roleName) => {
-  const role = (roleName || '').toLowerCase();
-  return roleColors[role] || { bg: '#f5f5f5', color: '#757575' };
-};
+export const getUserRoleColor = getRoleColor;
 
 export default function UserAvatarWithName({ username, role, size = 28 }) {
   const roleColor = getUserRoleColor(role);

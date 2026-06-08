@@ -2,17 +2,29 @@
 import { extendPaletteWithChannels } from 'utils/colorUtils';
 
 // assets
-import defaultColor from './theme/default';
+import managerColor from './theme/manager';
+import qaColor from './theme/qa';
+import agentColor from './theme/agent';
+import purpleColor from './theme/purple';
+import tealColor from './theme/teal';
+import indigoColor from './theme/indigo';
+import roseColor from './theme/rose';
+
+const themeColors = {
+  manager: managerColor,
+  qa: qaColor,
+  agent: agentColor,
+  purple: purpleColor,
+  teal: tealColor,
+  indigo: indigoColor,
+  rose: roseColor,
+  default: managerColor
+};
 
 // ==============================|| DEFAULT THEME - PALETTE ||============================== //
 
 export function buildPalette(presetColor) {
-  let colors;
-  switch (presetColor) {
-    case 'default':
-    default:
-      colors = defaultColor;
-  }
+  const colors = themeColors[presetColor] || themeColors.manager;
 
   const lightColors = {
     primary: {

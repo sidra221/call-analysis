@@ -4,24 +4,37 @@ import {
   DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Stack, Chip, Table, TableBody,
   TableCell, TableHead, TableRow, Divider, IconButton,
-  DialogContentText, alpha, useTheme, Grid, Avatar,
-  CircularProgress, Alert, TablePagination, Badge, Popover,
-  FormControl, InputLabel, Select, InputAdornment
+  DialogContentText, Grid,
+  CircularProgress, Alert, TablePagination,
+  FormControl, InputLabel, Select, Checkbox
 } from '@mui/material';
 import {
-  IconPlus, IconTrash, IconClipboardText, IconChecks,
+  IconPlus, IconTrash, IconTrashX, IconClipboardText, IconChecks,
   IconClockHour4, IconMoodSmile, IconMoodNeutral, IconMoodSad,
-  IconEye, IconDownload, IconArrowUp, IconArrowDown,
-  IconSearch, IconX, IconAdjustmentsHorizontal, IconRefresh
+  IconEye, IconDownload, IconArrowUp, IconArrowDown
 } from '@tabler/icons-react';
 import { reportsApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
+import PageCard from 'ui-component/PageCard';
+import PageTitle from 'ui-component/PageTitle';
+import FilterToolbar from 'ui-component/FilterToolbar';
+import FilterPopover from 'ui-component/FilterPopover';
+import StatSummaryCard from 'ui-component/StatSummaryCard';
+import StatusChip from 'ui-component/StatusChip';
+import DialogCancelButton from 'ui-component/DialogCancelButton';
+import {
+  TABLE_LAYOUT_SX,
+  TABLE_CHECKBOX_CELL_SX,
+  TABLE_ACTIONS_CELL_SX,
+  TABLE_HEADER_CELL_SX,
+  TABLE_HEADER_SORT_SX,
+  TABLE_BODY_CELL_SX
+} from 'constants/table';
 
 const rowsPerPage = 6;
 
 export default function Reports() {
-  const theme = useTheme();
   const { user } = useAuth();
   const role = (user?.role || '').toLowerCase();
 
@@ -50,6 +63,8 @@ export default function Reports() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
 
   const [form, setForm] = useState({ type: 'daily', from: '', to: '' });
 
@@ -102,6 +117,7 @@ export default function Reports() {
     setSortBy('created_at');
     setSortOrder('desc');
     setPage(0);
+    setSelected([]);
   };
 
   const openFilters = (event) => setFilterAnchorEl(event.currentTarget);
@@ -166,6 +182,33 @@ export default function Reports() {
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
+
+  const canSelectReport = (report) => role !== 'qa' || report.status === 'draft';
+
+  const selectableOnPage = paginatedReports.filter(canSelectReport);
+
+  const isAllPageSelected = selectableOnPage.length > 0
+    && selectableOnPage.every((r) => selected.includes(r.id));
+
+  const isSomePageSelected = selectableOnPage.some((r) => selected.includes(r.id)) && !isAllPageSelected;
+
+  const handleSelectAll = (e) => {
+    const pageIds = selectableOnPage.map((r) => r.id);
+    if (e.target.checked) {
+      setSelected((prev) => [...new Set([...prev, ...pageIds])]);
+    } else {
+      setSelected((prev) => prev.filter((id) => !pageIds.includes(id)));
+    }
+  };
+
+  const handleSelectReport = (id) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const selectedDeletable = selected.filter((id) => {
+    const report = reports.find((r) => r.id === id);
+    return report && canSelectReport(report);
+  });
 
   const publishedCount = reports.filter((r) => r.status === 'published' || r.status === 'reviewed' || r.status === 'approved').length;
   const draftCount = reports.filter((r) => r.status === 'draft').length;
@@ -234,10 +277,28 @@ export default function Reports() {
       setDeleting(true);
       await reportsApi.delete(reportToDelete.id);
       setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
+      setSelected((prev) => prev.filter((id) => id !== reportToDelete.id));
       setDeleteDialog(false);
       setReportToDelete(null);
     } catch (err) {
       setError(err.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDeletable.length === 0) return;
+    try {
+      setDeleting(true);
+      for (const id of selectedDeletable) {
+        await reportsApi.delete(id);
+      }
+      setReports((prev) => prev.filter((r) => !selectedDeletable.includes(r.id)));
+      setSelected((prev) => prev.filter((id) => !selectedDeletable.includes(id)));
+      setBulkDeleteDialog(false);
+    } catch (err) {
+      setError(err.message || 'Bulk delete failed');
     } finally {
       setDeleting(false);
     }
@@ -364,37 +425,9 @@ export default function Reports() {
     return 'neutral';
   };
 
-  const statusChip = (status) => {
-    if (status === 'reviewed' || status === 'approved') {
-      return (
-        <Chip label="Reviewed" size="small" sx={{
-          borderRadius: '10px',
-          bgcolor: alpha(theme.palette.info.main, 0.12),
-          color: theme.palette.info.dark,
-        }} />
-      );
-    }
-    if (status === 'published') {
-      return (
-        <Chip label="Published" size="small" sx={{
-          borderRadius: '10px',
-          bgcolor: alpha(theme.palette.success.main, 0.12),
-          color: theme.palette.success.dark,
-        }} />
-      );
-    }
-    return (
-      <Chip label="Draft" size="small" sx={{
-        borderRadius: '10px',
-        bgcolor: alpha(theme.palette.warning.main, 0.12),
-        color: theme.palette.warning.dark,
-      }} />
-    );
-  };
-
   const isManager = role === 'manager';
   const isReviewed = (report) => report?.status === 'reviewed' || report?.status === 'approved';
-  const tableColSpan = isManager ? 5 : 4;
+  const tableColSpan = isManager ? 6 : 5;
 
   return (
     <Box>
@@ -402,203 +435,120 @@ export default function Reports() {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
       )}
 
-      <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }}
-            justifyContent="space-between" spacing={2} mb={3}>
-            <Typography variant="h4" gutterBottom sx={{ padding: '16px 2px' }}>Reports</Typography>
-            {role === 'qa' && (
+      <PageCard bordered>
+          <PageTitle
+            title="Reports"
+            action={role === 'qa' ? (
               <Button variant="contained" startIcon={<IconPlus />} onClick={() => setOpenForm(true)}>
                 Generate
               </Button>
-            )}
-          </Stack>
+            ) : null}
+          />
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
-                      <IconClipboardText size={20} />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Total Reports</Typography>
-                      <Typography variant="h4" fontWeight={700}>{reports.length}</Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
+              <StatSummaryCard icon={<IconClipboardText size={20} />} label="Total Reports" value={reports.length} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.12), color: theme.palette.success.main }}>
-                      <IconChecks size={20} />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Published</Typography>
-                      <Typography variant="h4" fontWeight={700}>{publishedCount}</Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
+              <StatSummaryCard icon={<IconChecks size={20} />} label="Published" value={publishedCount} color="success" />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.warning.main, 0.12), color: theme.palette.warning.main }}>
-                      <IconClockHour4 size={20} />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        {role === 'manager' ? 'Reviewed' : 'Drafts'}
-                      </Typography>
-                      <Typography variant="h4" fontWeight={700}>
-                        {role === 'manager' ? reviewedCount : draftCount}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search summary, dates, status..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconSearch size={18} style={{ color: '#9e9e9e' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery ? (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => { setSearchQuery(''); setPage(0); }}>
-                        <IconX size={14} />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : null,
-                }}
+              <StatSummaryCard
+                icon={<IconClockHour4 size={20} />}
+                label={role === 'manager' ? 'Reviewed' : 'Drafts'}
+                value={role === 'manager' ? reviewedCount : draftCount}
+                color="warning"
               />
             </Grid>
-
-            <Grid size={{ xs: 6, md: 'auto' }}>
-              <Badge badgeContent={activeFilterCount} color="primary">
-                <Button
-                  variant="outlined"
-                  startIcon={<IconAdjustmentsHorizontal size={18} />}
-                  onClick={openFilters}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    height: 40,
-                    borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
-                    bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent',
-                  }}
-                >
-                  Filters
-                </Button>
-              </Badge>
-            </Grid>
-
-            {(activeFilterCount > 0 || searchQuery) && (
-              <Grid size={{ xs: 6, md: 'auto' }}>
-                <Button
-                  variant="text"
-                  color="error"
-                  startIcon={<IconRefresh size={18} />}
-                  onClick={handleResetFilters}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
-                >
-                  Reset All
-                </Button>
-              </Grid>
-            )}
           </Grid>
 
-          <Popover
+          <FilterToolbar
+            search={searchQuery}
+            onSearchChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+            onSearchClear={() => { setSearchQuery(''); setPage(0); }}
+            searchPlaceholder="Search summary, dates, status..."
+            activeFilterCount={activeFilterCount}
+            onOpenFilters={openFilters}
+            onResetFilters={handleResetFilters}
+            showReset={activeFilterCount > 0 || !!searchQuery}
+            actions={role === 'qa' && selectedDeletable.length > 0 ? (
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<IconTrashX size={18} />}
+                onClick={() => setBulkDeleteDialog(true)}
+              >
+                Delete Selected ({selectedDeletable.length})
+              </Button>
+            ) : null}
+          />
+
+          <FilterPopover
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-            PaperProps={{ sx: { p: 3, width: 280, borderRadius: 3, mt: 1.5 } }}
+            title="Filter Reports"
           >
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Filter Reports</Typography>
-            <Stack spacing={2.5}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-                >
-                  <MenuItem value="all">All</MenuItem>
-                  {role === 'qa' && <MenuItem value="draft">Draft</MenuItem>}
-                  <MenuItem value="published">Published</MenuItem>
-                  <MenuItem value="reviewed">Reviewed</MenuItem>
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={typeFilter}
-                  label="Type"
-                  onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-                >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="daily">Daily</MenuItem>
-                  <MenuItem value="weekly">Weekly</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={closeFilters}
-                sx={{ borderRadius: 2, textTransform: 'none' }}
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
               >
-                Apply Filters
-              </Button>
-            </Stack>
-          </Popover>
+                <MenuItem value="all">All</MenuItem>
+                {role === 'qa' && <MenuItem value="draft">Draft</MenuItem>}
+                <MenuItem value="published">Published</MenuItem>
+                <MenuItem value="reviewed">Reviewed</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={typeFilter}
+                label="Type"
+                onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="daily">Daily</MenuItem>
+                <MenuItem value="weekly">Weekly</MenuItem>
+              </Select>
+            </FormControl>
+          </FilterPopover>
 
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 650, tableLayout: 'fixed' }}>
+            <Table size="small" sx={TABLE_LAYOUT_SX}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: isManager ? '24%' : '32%', whiteSpace: 'nowrap' }}>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="body2" fontWeight={600}>Period</Typography>
-                      <IconButton size="small" onClick={() => handleSort('period_dates')} sx={{ p: 0 }}>
+                  <TableCell padding="checkbox" sx={TABLE_CHECKBOX_CELL_SX}>
+                    <Checkbox
+                      size="small"
+                      checked={isAllPageSelected}
+                      indeterminate={isSomePageSelected}
+                      onChange={handleSelectAll}
+                      disabled={selectableOnPage.length === 0}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '24%' : '30%' }}>
+                    <Box component="span" sx={TABLE_HEADER_SORT_SX}>
+                      Period
+                      <IconButton size="small" onClick={() => handleSort('period_dates')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('period_dates')}
                       </IconButton>
-                    </Stack>
+                    </Box>
                   </TableCell>
-                  <TableCell sx={{ width: '12%', whiteSpace: 'nowrap' }}>
-                    <Typography variant="body2" fontWeight={600}>Type</Typography>
-                  </TableCell>
-                  <TableCell sx={{ width: '14%', whiteSpace: 'nowrap', display: { xs: 'none', sm: 'table-cell' } }}>
-                    <Typography variant="body2" fontWeight={600}>Status</Typography>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '14%' : '18%' }}>Type</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '14%' : '18%', display: { xs: 'none', sm: 'table-cell' } }}>
+                    Status
                   </TableCell>
                   {isManager && (
-                    <TableCell sx={{ width: '20%', whiteSpace: 'nowrap', display: { xs: 'none', md: 'table-cell' } }}>
-                      <Typography variant="body2" fontWeight={600}>Created By</Typography>
+                    <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '22%', display: { xs: 'none', md: 'table-cell' } }}>
+                      Created By
                     </TableCell>
                   )}
-                  <TableCell align="center" sx={{ width: '16%', whiteSpace: 'nowrap' }}>
-                    <Typography variant="body2" fontWeight={600}>Actions</Typography>
+                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>
+                    Actions
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -610,17 +560,23 @@ export default function Reports() {
                     </TableCell>
                   </TableRow>
                 ) : paginatedReports.map((r) => (
-                  <TableRow key={r.id} hover>
-                    <TableCell>
-                      <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-                        {r.date_from} → {r.date_to}
-                      </Box>
+                  <TableRow key={r.id} hover selected={selected.includes(r.id)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        size="small"
+                        checked={selected.includes(r.id)}
+                        onChange={() => handleSelectReport(r.id)}
+                        disabled={!canSelectReport(r)}
+                      />
+                    </TableCell>
+                    <TableCell sx={TABLE_BODY_CELL_SX}>
+                      {r.date_from} → {r.date_to}
                     </TableCell>
                     <TableCell>
                       <Chip label={r.period} size="small" color="primary" variant="outlined" />
                     </TableCell>
                     <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                      {statusChip(r.status)}
+                      <StatusChip status={r.status} />
                     </TableCell>
                     {isManager && (
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
@@ -634,7 +590,7 @@ export default function Reports() {
                       <Stack direction="row" spacing={0.5} justifyContent="center">
                         <IconButton
                           size="small"
-                          sx={{ color: '#0288d1' }}
+                          sx={{ color: 'info.main' }}
                           onClick={() => openReportView(r)}
                           title="View Report"
                         >
@@ -699,8 +655,7 @@ export default function Reports() {
               rowsPerPageOptions={[]}
             />
           </Box>
-        </CardContent>
-      </Card>
+      </PageCard>
 
       <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
         <DialogTitle>Generate New Report</DialogTitle>
@@ -720,25 +675,37 @@ export default function Reports() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setOpenForm(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+          <DialogCancelButton onClick={() => setOpenForm(false)} />
           <Button variant="contained" onClick={handleGenerate} disabled={generating}>
             {generating ? <CircularProgress size={18} color="inherit" /> : 'Generate'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <DialogContentText>Are you sure you want to delete this report?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={confirmDelete}
-            disabled={deleting} sx={{ backgroundColor: 'error.dark' }}>
+          <DialogCancelButton onClick={() => setDeleteDialog(false)} />
+          <Button color="error" variant="contained" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Delete Selected Reports</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <strong>{selectedDeletable.length}</strong> selected report(s)?
+            Only draft reports can be deleted.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <DialogCancelButton onClick={() => setBulkDeleteDialog(false)} />
+          <Button color="error" variant="contained" onClick={handleBulkDelete} disabled={deleting}>
             {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
@@ -774,7 +741,7 @@ export default function Reports() {
               />
 
               {(selectedReport.manager_notes || '').trim() && (
-                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                <Alert severity="info">
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
                     Manager Notes
                   </Typography>
@@ -802,7 +769,7 @@ export default function Reports() {
                 })()}
               </Box>
 
-              <Card sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', boxShadow: 0 }}>
+              <Card sx={{ boxShadow: 0 }}>
                 <CardContent>
                   <Table size="small">
                     <TableHead>
@@ -844,8 +811,7 @@ export default function Reports() {
           </DialogContent>
         )}
         <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-          <Button onClick={() => setOpenView(false)} variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}>Cancel</Button>
+          <DialogCancelButton onClick={() => setOpenView(false)} />
           {role === 'qa' && selectedReport?.status === 'draft' && (
             <>
               <Button variant="outlined" onClick={handleSaveDraft} disabled={saving}>
@@ -889,13 +855,7 @@ export default function Reports() {
         </DialogActions>
       </Dialog>
 
-      <Dialog
-        open={openNotesDialog}
-        onClose={() => setOpenNotesDialog(false)}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
-      >
+      <Dialog open={openNotesDialog} onClose={() => setOpenNotesDialog(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Notes for QA</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
@@ -912,13 +872,7 @@ export default function Reports() {
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button
-            onClick={() => setOpenNotesDialog(false)}
-            variant="outlined"
-            sx={{ color: 'text.secondary', borderColor: 'grey.400' }}
-          >
-            Cancel
-          </Button>
+          <DialogCancelButton onClick={() => setOpenNotesDialog(false)} />
           <Button
             variant="contained"
             onClick={handleSubmitNotes}

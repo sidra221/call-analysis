@@ -1,366 +1,618 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import useConfig from 'hooks/useConfig';
 import useAuth from 'hooks/useAuth';
+import PageCard from 'ui-component/PageCard';
+import ProfileAvatarUpload from 'ui-component/ProfileAvatarUpload';
 import {
-  Card, CardContent, Typography, Button, Stack, Avatar, TextField,
-  MenuItem, Switch, Box, Chip, Divider, useColorScheme, Alert,
-  Grid, Paper, IconButton, InputAdornment, Collapse
+  Card, Typography, Button, Stack, TextField,
+  MenuItem, Switch, Box, Divider, useColorScheme, Alert,
+  Grid, IconButton, InputAdornment, Collapse, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
 import {
-  IconUser, IconShieldLock, IconAdjustments, IconKey, IconMail, IconBriefcase,
-  IconBell, IconMoon, IconSun, IconLanguage, IconLogout, IconEye, IconEyeOff,
-  IconChevronDown, IconChevronUp
+  IconShieldLock, IconDeviceFloppy, IconMail, IconBriefcase,
+  IconBell, IconMoon, IconSun, IconLanguage, IconEdit, IconEye, IconEyeOff,
+  IconChevronDown, IconChevronUp, IconPalette, IconX
 } from '@tabler/icons-react';
+import { alpha, useTheme } from '@mui/material/styles';
+import { THEME_PRESETS, getRoleDefaultTheme, isLegacyPreset } from 'constants/themes';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-export default function ProfilePage() {
-  const { mode, setMode } = useColorScheme();
-  const { state: { language }, setField } = useConfig();
-  const { user, logout } = useAuth();
+function SettingIcon({ children }) {
+  const theme = useTheme();
 
+  return (
+    <Box
+      sx={{
+        width: 40,
+        height: 40,
+        borderRadius: 1.5,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: alpha(theme.palette.primary.main, 0.1),
+        color: 'primary.main',
+        flexShrink: 0
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+function SettingTile({ icon, title, description, control }) {
+  return (
+    <Card
+      sx={{
+        height: '100%',
+        boxShadow: 'none',
+        border: '1px solid',
+        borderColor: 'divider',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <Box
+        sx={{
+          p: 2.5,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 148
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+          <SettingIcon>{icon}</SettingIcon>
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>
+              {title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {description}
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Box sx={{ mt: 'auto' }}>
+          {control}
+        </Box>
+      </Box>
+    </Card>
+  );
+}
+
+export default function ProfilePage() {
+  const theme = useTheme();
+  const { mode, setMode } = useColorScheme();
+  const {
+    state: { language, presetColor, notificationsEnabled: savedNotifications },
+    setState: setConfigState
+  } = useConfig();
+  const { user } = useAuth();
+
+  const [isEditing, setIsEditing] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [pwError, setPwError] = useState('');
-  const [pwSuccess, setPwSuccess] = useState('');
-  const [pwLoading, setPwLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
 
-  const isAr = language === 'ar';
-
-  // Get display name from user object
   const displayName = user?.user || user?.username || 'User';
   const userRole = user?.role?.toLowerCase() || 'agent';
   const userEmail = user?.email || '—';
+  const roleDefaultTheme = getRoleDefaultTheme(userRole);
+  const savedPreset = isLegacyPreset(presetColor) ? roleDefaultTheme : presetColor;
+  const displayMode = mode === 'dark' ? 'dark' : 'light';
 
-  // Same avatar as in header - using dicebear
-  const avatarSrc = `https://api.dicebear.com/7.x/notionists/svg?seed=${displayName}`;
+  const [draft, setDraft] = useState({
+    language,
+    presetColor: savedPreset,
+    displayMode,
+    notificationsEnabled: savedNotifications ?? true
+  });
 
-  const roleColors = {
-    manager: { bg: '#ede7f6', color: '#5e35b1' },
-    agent:   { bg: '#e3f2fd', color: '#1e88e5' },
-    qa:      { bg: '#fff3e0', color: '#ef6c00' }
+  const isAr = language === 'ar';
+
+  const resetDraft = () => {
+    setDraft({
+      language,
+      presetColor: savedPreset,
+      displayMode,
+      notificationsEnabled: savedNotifications ?? true
+    });
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setSaveError('');
+    setSaveSuccess('');
+    setShowPasswordSection(false);
   };
 
-  const handleUpdatePassword = async () => {
-    setPwError('');
-    setPwSuccess('');
+  const handleStartEdit = () => {
+    resetDraft();
+    setIsEditing(true);
+  };
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPwError('All password fields are required');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPwError('New passwords do not match');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPwError('Password must be at least 8 characters');
-      return;
-    }
+  const handleCancelEdit = () => {
+    resetDraft();
+    setIsEditing(false);
+  };
+
+  const updateDraft = (key, value) => {
+    if (!isEditing) return;
+    setDraft((prev) => ({ ...prev, [key]: value }));
+    setSaveError('');
+    setSaveSuccess('');
+  };
+
+  const hasPasswordInput = Boolean(currentPassword || newPassword || confirmPassword);
+
+  const isDirty = useMemo(() => (
+    draft.language !== language
+    || draft.presetColor !== savedPreset
+    || draft.displayMode !== displayMode
+    || draft.notificationsEnabled !== (savedNotifications ?? true)
+    || hasPasswordInput
+  ), [
+    draft,
+    language,
+    savedPreset,
+    displayMode,
+    savedNotifications,
+    hasPasswordInput
+  ]);
+
+  const handleSaveProfile = async () => {
+    setSaveError('');
+    setSaveSuccess('');
+
+    if (!isDirty) return;
 
     try {
-      setPwLoading(true);
-      const res = await fetch(`${API_URL}/api/accounts/me/change-password/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword
-        })
-      });
+      setSaving(true);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data?.error?.message || 'Failed to update password');
+      if (hasPasswordInput) {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+          throw new Error(isAr ? 'جميع حقول كلمة المرور مطلوبة' : 'All password fields are required');
+        }
+        if (newPassword !== confirmPassword) {
+          throw new Error(isAr ? 'كلمتا المرور الجديدتان غير متطابقتين' : 'New passwords do not match');
+        }
+        if (newPassword.length < 8) {
+          throw new Error(isAr ? 'يجب أن تكون كلمة المرور 8 أحرف على الأقل' : 'Password must be at least 8 characters');
+        }
+
+        const res = await fetch(`${API_URL}/api/accounts/me/change-password/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`
+          },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword
+          })
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data?.error?.message || (isAr ? 'فشل تحديث كلمة المرور' : 'Failed to update password'));
+        }
+
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
       }
 
-      setPwSuccess('Password updated successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPwSuccess(''), 3000);
+      setConfigState((prev) => ({
+        ...prev,
+        language: draft.language,
+        presetColor: draft.presetColor,
+        notificationsEnabled: draft.notificationsEnabled
+      }));
+
+      if (draft.displayMode !== displayMode) {
+        setMode(draft.displayMode);
+      }
+
+      setSaveSuccess(
+        hasPasswordInput
+          ? (isAr ? 'تم حفظ الإعدادات وكلمة المرور' : 'Settings and password saved')
+          : (isAr ? 'تم حفظ الإعدادات' : 'Settings saved')
+      );
+      setTimeout(() => setSaveSuccess(''), 4000);
+      setIsEditing(false);
     } catch (err) {
-      setPwError(err.message);
-      setTimeout(() => setPwError(''), 3000);
+      setSaveError(err.message);
     } finally {
-      setPwLoading(false);
+      setSaving(false);
     }
   };
 
   return (
-    <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>
-      <Grid container spacing={3}>
-        
-        {/* Left Column - Profile Card */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ borderRadius: 3, height: '100%' }}>
-            <CardContent sx={{ textAlign: 'center', p: 4 }}>
-              {/* Avatar */}
-              <Avatar
-                src={avatarSrc}
-                alt={displayName}
-                sx={{
-                  width: 120,
-                  height: 120,
-                  mx: 'auto',
-                  mb: 2,
-                  border: `3px solid ${roleColors[userRole]?.color || '#5e35b1'}`
-                }}
-              />
+    <PageCard bordered contentSX={{ p: 0 }}>
+      {/* Hero */}
+      <Box
+        sx={{
+          px: { xs: 2, sm: 4 },
+          py: 4,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.14)} 0%, ${alpha(theme.palette.primary.main, 0.04)} 100%)`,
+          borderBottom: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems="center"
+          spacing={3}
+        >
+          <ProfileAvatarUpload size={96} editable={isEditing} />
 
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {displayName}
-              </Typography>
-              
-              <Chip 
-                label={user?.role?.toUpperCase() || 'Unknown'} 
-                size="small" 
-                sx={{
-                  mt: 1,
-                  mb: 2,
-                  bgcolor: roleColors[userRole]?.bg,
-                  color: roleColors[userRole]?.color,
-                  fontWeight: 600,
-                  px: 1
-                }} 
-              />
+          <Box
+            sx={{
+              flex: 1,
+              textAlign: { xs: 'center', sm: 'left' },
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: 96
+            }}
+          >
+            <Typography variant="h4" fontWeight={700}>
+              {displayName}
+            </Typography>
 
-              <Divider sx={{ my: 2 }} />
-
-              {/* User Info Items */}
-              <Stack spacing={1.5} sx={{ textAlign: 'left' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <IconMail size={18} color="#757575" />
-                  <Typography variant="body2" color="text.secondary">
-                    {userEmail}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <IconBriefcase size={18} color="#757575" />
-                  <Typography variant="body2" color="text.secondary">
-                    {user?.role?.toUpperCase() || 'Unknown'} Role
-                  </Typography>
-                </Box>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ mt: 1 }}
+              alignItems={{ xs: 'center', sm: 'center' }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <IconMail size={16} color={theme.palette.text.secondary} />
+                <Typography variant="body2" color="text.secondary">{userEmail}</Typography>
               </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <IconBriefcase size={16} color={theme.palette.text.secondary} />
+                <Typography variant="body2" color="text.secondary">
+                  {user?.role?.toUpperCase() || 'Unknown'}
+                </Typography>
+              </Stack>
+            </Stack>
+          </Box>
 
-              <Divider sx={{ my: 2 }} />
-
-              {/* Logout Button */}
+          <Stack
+            spacing={1}
+            alignItems={{ xs: 'center', sm: 'flex-end' }}
+            sx={{ flexShrink: 0, alignSelf: 'center' }}
+          >
+            {!isEditing ? (
               <Button
-                fullWidth
                 variant="outlined"
-                color="error"
-                startIcon={<IconLogout size={18} />}
-                onClick={() => { logout(); window.location.href = '/login'; }}
-                sx={{ borderRadius: 2, textTransform: 'none', mt: 2 }}
+                startIcon={<IconEdit size={18} />}
+                onClick={handleStartEdit}
               >
-                {isAr ? 'تسجيل الخروج' : 'Logout'}
+                {isAr ? 'تعديل' : 'Edit'}
               </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Right Column - All Settings Together */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent sx={{ p: 3 }}>
-              
-              {/* All settings in one place - no separate cards */}
-              <Stack spacing={3}>
-                
-                {/* Appearance & Language Section */}
-                <Box>
-                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
-                    <IconAdjustments size={24} color={roleColors[userRole]?.color || '#5e35b1'} />
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {isAr ? 'المظهر واللغة' : 'Appearance & Language'}
-                    </Typography>
-                  </Stack>
-                  <Divider sx={{ mb: 3 }} />
-
-                  <Grid container spacing={2}>
-                    {/* Dark/Light Mode */}
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-                        <Stack direction="row" alignItems="center" justifyContent="space-between">
-                          <Stack direction="row" alignItems="center" spacing={1}>
-                            {mode === 'dark' ? <IconMoon size={20} /> : <IconSun size={20} />}
-                            <Typography variant="body2">
-                              {mode === 'dark' ? (isAr ? 'ليلي' : 'Dark') : (isAr ? 'نهاري' : 'Light')}
-                            </Typography>
-                          </Stack>
-                          <Switch 
-                            checked={mode === 'dark'} 
-                            onChange={(e) => setMode(e.target.checked ? 'dark' : 'light')} 
-                            size="small"
-                          />
-                        </Stack>
-                      </Paper>
-                    </Grid>
-
-                    {/* Notifications */}
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-                        <Stack direction="row" alignItems="center" justifyContent="space-between">
-                          <Stack direction="row" alignItems="center" spacing={1}>
-                            <IconBell size={20} />
-                            <Typography variant="body2">
-                              {isAr ? 'إشعارات' : 'Alerts'}
-                            </Typography>
-                          </Stack>
-                          <Switch defaultChecked size="small" />
-                        </Stack>
-                      </Paper>
-                    </Grid>
-
-                    {/* Language Dropdown */}
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <IconLanguage size={20} />
-                          <Typography variant="body2" sx={{ minWidth: 70 }}>
-                            {isAr ? 'اللغة' : 'Language'}
-                          </Typography>
-                          <TextField
-                            select
-                            value={language}
-                            onChange={(e) => setField('language', e.target.value)}
-                            size="small"
-                            sx={{ 
-                              ml: 'auto', 
-                              width: 100,
-                              '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                              '& .MuiSelect-select': { p: 0.5 }
-                            }}
-                            variant="outlined"
-                          >
-                            <MenuItem value="en">English</MenuItem>
-                            <MenuItem value="ar">العربية</MenuItem>
-                          </TextField>
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                <Divider />
-
-                {/* Change Password Section - Collapsible */}
-                <Box>
-                  <Stack 
-                    direction="row" 
-                    alignItems="center" 
-                    justifyContent="space-between" 
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => setShowPasswordSection(!showPasswordSection)}
-                  >
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <IconShieldLock size={24} color={roleColors[userRole]?.color || '#5e35b1'} />
-                      <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        {isAr ? 'تغيير كلمة المرور' : 'Change Password'}
-                      </Typography>
-                    </Stack>
-                    {showPasswordSection ? <IconChevronUp size={20} /> : <IconChevronDown size={20} />}
-                  </Stack>
-                  
-                  <Collapse in={showPasswordSection}>
-                    <Divider sx={{ my: 3 }} />
-                    
-                    <Stack spacing={2.5}>
-                      {/* Current Password */}
-                      <TextField 
-                        fullWidth 
-                        type={showCurrentPassword ? 'text' : 'password'}
-                        label={isAr ? 'كلمة المرور الحالية' : 'Current Password'}
-                        value={currentPassword} 
-                        onChange={(e) => setCurrentPassword(e.target.value)} 
-                        size="medium"
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
-                                {showCurrentPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                              </IconButton>
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                      
-                      {/* New Password */}
-                      <TextField 
-                        fullWidth 
-                        type={showNewPassword ? 'text' : 'password'}
-                        label={isAr ? 'كلمة المرور الجديدة' : 'New Password'}
-                        value={newPassword} 
-                        onChange={(e) => setNewPassword(e.target.value)} 
-                        size="medium"
-                        helperText={isAr ? 'يجب أن تكون 8 أحرف على الأقل' : 'At least 8 characters'}
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
-                                {showNewPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                              </IconButton>
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                      
-                      {/* Confirm Password */}
-                      <TextField 
-                        fullWidth 
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        label={isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}
-                        value={confirmPassword} 
-                        onChange={(e) => setConfirmPassword(e.target.value)} 
-                        size="medium"
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
-                                {showConfirmPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                              </IconButton>
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-
-                      {pwError && <Alert severity="error">{pwError}</Alert>}
-                      {pwSuccess && <Alert severity="success">{pwSuccess}</Alert>}
-
-                      <Button 
-                        variant="contained" 
-                        startIcon={<IconKey size={18} />}
-                        onClick={handleUpdatePassword} 
-                        disabled={pwLoading}
-                        sx={{ 
-                          borderRadius: 2, 
-                          textTransform: 'none',
-                          alignSelf: 'flex-start',
-                          px: 4,
-                          py: 1
-                        }}
-                      >
-                        {pwLoading ? (isAr ? 'جاري التحديث...' : 'Updating...') : (isAr ? 'تحديث كلمة المرور' : 'Update Password')}
-                      </Button>
-                    </Stack>
-                  </Collapse>
-                </Box>
-
+            ) : (
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<IconX size={18} />}
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<IconDeviceFloppy size={18} />}
+                  onClick={handleSaveProfile}
+                  disabled={saving || !isDirty}
+                >
+                  {saving
+                    ? (isAr ? 'جاري الحفظ...' : 'Saving...')
+                    : (isAr ? 'حفظ' : 'Save')}
+                </Button>
               </Stack>
-            </CardContent>
-          </Card>
+            )}
+            {saveError && (
+              <Alert severity="error" sx={{ py: 0, px: 1.5, width: '100%', maxWidth: 280 }}>
+                {saveError}
+              </Alert>
+            )}
+            {saveSuccess && (
+              <Alert severity="success" sx={{ py: 0, px: 1.5, width: '100%', maxWidth: 280 }}>
+                {saveSuccess}
+              </Alert>
+            )}
+          </Stack>
+        </Stack>
+      </Box>
+
+      {/* Settings */}
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2.5 }}>
+          <Typography variant="h5" fontWeight={600}>
+            {isAr ? 'الإعدادات' : 'Settings'}
+          </Typography>
+          {isEditing && (
+            <Typography variant="caption" color="primary.main" fontWeight={600}>
+              {isAr ? 'وضع التعديل' : 'Editing'}
+            </Typography>
+          )}
+        </Stack>
+
+        <Grid container spacing={2} sx={{ mb: 2 }} alignItems="stretch">
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <SettingTile
+              icon={draft.displayMode === 'dark' ? <IconMoon size={20} /> : <IconSun size={20} />}
+              title={isAr ? 'وضع العرض' : 'Display Mode'}
+              description={isAr ? 'اختر المظهر النهاري أو الليلي' : 'Choose light or dark appearance'}
+              control={
+                <ToggleButtonGroup
+                  exclusive
+                  fullWidth
+                  size="small"
+                  disabled={!isEditing}
+                  value={draft.displayMode}
+                  onChange={(_, value) => value && updateDraft('displayMode', value)}
+                >
+                  <ToggleButton value="light" sx={{ textTransform: 'none', gap: 0.75 }}>
+                    <IconSun size={16} />
+                    {isAr ? 'نهاري' : 'Light'}
+                  </ToggleButton>
+                  <ToggleButton value="dark" sx={{ textTransform: 'none', gap: 0.75 }}>
+                    <IconMoon size={16} />
+                    {isAr ? 'ليلي' : 'Dark'}
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              }
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <SettingTile
+              icon={<IconBell size={20} />}
+              title={isAr ? 'الإشعارات' : 'Notifications'}
+              description={isAr ? 'تنبيهات النظام والتحديثات' : 'System alerts and updates'}
+              control={
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper'
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    {draft.notificationsEnabled
+                      ? (isAr ? 'مفعّلة' : 'Enabled')
+                      : (isAr ? 'معطّلة' : 'Disabled')}
+                  </Typography>
+                  <Switch
+                    checked={draft.notificationsEnabled}
+                    onChange={(e) => updateDraft('notificationsEnabled', e.target.checked)}
+                    disabled={!isEditing}
+                    size="small"
+                  />
+                </Stack>
+              }
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <SettingTile
+              icon={<IconLanguage size={20} />}
+              title={isAr ? 'اللغة' : 'Language'}
+              description={isAr ? 'لغة واجهة التطبيق' : 'Application interface language'}
+              control={
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  disabled={!isEditing}
+                  value={draft.language}
+                  onChange={(e) => updateDraft('language', e.target.value)}
+                >
+                  <MenuItem value="en">English</MenuItem>
+                  <MenuItem value="ar">العربية</MenuItem>
+                </TextField>
+              }
+            />
+          </Grid>
         </Grid>
 
-      </Grid>
-    </Box>
+        {/* Theme picker */}
+        <Card
+          sx={{
+            mb: 2,
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: 'divider'
+          }}
+        >
+          <Box sx={{ p: 2.5 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  color: 'primary.main'
+                }}
+              >
+                <IconPalette size={20} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  {isAr ? 'لون الثيم' : 'Theme Color'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {isAr ? 'اختر لون واجهة التطبيق' : 'Choose your interface accent color'}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Grid container spacing={1.5}>
+              {THEME_PRESETS.map((preset) => {
+                const selected = draft.presetColor === preset.id;
+                const label = isAr ? preset.label.ar : preset.label.en;
+                return (
+                  <Grid key={preset.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                    <Box
+                      onClick={() => isEditing && updateDraft('presetColor', preset.id)}
+                      sx={{
+                        cursor: isEditing ? 'pointer' : 'default',
+                        p: 2,
+                        borderRadius: 2,
+                        border: '2px solid',
+                        borderColor: selected ? 'primary.main' : 'divider',
+                        bgcolor: selected ? alpha(theme.palette.primary.main, 0.06) : 'background.paper',
+                        opacity: isEditing ? 1 : 0.85,
+                        transition: 'all 0.2s',
+                        ...(isEditing && {
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            bgcolor: alpha(theme.palette.primary.main, 0.04)
+                          }
+                        })
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={1.5}>
+                        <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: preset.swatch, flexShrink: 0 }} />
+                        <Typography variant="body2" fontWeight={selected ? 600 : 500}>
+                          {label}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
+        </Card>
+
+        {/* Password */}
+        <Card
+          sx={{
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: 'divider'
+          }}
+        >
+          <Box
+            sx={{ p: 2.5, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.7 }}
+            onClick={() => isEditing && setShowPasswordSection(!showPasswordSection)}
+          >
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: 'primary.main'
+                  }}
+                >
+                  <IconShieldLock size={20} />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    {isAr ? 'تغيير كلمة المرور' : 'Change Password'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {isAr ? 'تحديث كلمة المرور الحالية' : 'Update your current password'}
+                  </Typography>
+                </Box>
+              </Stack>
+              {showPasswordSection ? <IconChevronUp size={20} /> : <IconChevronDown size={20} />}
+            </Stack>
+          </Box>
+
+          <Collapse in={isEditing && showPasswordSection}>
+            <Divider />
+            <Box sx={{ p: 2.5 }}>
+              <Stack spacing={2.5}>
+                <TextField
+                  fullWidth
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  label={isAr ? 'كلمة المرور الحالية' : 'Current Password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
+                          {showCurrentPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  type={showNewPassword ? 'text' : 'password'}
+                  label={isAr ? 'كلمة المرور الجديدة' : 'New Password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  error={Boolean(newPassword && newPassword.length < 8)}
+                  helperText={
+                    newPassword && newPassword.length < 8
+                      ? (isAr ? 'يجب أن تكون 8 أحرف على الأقل' : 'At least 8 characters')
+                      : ''
+                  }
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
+                          {showNewPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  label={isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                          {showConfirmPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Stack>
+            </Box>
+          </Collapse>
+        </Card>
+
+      </Box>
+    </PageCard>
   );
 }
