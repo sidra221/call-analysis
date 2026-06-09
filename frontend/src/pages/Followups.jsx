@@ -95,6 +95,11 @@ export default function Followups() {
       setOpenCreateDialog(true);
       setCallIdInput(location.state.callId ? String(location.state.callId) : '');
     }
+    if (location.state?.filter === 'assignee' && location.state?.value) {
+      setAssignedFilter(location.state.value);
+      setPage(0);
+      window.history.replaceState({}, document.title);
+    }
   }, [location.state]);
 
   const loadFollowups = async () => {
@@ -257,6 +262,12 @@ export default function Followups() {
     <>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
+      )}
+
+      {assignedFilter !== 'all' && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Showing follow-ups assigned to <strong>{assignedFilter}</strong>
+        </Alert>
       )}
 
       <PageCard bordered>

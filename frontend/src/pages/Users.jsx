@@ -1,17 +1,22 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Box, Button, Card, CardContent, Typography, IconButton, Dialog,
+  Box, Button, Typography, IconButton, Dialog,
   DialogTitle, DialogContent, DialogContentText, DialogActions,
-  TextField, MenuItem, Stack, Avatar, Checkbox, Chip,
-  FormControl, InputLabel, Select, Drawer, Divider,
+  TextField, MenuItem, Stack, Avatar, Checkbox, Chip, Card, CardContent,
+  FormControl, InputLabel, Select, Drawer, Divider, Switch,
+  FormControlLabel, List, ListItem, ListItemText,
   CircularProgress, Alert, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TablePagination
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
-  IconEdit, IconTrash, IconPlus, IconClipboardList,
-  IconFileAnalytics, IconTrashX, IconArrowUp, IconArrowDown, IconEye
+  IconEdit, IconPlus, IconTrashX, IconArrowUp, IconArrowDown,
+  IconEye, IconX, IconDeviceFloppy, IconPhone, IconClipboardText,
+  IconFileAnalytics, IconHistory
 } from '@tabler/icons-react';
 import useUsersStore from 'hooks/useUsersStore';
+import { usersApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
 import PageCard from 'ui-component/PageCard';
 import PageTitle from 'ui-component/PageTitle';
@@ -20,6 +25,7 @@ import FilterPopover from 'ui-component/FilterPopover';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import { getRoleColor } from 'constants/colors';
+import { getAvatarInitial, getAvatarUrl, getRoleAvatarBorderSx } from 'utils/avatar';
 import {
   TABLE_LAYOUT_SX,
   TABLE_CHECKBOX_CELL_SX,
@@ -31,8 +37,81 @@ import {
 
 const rowsPerPage = 6;
 
+const formatMemberSince = (dateStr) => {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+const formatLastLogin = (dateStr) => {
+  if (!dateStr) return 'Never';
+  return new Date(dateStr).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const STAT_CARDS = [
+  { key: 'calls_uploaded', label: 'Calls Uploaded', Icon: IconPhone },
+  { key: 'followups_created', label: 'Follow-Ups Created', Icon: IconClipboardText },
+  { key: 'reports_created', label: 'Reports Created', Icon: IconFileAnalytics },
+];
+
+const ROLE_LABELS = {
+  manager: 'Manager',
+  agent: 'Agent',
+  qa: 'QA',
+};
+
+const ACTION_LABELS = {
+  upload_call: 'Uploaded call',
+  delete_call: 'Deleted call',
+  call_processing: 'Call processing',
+  call_status_change: 'Call status changed',
+  review_call: 'Reviewed call',
+  generate_report: 'Generated report',
+  publish_report: 'Published report',
+  delete_report: 'Deleted report',
+  user_created: 'User created',
+  user_updated: 'User updated',
+  user_deleted: 'User deleted',
+  create_followup: 'Created follow-up',
+  delete_followup: 'Deleted follow-up',
+  update_followup: 'Updated follow-up',
+  password_changed: 'Changed password',
+  avatar_updated: 'Updated avatar',
+};
+
+const formatActivityDate = (dateStr) => {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+function DrawerInfoRow({ label, children }) {
+  return (
+    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 0.5 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ width: 100, flexShrink: 0 }}>
+        {label}
+      </Typography>
+      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+    </Stack>
+  );
+}
+
 export default function UsersPage() {
-  const { users, loading, error, fetchUsers, addUser, deleteUser } = useUsersStore();
+  const navigate = useNavigate();
+  const { users, loading, error, fetchUsers, addUser, updateUser, deleteUser } = useUsersStore();
   const { user: currentUser } = useAuth();
   const role = (currentUser?.role || '').toLowerCase();
 
@@ -55,8 +134,16 @@ export default function UsersPage() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
-  const [openUserDrawer, setOpenUserDrawer] = useState(false);
+  const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isDrawerEditMode, setIsDrawerEditMode] = useState(false);
+  const [drawerDraft, setDrawerDraft] = useState({ email: '', role: 'agent', is_active: true });
+  const [drawerError, setDrawerError] = useState('');
+  const [drawerSaving, setDrawerSaving] = useState(false);
+  const [drawerStats, setDrawerStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [drawerActivity, setDrawerActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
   const openFilters = (event) => setFilterAnchorEl(event.currentTarget);
@@ -172,8 +259,7 @@ export default function UsersPage() {
       setFormError('');
       await addUser(form);
       await fetchUsers();
-      setForm({ username: '', email: '', password: '', role: 'agent' });
-      setErrors({});
+      resetForm();
       setOpen(false);
       setPage(0);
     } catch (err) {
@@ -183,6 +269,17 @@ export default function UsersPage() {
     }
   };
 
+  const resetForm = () => {
+    setForm({ username: '', email: '', password: '', role: 'agent' });
+    setErrors({});
+    setFormError('');
+  };
+
+  const openAddUserDialog = () => {
+    resetForm();
+    setOpen(true);
+  };
+
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
     try {
@@ -190,11 +287,139 @@ export default function UsersPage() {
       await fetchUsers();
       setSelected(prev => prev.filter(id => id !== userToDelete.id));
       setPage(0);
-    } catch (err) {
-      // silently ignore
-    } finally {
       setOpenDeleteDialog(false);
       setUserToDelete(null);
+      if (isUserDrawerOpen && selectedUser?.id === userToDelete.id) {
+        setIsUserDrawerOpen(false);
+        setSelectedUser(null);
+      }
+    } catch (err) {
+      setFormError(err.message || 'Failed to delete user');
+    }
+  };
+
+  const buildDrawerDraft = (user) => ({
+    email: user?.email || '',
+    role: user?.role || 'agent',
+    is_active: user?.is_active !== false,
+  });
+
+  const isDrawerDirty = useMemo(() => {
+    if (!selectedUser) return false;
+    return (
+      drawerDraft.email !== selectedUser.email
+      || drawerDraft.role !== selectedUser.role
+      || drawerDraft.is_active !== (selectedUser.is_active !== false)
+    );
+  }, [selectedUser, drawerDraft]);
+
+  const handleDrawerEditToggle = () => {
+    if (isDrawerEditMode) {
+      if (isDrawerDirty) {
+        handleDrawerSave();
+      } else {
+        setDrawerDraft(buildDrawerDraft(selectedUser));
+        setDrawerError('');
+        setIsDrawerEditMode(false);
+      }
+    } else {
+      setIsDrawerEditMode(true);
+    }
+  };
+
+  const fetchDrawerStats = useCallback(async (userId) => {
+    try {
+      setStatsLoading(true);
+      const res = await usersApi.stats(userId);
+      setDrawerStats(res?.data || res);
+    } catch {
+      setDrawerStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  const fetchDrawerActivity = useCallback(async (userId) => {
+    try {
+      setActivityLoading(true);
+      const res = await usersApi.activity(userId);
+      setDrawerActivity(res?.data || res || []);
+    } catch {
+      setDrawerActivity([]);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
+  const openUserDrawer = async (user, edit = false) => {
+    setDrawerError('');
+    setDrawerStats(null);
+    setDrawerActivity([]);
+    setIsDrawerEditMode(edit);
+    setIsUserDrawerOpen(true);
+
+    try {
+      const res = await usersApi.get(user.id);
+      const fresh = res?.data || res;
+      setSelectedUser(fresh);
+      setDrawerDraft(buildDrawerDraft(fresh));
+    } catch {
+      setSelectedUser(user);
+      setDrawerDraft(buildDrawerDraft(user));
+    }
+
+    fetchDrawerStats(user.id);
+    fetchDrawerActivity(user.id);
+  };
+
+  const closeUserDrawer = () => {
+    setIsUserDrawerOpen(false);
+    setSelectedUser(null);
+    setIsDrawerEditMode(false);
+    setDrawerDraft({ email: '', role: 'agent', is_active: true });
+    setDrawerError('');
+    setDrawerStats(null);
+    setDrawerActivity([]);
+  };
+
+  const handleDrawerSave = async () => {
+    if (!selectedUser || !isDrawerDirty) return;
+
+    if (!drawerDraft.email.trim()) {
+      setDrawerError('Email is required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(drawerDraft.email)) {
+      setDrawerError('Invalid email format');
+      return;
+    }
+
+    if (
+      !drawerDraft.is_active
+      && selectedUser.is_active !== false
+      && !window.confirm(`Deactivate ${selectedUser.username}? They will not be able to log in.`)
+    ) {
+      return;
+    }
+
+    const payload = {};
+    if (drawerDraft.email !== selectedUser.email) payload.email = drawerDraft.email;
+    if (drawerDraft.role !== selectedUser.role) payload.role = drawerDraft.role;
+    if (drawerDraft.is_active !== (selectedUser.is_active !== false)) {
+      payload.is_active = drawerDraft.is_active;
+    }
+
+    try {
+      setDrawerSaving(true);
+      setDrawerError('');
+      const updated = await updateUser(selectedUser.id, payload);
+      setSelectedUser(updated);
+      setDrawerDraft(buildDrawerDraft(updated));
+      setIsDrawerEditMode(false);
+    } catch (err) {
+      setDrawerError(err.message || 'Failed to update user');
+    } finally {
+      setDrawerSaving(false);
     }
   };
 
@@ -236,7 +461,7 @@ export default function UsersPage() {
                   Delete Selected ({selected.length})
                 </Button>
               )}
-              <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={() => setOpen(true)}>
+              <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={openAddUserDialog}>
                 Add User
               </Button>
             </>
@@ -317,7 +542,17 @@ export default function UsersPage() {
                         </TableCell>
                       )}
                       <TableCell>
-                        <UserAvatarWithName username={u.username} role={u.role} />
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <UserAvatarWithName
+                            username={u.username}
+                            role={u.role}
+                            avatar={u.avatar}
+                            avatarStyle={u.avatar_style}
+                          />
+                          {u.is_active === false && (
+                            <Chip label="Inactive" size="small" color="error" variant="outlined" />
+                          )}
+                        </Stack>
                       </TableCell>
                       <TableCell sx={TABLE_BODY_CELL_SX}>{u.email}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
@@ -329,24 +564,26 @@ export default function UsersPage() {
                           {u.created_at ? u.created_at.split('T')[0] : ''}
                         </Box>
                       </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <IconButton 
-                            size="small" 
-                            color="info"
-                            onClick={() => { setSelectedUser(u); setOpenUserDrawer(true); }}
+                      <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, pl: 0.5, pr: 1 }}>
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <IconButton
+                            size="small"
+                            sx={{ color: 'info.main' }}
+                            onClick={() => openUserDrawer(u, false)}
                             title="View User"
                           >
                             <IconEye size={18} />
                           </IconButton>
-                          <IconButton 
-                            size="small" 
-                            color="primary"
-                            onClick={() => { setSelectedUser(u); setOpenUserDrawer(true); }}
-                            title="Edit User"
-                          >
-                            <IconEdit size={18} />
-                          </IconButton>
+                          {role === 'manager' && (
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => openUserDrawer(u, true)}
+                              title="Edit User"
+                            >
+                              <IconEdit size={18} />
+                            </IconButton>
+                          )}
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -390,20 +627,20 @@ export default function UsersPage() {
         </Dialog>
 
         {/* Add User Dialog */}
-        <Dialog open={open} onClose={() => { setOpen(false); setFormError(''); }} fullWidth maxWidth="sm">
+        <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} fullWidth maxWidth="sm">
           <DialogTitle>Add User</DialogTitle>
           <DialogContent>
             {formError && <Alert severity="error" sx={{ mb: 2, mt: 1 }}>{formError}</Alert>}
-            <Stack spacing={2} mt={1}>
-              <TextField label="Username" fullWidth
+            <Stack component="form" autoComplete="off" spacing={2} mt={1}>
+              <TextField label="Username" fullWidth autoComplete="off"
                 error={!!errors.username} helperText={errors.username}
                 value={form.username}
                 onChange={(e) => { setForm({ ...form, username: e.target.value }); if (errors.username) setErrors({ ...errors, username: null }); }} />
-              <TextField label="Email" fullWidth
+              <TextField label="Email" fullWidth type="email" autoComplete="off" name="new-user-email"
                 error={!!errors.email} helperText={errors.email}
                 value={form.email}
                 onChange={(e) => { setForm({ ...form, email: e.target.value }); if (errors.email) setErrors({ ...errors, email: null }); }} />
-              <TextField label="Password" type="password" fullWidth
+              <TextField label="Password" type="password" fullWidth autoComplete="new-password" name="new-user-password"
                 error={!!errors.password} helperText={errors.password}
                 value={form.password}
                 onChange={(e) => { setForm({ ...form, password: e.target.value }); if (errors.password) setErrors({ ...errors, password: null }); }} />
@@ -416,7 +653,7 @@ export default function UsersPage() {
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            <DialogCancelButton onClick={() => { setOpen(false); setFormError(''); }} />
+            <DialogCancelButton onClick={() => { setOpen(false); resetForm(); }} />
             <Button variant="contained" onClick={handleAddUser} disabled={submitting}>
               {submitting ? <CircularProgress size={18} color="inherit" /> : 'Add'}
             </Button>
@@ -424,10 +661,11 @@ export default function UsersPage() {
         </Dialog>
 
         {/* Delete Single User Dialog */}
-        <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="sm" fullWidth
+        <Dialog open={openDeleteDialog} onClose={() => { setOpenDeleteDialog(false); setUserToDelete(null); setFormError(''); }} maxWidth="sm" fullWidth
           >
           <DialogTitle>Confirm Delete</DialogTitle>
           <DialogContent>
+            {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
             <DialogContentText>
               Are you sure you want to delete <strong>{userToDelete?.username}</strong>? This action cannot be undone.
             </DialogContentText>
@@ -438,77 +676,264 @@ export default function UsersPage() {
           </DialogActions>
         </Dialog>
 
-        {/* User Drawer - View/Edit User */}
-        <Drawer anchor="right" open={openUserDrawer} onClose={() => setOpenUserDrawer(false)}>
-          <Box sx={{ width: 380, p: 3, height: '100%', bgcolor: 'grey.50' }}>
+        {/* User Drawer - View/Edit */}
+        <Drawer anchor="right" open={isUserDrawerOpen} onClose={closeUserDrawer}>
+          <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
             {selectedUser && (
               <>
-                <Stack alignItems="center" spacing={2}>
-                  <Avatar sx={{
-                    width: 90, height: 90, fontSize: 32, fontWeight: 700,
-                    bgcolor: getRoleColor(selectedUser.role).bg,
-                    color: getRoleColor(selectedUser.role).color
-                  }}>
-                    {selectedUser.username?.[0]?.toUpperCase()}
-                  </Avatar>
-                  <Box textAlign="center">
-                    <Typography variant="h5" fontWeight={700}>{selectedUser.username}</Typography>
-                    <Typography color="text.secondary">{selectedUser.email}</Typography>
-                    <Chip label={selectedUser.role} sx={{
-                      mt: 1,
-                      bgcolor: getRoleColor(selectedUser.role).bg,
-                      color: getRoleColor(selectedUser.role).color,
-                      fontWeight: 600
-                    }} />
+                {/* Header — matches Calls drawer rhythm */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
+                    <Avatar
+                      src={getAvatarUrl(selectedUser, selectedUser.username)}
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        fontSize: 16,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                        ...getRoleAvatarBorderSx(selectedUser.role, 2),
+                        color: getRoleColor(selectedUser.role).color,
+                        '& img': { objectFit: 'cover' },
+                      }}
+                    >
+                      {!getAvatarUrl(selectedUser, selectedUser.username)
+                        && getAvatarInitial(selectedUser.username)}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="h5" noWrap>{selectedUser.username}</Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        {isDrawerEditMode ? drawerDraft.email : selectedUser.email}
+                      </Typography>
+                    </Box>
                   </Box>
-                </Stack>
+                  <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0, ml: 1 }}>
+                    {role === 'manager' && (
+                      <IconButton
+                        size="small"
+                        disabled={drawerSaving}
+                        onClick={handleDrawerEditToggle}
+                        sx={{ color: isDrawerDirty ? 'primary.main' : 'text.primary' }}
+                      >
+                        {drawerSaving
+                          ? <CircularProgress size={18} />
+                          : isDrawerEditMode
+                            ? <IconDeviceFloppy size={22} />
+                            : <IconEdit size={18} />}
+                      </IconButton>
+                    )}
+                    <IconButton onClick={closeUserDrawer} size="small"><IconX size={18} /></IconButton>
+                  </Stack>
+                </Box>
 
-                <Divider sx={{ my: 3 }} />
+                {selectedUser.username === currentUser?.user && (
+                  <Chip label="You" size="small" variant="outlined" color="primary" sx={{ mb: 2 }} />
+                )}
 
-                <Stack spacing={2}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Username</Typography>
-                    <Typography variant="body1" fontWeight={500}>{selectedUser.username}</Typography>
+                {drawerError && <Alert severity="error" sx={{ mb: 2 }}>{drawerError}</Alert>}
+
+                <Divider sx={{ mb: 2 }} />
+
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>User Information</Typography>
+
+                {isDrawerEditMode ? (
+                  <Stack spacing={2} sx={{ mb: 2 }}>
+                    <TextField
+                      label="Email"
+                      fullWidth
+                      size="small"
+                      type="email"
+                      value={drawerDraft.email}
+                      onChange={(e) => {
+                        setDrawerDraft((prev) => ({ ...prev, email: e.target.value }));
+                        setDrawerError('');
+                      }}
+                    />
+                    <TextField
+                      select
+                      label="Role"
+                      fullWidth
+                      size="small"
+                      disabled={selectedUser.username === currentUser?.user}
+                      value={drawerDraft.role}
+                      onChange={(e) => {
+                        setDrawerDraft((prev) => ({ ...prev, role: e.target.value }));
+                        setDrawerError('');
+                      }}
+                      helperText={
+                        selectedUser.username === currentUser?.user
+                          ? 'You cannot change your own role'
+                          : undefined
+                      }
+                    >
+                      <MenuItem value="manager">Manager</MenuItem>
+                      <MenuItem value="agent">Agent</MenuItem>
+                      <MenuItem value="qa">QA</MenuItem>
+                    </TextField>
+                    {role === 'manager' && selectedUser.username !== currentUser?.user && (
+                      <FormControlLabel
+                        sx={{ ml: 0 }}
+                        control={(
+                          <Switch
+                            checked={drawerDraft.is_active}
+                            onChange={(e) => {
+                              setDrawerDraft((prev) => ({ ...prev, is_active: e.target.checked }));
+                              setDrawerError('');
+                            }}
+                            color="success"
+                          />
+                        )}
+                        label={drawerDraft.is_active ? 'Account active' : 'Account inactive'}
+                      />
+                    )}
+                  </Stack>
+                ) : (
+                  <Box sx={{ mb: 2 }}>
+                    <DrawerInfoRow label="Email">
+                      <Typography variant="body2">{selectedUser.email}</Typography>
+                    </DrawerInfoRow>
+                    <DrawerInfoRow label="Role">
+                      <Chip
+                        label={ROLE_LABELS[selectedUser.role] || selectedUser.role}
+                        size="small"
+                        sx={{
+                          bgcolor: getRoleColor(selectedUser.role).bg,
+                          color: getRoleColor(selectedUser.role).color,
+                          fontWeight: 600,
+                        }}
+                      />
+                    </DrawerInfoRow>
+                    <DrawerInfoRow label="Status">
+                      <Typography variant="body2">
+                        {selectedUser.is_active !== false ? 'Active' : 'Inactive'}
+                      </Typography>
+                    </DrawerInfoRow>
                   </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Email</Typography>
-                    <Typography variant="body1" fontWeight={500}>{selectedUser.email}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Role</Typography>
-                    <Chip label={selectedUser.role} size="small"
-                      sx={{ bgcolor: getRoleColor(selectedUser.role).bg, color: getRoleColor(selectedUser.role).color }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Created At</Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString() : '—'}
+                )}
+
+                <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" color="text.secondary">Member Since</Typography>
+                    <Typography variant="body2" sx={{ mt: 0.25 }}>
+                      {formatMemberSince(selectedUser.created_at)}
                     </Typography>
                   </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">User ID</Typography>
-                    <Typography variant="body1" fontWeight={500}>{selectedUser.id}</Typography>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" color="text.secondary">Last Login</Typography>
+                    <Typography variant="body2" sx={{ mt: 0.25 }}>
+                      {formatLastLogin(selectedUser.last_login)}
+                    </Typography>
                   </Box>
                 </Stack>
 
-                <Divider sx={{ my: 3 }} />
+                <Divider sx={{ mb: 2 }} />
 
-                <Grid container spacing={2}>
-                  <Grid size={6}>
-                    <Card sx={{ textAlign: 'center', py: 2 }}>
-                      <IconClipboardList size={28} />
-                      <Typography variant="h6" fontWeight={700}>—</Typography>
-                      <Typography variant="body2" color="text.secondary">Tasks</Typography>
-                    </Card>
-                  </Grid>
-                  <Grid size={6}>
-                    <Card sx={{ textAlign: 'center', py: 2 }}>
-                      <IconFileAnalytics size={28} />
-                      <Typography variant="h6" fontWeight={700}>—</Typography>
-                      <Typography variant="body2" color="text.secondary">Reports</Typography>
-                    </Card>
-                  </Grid>
-                </Grid>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>Statistics</Typography>
+                {statsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : (
+                  <Card
+                    variant="outlined"
+                    sx={{ boxShadow: 'none', borderColor: 'divider', mb: 2 }}
+                  >
+                    <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+                      <Grid container spacing={1}>
+                        {STAT_CARDS.map((card) => {
+                          const StatIcon = card.Icon;
+                          return (
+                            <Grid key={card.key} size={4}>
+                              <Stack alignItems="center" spacing={0.5} sx={{ textAlign: 'center' }}>
+                                <StatIcon size={18} stroke={1.75} style={{ opacity: 0.7 }} />
+                                <Typography variant="h5" fontWeight={700}>
+                                  {drawerStats?.[card.key] ?? 0}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                                  {card.label}
+                                </Typography>
+                              </Stack>
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Divider sx={{ mb: 2 }} />
+
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>Recent Activity</Typography>
+                {activityLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 2 }}>
+                    <CircularProgress size={22} />
+                  </Box>
+                ) : drawerActivity.length === 0 ? (
+                  <Stack alignItems="center" spacing={0.75} sx={{ py: 2.5, mb: 2 }}>
+                    <IconHistory size={28} stroke={1.5} style={{ opacity: 0.3 }} />
+                    <Typography variant="body2" color="text.secondary" textAlign="center">
+                      No activity recorded yet.
+                      <br />
+                      User actions will appear here.
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <List dense disablePadding sx={{ mb: 2 }}>
+                    {drawerActivity.map((entry, index) => (
+                      <ListItem
+                        key={`${entry.action}-${entry.created_at}-${index}`}
+                        disableGutters
+                        sx={{ py: 0.5, alignItems: 'flex-start' }}
+                      >
+                        <ListItemText
+                          primary={entry.description || ACTION_LABELS[entry.action] || entry.action}
+                          secondary={formatActivityDate(entry.created_at)}
+                          primaryTypographyProps={{ variant: 'body2' }}
+                          secondaryTypographyProps={{ variant: 'caption' }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+
+                <Divider sx={{ mb: 2 }} />
+
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>Quick Actions</Typography>
+                <Stack spacing={1}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    size="small"
+                    startIcon={<IconPhone size={16} />}
+                    onClick={() => navigate('/calls', {
+                      state: { filter: 'user', value: selectedUser.username },
+                    })}
+                  >
+                    View Calls
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    startIcon={<IconClipboardText size={16} />}
+                    onClick={() => navigate('/followups', {
+                      state: { filter: 'assignee', value: selectedUser.username },
+                    })}
+                  >
+                    View Follow-Ups
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    startIcon={<IconFileAnalytics size={16} />}
+                    onClick={() => navigate('/reports', {
+                      state: { filter: 'creator', value: selectedUser.username },
+                    })}
+                  >
+                    View Reports
+                  </Button>
+                </Stack>
               </>
             )}
           </Box>

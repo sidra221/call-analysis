@@ -5,16 +5,23 @@ import PageCard from 'ui-component/PageCard';
 import ProfileAvatarUpload from 'ui-component/ProfileAvatarUpload';
 import {
   Card, Typography, Button, Stack, TextField,
-  MenuItem, Switch, Box, Divider, useColorScheme, Alert,
-  Grid, IconButton, InputAdornment, Collapse, ToggleButton, ToggleButtonGroup
+  MenuItem, Switch, Box, Divider, useColorScheme,
+  Grid, IconButton, InputAdornment, Collapse, ToggleButton, ToggleButtonGroup,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
 import {
   IconShieldLock, IconDeviceFloppy, IconMail, IconBriefcase,
   IconBell, IconMoon, IconSun, IconLanguage, IconEdit, IconEye, IconEyeOff,
-  IconChevronDown, IconChevronUp, IconPalette, IconX
+  IconChevronDown, IconChevronUp, IconPalette, IconX,
+  IconCircleCheck, IconAlertCircle
 } from '@tabler/icons-react';
 import { alpha, useTheme } from '@mui/material/styles';
 import { THEME_PRESETS, getRoleDefaultTheme, isLegacyPreset } from 'constants/themes';
+import { accountsApi } from 'api/api';
+import {
+  buildSavedAvatarState,
+  isAvatarDraftDirty,
+} from 'utils/avatar';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -88,7 +95,7 @@ export default function ProfilePage() {
     state: { language, presetColor, notificationsEnabled: savedNotifications },
     setState: setConfigState
   } = useConfig();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -97,8 +104,7 @@ export default function ProfilePage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState('');
+  const [saveFeedback, setSaveFeedback] = useState({ open: false, type: 'success', message: '' });
   const [saving, setSaving] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
 
@@ -113,23 +119,28 @@ export default function ProfilePage() {
     language,
     presetColor: savedPreset,
     displayMode,
-    notificationsEnabled: savedNotifications ?? true
+    notificationsEnabled: savedNotifications ?? true,
+    avatar: buildSavedAvatarState(),
   });
 
   const isAr = language === 'ar';
 
   const resetDraft = () => {
+    if (draft.avatar?.previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(draft.avatar.previewUrl);
+    }
+
     setDraft({
       language,
       presetColor: savedPreset,
       displayMode,
-      notificationsEnabled: savedNotifications ?? true
+      notificationsEnabled: savedNotifications ?? true,
+      avatar: buildSavedAvatarState(),
     });
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    setSaveError('');
-    setSaveSuccess('');
+    setSaveFeedback({ open: false, type: 'success', message: '' });
     setShowPasswordSection(false);
   };
 
@@ -146,11 +157,15 @@ export default function ProfilePage() {
   const updateDraft = (key, value) => {
     if (!isEditing) return;
     setDraft((prev) => ({ ...prev, [key]: value }));
-    setSaveError('');
-    setSaveSuccess('');
+    setSaveFeedback({ open: false, type: 'success', message: '' });
   };
 
   const hasPasswordInput = Boolean(currentPassword || newPassword || confirmPassword);
+
+  const isAvatarDirty = useMemo(
+    () => isAvatarDraftDirty(user, draft.avatar),
+    [user, draft.avatar]
+  );
 
   const isDirty = useMemo(() => (
     draft.language !== language
@@ -158,23 +173,44 @@ export default function ProfilePage() {
     || draft.displayMode !== displayMode
     || draft.notificationsEnabled !== (savedNotifications ?? true)
     || hasPasswordInput
+    || isAvatarDirty
   ), [
     draft,
     language,
     savedPreset,
     displayMode,
     savedNotifications,
-    hasPasswordInput
+    hasPasswordInput,
+    isAvatarDirty,
   ]);
 
   const handleSaveProfile = async () => {
-    setSaveError('');
-    setSaveSuccess('');
+    setSaveFeedback({ open: false, type: 'success', message: '' });
 
     if (!isDirty) return;
 
     try {
       setSaving(true);
+
+      let savedUserData = user;
+
+      if (isAvatarDirty) {
+        if (draft.avatar.pendingFile) {
+          const formData = new FormData();
+          formData.append('avatar', draft.avatar.pendingFile);
+          const res = await accountsApi.uploadAvatar(formData);
+          savedUserData = res?.data || res;
+          updateUser(savedUserData);
+        } else if (draft.avatar.removeCustom) {
+          const res = await accountsApi.setAvatarStyle('initial');
+          savedUserData = res?.data || res;
+          updateUser(savedUserData);
+        }
+
+        if (draft.avatar.previewUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(draft.avatar.previewUrl);
+        }
+      }
 
       if (hasPasswordInput) {
         if (!currentPassword || !newPassword || !confirmPassword) {
@@ -209,26 +245,43 @@ export default function ProfilePage() {
         setConfirmPassword('');
       }
 
+      const themeWasChanged = draft.presetColor !== savedPreset;
+
       setConfigState((prev) => ({
         ...prev,
         language: draft.language,
         presetColor: draft.presetColor,
-        notificationsEnabled: draft.notificationsEnabled
+        notificationsEnabled: draft.notificationsEnabled,
+        themeCustomized: themeWasChanged ? true : prev.themeCustomized,
+        themeUserId: user.id,
       }));
 
       if (draft.displayMode !== displayMode) {
         setMode(draft.displayMode);
       }
 
-      setSaveSuccess(
-        hasPasswordInput
-          ? (isAr ? 'تم حفظ الإعدادات وكلمة المرور' : 'Settings and password saved')
-          : (isAr ? 'تم حفظ الإعدادات' : 'Settings saved')
-      );
-      setTimeout(() => setSaveSuccess(''), 4000);
+      setSaveFeedback({
+        open: true,
+        type: 'success',
+        message: hasPasswordInput
+          ? (isAr ? 'تم حفظ الإعدادات وكلمة المرور بنجاح.' : 'Your settings and password were saved successfully.')
+          : (isAr ? 'تم حفظ التغييرات بنجاح.' : 'Your changes were saved successfully.'),
+      });
+
+      setDraft({
+        language: draft.language,
+        presetColor: draft.presetColor,
+        displayMode: draft.displayMode,
+        notificationsEnabled: draft.notificationsEnabled,
+        avatar: buildSavedAvatarState(),
+      });
       setIsEditing(false);
     } catch (err) {
-      setSaveError(err.message);
+      setSaveFeedback({
+        open: true,
+        type: 'error',
+        message: err.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -241,6 +294,7 @@ export default function ProfilePage() {
         sx={{
           px: { xs: 2, sm: 4 },
           py: 4,
+          overflow: 'visible',
           background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.14)} 0%, ${alpha(theme.palette.primary.main, 0.04)} 100%)`,
           borderBottom: '1px solid',
           borderColor: 'divider'
@@ -251,7 +305,15 @@ export default function ProfilePage() {
           alignItems="center"
           spacing={3}
         >
-          <ProfileAvatarUpload size={96} editable={isEditing} />
+          <ProfileAvatarUpload
+            size={96}
+            editable={isEditing}
+            role={userRole}
+            displayName={displayName}
+            user={user}
+            value={draft.avatar}
+            onChange={(avatar) => updateDraft('avatar', avatar)}
+          />
 
           <Box
             sx={{
@@ -321,16 +383,6 @@ export default function ProfilePage() {
                     : (isAr ? 'حفظ' : 'Save')}
                 </Button>
               </Stack>
-            )}
-            {saveError && (
-              <Alert severity="error" sx={{ py: 0, px: 1.5, width: '100%', maxWidth: 280 }}>
-                {saveError}
-              </Alert>
-            )}
-            {saveSuccess && (
-              <Alert severity="success" sx={{ py: 0, px: 1.5, width: '100%', maxWidth: 280 }}>
-                {saveSuccess}
-              </Alert>
             )}
           </Stack>
         </Stack>
@@ -613,6 +665,39 @@ export default function ProfilePage() {
         </Card>
 
       </Box>
+
+      <Dialog
+        open={saveFeedback.open}
+        onClose={() => setSaveFeedback((prev) => ({ ...prev, open: false }))}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
+          {saveFeedback.type === 'success' ? (
+            <>
+              <IconCircleCheck size={24} color={theme.palette.success.main} />
+              {isAr ? 'تم حفظ التغييرات' : 'Changes Saved'}
+            </>
+          ) : (
+            <>
+              <IconAlertCircle size={24} color={theme.palette.error.main} />
+              {isAr ? 'فشل الحفظ' : 'Save Failed'}
+            </>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>{saveFeedback.message}</DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            variant="contained"
+            color={saveFeedback.type === 'success' ? 'primary' : 'error'}
+            onClick={() => setSaveFeedback((prev) => ({ ...prev, open: false }))}
+          >
+            {isAr ? 'حسناً' : 'OK'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageCard>
   );
 }

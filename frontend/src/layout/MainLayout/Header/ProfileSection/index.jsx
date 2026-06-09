@@ -25,7 +25,7 @@ import useAuth from 'hooks/useAuth';
 import useConfig from 'hooks/useConfig';
 import LogoutConfirmDialog from 'ui-component/LogoutConfirmDialog';
 import { alpha, useColorScheme, useTheme } from '@mui/material/styles';
-import { getAvatarUrl } from 'utils/avatar';
+import { getAvatarInitial, getAvatarUrl, getRoleAvatarBorderSx } from 'utils/avatar';
 
 export default function ProfileSection() {
   const { logout, user } = useAuth();
@@ -49,6 +49,8 @@ export default function ProfileSection() {
   const displayName = user?.user || user?.username || 'User';
 
   const avatarSrc = getAvatarUrl(user, displayName);
+  const showInitial = !avatarSrc;
+  const avatarBorderSx = getRoleAvatarBorderSx(user?.role, 2);
 
   const handleClose = () => {
     setAnchorEl(null);
@@ -100,15 +102,24 @@ export default function ProfileSection() {
           },
 
           '& .MuiAvatar-root': {
-            transition: 'all 0.2s ease'
+            transition: 'box-shadow 0.22s ease',
+          },
+
+          '&.MuiChip-clickable:hover': {
+            color: 'inherit',
+            backgroundColor: 'transparent !important',
           },
 
           '&:hover .MuiAvatar-root': {
-            opacity: 0.9
+            color: `${avatarBorderSx.color} !important`,
+            backgroundColor: `${avatarBorderSx.bgcolor} !important`,
+            boxShadow: `0 6px 20px ${alpha(avatarBorderSx.color, 0.55)}`,
           },
 
           '&:active .MuiAvatar-root': {
-            opacity: 0.85
+            color: `${avatarBorderSx.color} !important`,
+            backgroundColor: `${avatarBorderSx.bgcolor} !important`,
+            boxShadow: `0 3px 12px ${alpha(avatarBorderSx.color, 0.42)}`,
           }
         }}
         icon={
@@ -117,16 +128,18 @@ export default function ProfileSection() {
             alt="user"
             sx={{
               margin: '8px 0 8px 8px !important',
-              border: '2px solid',
-              borderColor: 'primary.main',
+              ...avatarBorderSx,
               outline: 'none',
               boxShadow: 'none',
-              bgcolor: 'transparent',
+              fontWeight: 700,
+              transition: 'box-shadow 0.22s ease',
               '& img': {
                 objectFit: 'cover'
               }
             }}
-          />
+          >
+            {showInitial && getAvatarInitial(displayName, user)}
+          </Avatar>
         }
         label=""
         onClick={(event) => {
@@ -157,13 +170,14 @@ export default function ProfileSection() {
               height: 60,
               mx: 'auto',
               mb: 1,
-              border: '2px solid',
-              borderColor: 'primary.main',
+              ...avatarBorderSx,
               boxShadow: 'none',
-              bgcolor: 'transparent',
+              fontWeight: 700,
               '& img': { objectFit: 'cover' }
             }}
-          />
+          >
+            {showInitial && getAvatarInitial(displayName, user)}
+          </Avatar>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             {displayName}
           </Typography>

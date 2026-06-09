@@ -20,7 +20,16 @@ class UserProfile(models.Model):
     # Role determines what endpoints and data the user can access
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
 
+    AVATAR_STYLE_CHOICES = [
+        ('initial', 'Initial Letter'),
+    ]
+
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    avatar_style = models.CharField(
+        max_length=20,
+        choices=AVATAR_STYLE_CHOICES,
+        default='initial',
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

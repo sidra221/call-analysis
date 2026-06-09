@@ -7,6 +7,8 @@ const config = {
   fontFamily: `'Roboto', sans-serif`,
   borderRadius: 8,
   presetColor: '',
+  themeCustomized: false,
+  themeUserId: null,
   language: 'en',
   notificationsEnabled: true
 };

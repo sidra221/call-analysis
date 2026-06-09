@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 // material-ui
 import { createTheme, ThemeProvider, StyledEngineProvider } from '@mui/material/styles';
@@ -10,7 +10,7 @@ import { CSS_VAR_PREFIX, DEFAULT_THEME_MODE } from 'config';
 import CustomShadows from './custom-shadows';
 import useConfig from 'hooks/useConfig';
 import useAuth from 'hooks/useAuth';
-import { getRoleDefaultTheme, isLegacyPreset, resolvePresetColor } from 'constants/themes';
+import { getRoleDefaultTheme, getThemeForUser, hasCustomThemeForUser } from 'constants/themes';
 import { buildPalette } from './palette';
 import Typography from './typography';
 import componentsOverrides from './overrides';
@@ -19,21 +19,39 @@ import componentsOverrides from './overrides';
 
 export default function ThemeCustomization({ children }) {
   const {
-    state: { borderRadius, fontFamily, outlinedFilled, presetColor },
-    setField
+    state: { borderRadius, fontFamily, outlinedFilled, presetColor, themeCustomized, themeUserId },
+    setState
   } = useConfig();
   const { user } = useAuth();
+  const prevUserIdRef = useRef(null);
 
   useEffect(() => {
-    if (!user?.role) return;
-    if (isLegacyPreset(presetColor)) {
-      setField('presetColor', getRoleDefaultTheme(user.role));
+    if (!user?.id || !user?.role) {
+      prevUserIdRef.current = null;
+      return;
     }
-  }, [user?.role, presetColor, setField]);
+
+    const userChanged = prevUserIdRef.current !== user.id;
+    if (!userChanged) return;
+
+    prevUserIdRef.current = user.id;
+
+    if (hasCustomThemeForUser({ presetColor, themeCustomized, themeUserId }, user.id)) {
+      return;
+    }
+
+    const roleTheme = getRoleDefaultTheme(user.role);
+    setState((prev) => ({
+      ...prev,
+      presetColor: roleTheme,
+      themeCustomized: false,
+      themeUserId: user.id,
+    }));
+  }, [user?.id, user?.role, presetColor, themeCustomized, themeUserId, setState]);
 
   const activePreset = useMemo(
-    () => resolvePresetColor(presetColor, user?.role),
-    [presetColor, user?.role]
+    () => getThemeForUser({ presetColor, themeCustomized, themeUserId }, user),
+    [presetColor, themeCustomized, themeUserId, user]
   );
 
   const palette = useMemo(() => buildPalette(activePreset), [activePreset]);

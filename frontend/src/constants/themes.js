@@ -1,6 +1,6 @@
 export const ROLE_THEME_MAP = {
   manager: 'manager',
-  qa: 'qa',
+  qa: 'purple',
   agent: 'agent'
 };
 
@@ -8,22 +8,22 @@ export const THEME_PRESETS = [
   {
     id: 'manager',
     swatch: '#2196f3',
-    label: { en: 'Manager Blue', ar: 'أزرق المدير' }
-  },
-  {
-    id: 'qa',
-    swatch: '#ef6c00',
-    label: { en: 'QA Orange', ar: 'برتقالي QA' }
+    label: { en: 'Blue', ar: 'أزرق' }
   },
   {
     id: 'agent',
-    swatch: '#2e7d32',
-    label: { en: 'Agent Green', ar: 'أخضر الوكيل' }
+    swatch: '#ef6c00',
+    label: { en: 'Orange', ar: 'برتقالي' }
   },
   {
     id: 'purple',
     swatch: '#7c3aed',
     label: { en: 'Purple', ar: 'بنفسجي' }
+  },
+  {
+    id: 'green',
+    swatch: '#2e7d32',
+    label: { en: 'Green', ar: 'أخضر' }
   },
   {
     id: 'teal',
@@ -42,6 +42,11 @@ export const THEME_PRESETS = [
   }
 ];
 
+export function normalizePresetColor(presetColor) {
+  if (presetColor === 'qa') return 'purple';
+  return presetColor;
+}
+
 export function getRoleDefaultTheme(role) {
   const key = (role || '').toLowerCase();
   return ROLE_THEME_MAP[key] || 'manager';
@@ -49,11 +54,28 @@ export function getRoleDefaultTheme(role) {
 
 export function resolvePresetColor(presetColor, role) {
   if (presetColor && presetColor !== 'role' && presetColor !== 'default') {
-    return presetColor;
+    return normalizePresetColor(presetColor);
   }
   return getRoleDefaultTheme(role);
 }
 
 export function isLegacyPreset(presetColor) {
   return !presetColor || presetColor === 'role' || presetColor === 'default';
+}
+
+export function hasCustomThemeForUser(configState, userId) {
+  return Boolean(
+    configState?.themeCustomized
+    && userId
+    && configState?.themeUserId === userId
+    && configState?.presetColor
+    && !isLegacyPreset(configState.presetColor)
+  );
+}
+
+export function getThemeForUser(configState, user) {
+  if (hasCustomThemeForUser(configState, user?.id)) {
+    return normalizePresetColor(configState.presetColor);
+  }
+  return getRoleDefaultTheme(user?.role);
 }

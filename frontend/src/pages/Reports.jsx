@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box, Button, Card, CardContent, Typography, Dialog,
   DialogTitle, DialogContent, DialogActions,
@@ -35,6 +36,7 @@ import {
 const rowsPerPage = 6;
 
 export default function Reports() {
+  const location = useLocation();
   const { user } = useAuth();
   const role = (user?.role || '').toLowerCase();
 
@@ -61,6 +63,7 @@ export default function Reports() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [creatorFilter, setCreatorFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const [selected, setSelected] = useState([]);
@@ -71,6 +74,14 @@ export default function Reports() {
   useEffect(() => {
     loadReports();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.filter === 'creator' && location.state?.value) {
+      setCreatorFilter(location.state.value);
+      setPage(0);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const loadReports = async () => {
     try {
@@ -107,12 +118,14 @@ export default function Reports() {
     let count = 0;
     if (statusFilter !== 'all') count++;
     if (typeFilter !== 'all') count++;
+    if (creatorFilter) count++;
     return count;
-  }, [statusFilter, typeFilter]);
+  }, [statusFilter, typeFilter, creatorFilter]);
 
   const handleResetFilters = () => {
     setStatusFilter('all');
     setTypeFilter('all');
+    setCreatorFilter('');
     setSearchQuery('');
     setSortBy('created_at');
     setSortOrder('desc');
@@ -129,9 +142,10 @@ export default function Reports() {
     return reports.filter((report) => {
       const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
       const matchesType = typeFilter === 'all' || report.period === typeFilter;
+      const matchesCreator = !creatorFilter || report.created_by_username === creatorFilter;
 
       if (!query) {
-        return matchesStatus && matchesType;
+        return matchesStatus && matchesType && matchesCreator;
       }
 
       const searchable = [
@@ -150,9 +164,9 @@ export default function Reports() {
         .toLowerCase();
 
       const matchesSearch = searchable.includes(query);
-      return matchesStatus && matchesType && matchesSearch;
+      return matchesStatus && matchesType && matchesCreator && matchesSearch;
     });
-  }, [reports, statusFilter, typeFilter, searchQuery]);
+  }, [reports, statusFilter, typeFilter, creatorFilter, searchQuery]);
 
   const sortedReports = useMemo(() => {
     return [...filteredReports].sort((a, b) => {
@@ -433,6 +447,12 @@ export default function Reports() {
     <Box>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
+      )}
+
+      {creatorFilter && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Showing reports created by <strong>{creatorFilter}</strong>
+        </Alert>
       )}
 
       <PageCard bordered>

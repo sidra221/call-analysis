@@ -1,7 +1,7 @@
 export const roleColors = {
-  manager: { bg: '#ede7f6', color: '#5e35b1' },
-  agent: { bg: '#e3f2fd', color: '#1e88e5' },
-  qa: { bg: '#fff3e0', color: '#ef6c00' }
+  manager: { bg: '#e3f2fd', color: '#1e88e5' },
+  agent: { bg: '#fff3e0', color: '#ef6c00' },
+  qa: { bg: '#f3e5f5', color: '#7b1fa2' }
 };
 
 export const defaultRoleColor = { bg: '#f5f5f5', color: '#757575' };

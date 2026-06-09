@@ -7,7 +7,9 @@ from .views import (
     ChangePasswordView,
     AvatarUploadView,
     UsersListView,
-    UserDeleteView,
+    UserDetailView,
+    UserStatsView,
+    UserActivityView,
     ManagerOnlyView,
     QAOnlyView,
     ManagerOrQAView,
@@ -27,7 +29,9 @@ urlpatterns = [
 
     # Users management (Manager only)
     path('users/', UsersListView.as_view(), name='users-list'),
-    path('users/<int:pk>/', UserDeleteView.as_view(), name='user-delete'),
+    path('users/<int:pk>/stats/', UserStatsView.as_view(), name='user-stats'),
+    path('users/<int:pk>/activity/', UserActivityView.as_view(), name='user-activity'),
+    path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
 
     # Users for followups (Manager and QA)
     path('users-for-followups/', UsersForFollowupsView.as_view(), name='users-for-followups'),

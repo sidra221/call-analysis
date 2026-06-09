@@ -194,7 +194,13 @@ export default function Calls() {
   };
 
   useEffect(() => {
-    fetchCalls();
+    const userFromState = state?.filter === 'user' ? state?.value : null;
+    if (userFromState) {
+      setUserFilter(userFromState);
+      fetchCalls({ user: userFromState });
+    } else {
+      fetchCalls();
+    }
     return () => {
       if (wsRef.current) wsRef.current.close();
       stopPolling();
@@ -246,6 +252,7 @@ export default function Calls() {
   const [reviewedFilter, setReviewedFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [userFilter, setUserFilter] = useState('');
   const [selectedCall, setSelectedCall] = useState(null);
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
@@ -260,8 +267,9 @@ export default function Calls() {
     if (reviewedFilter !== 'all') count++;
     if (startDate) count++;
     if (endDate) count++;
+    if (userFilter) count++;
     return count;
-  }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate]);
+  }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate, userFilter]);
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [editableTranscript, setEditableTranscript] = useState('');
@@ -363,6 +371,9 @@ export default function Calls() {
         setReviewedFilter(filterValue === 'true' ? 'No' : 'all');
       } else if (filter === 'issue') {
         setSearch(filterValue);
+      } else if (filter === 'user') {
+        setUserFilter(filterValue);
+        fetchCalls({ user: filterValue });
       }
       // Clear the state after applying to avoid re-applying on re-render
       window.history.replaceState({}, document.title);
@@ -504,6 +515,12 @@ export default function Calls() {
         </Alert>
       )}
 
+      {userFilter && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Showing calls uploaded by <strong>{userFilter}</strong>
+        </Alert>
+      )}
+
       <PageCard>
           <PageTitle title="Calls Management" />
 
@@ -518,8 +535,10 @@ export default function Calls() {
               setStatusFilter('all'); setSentimentFilter('all');
               setPriorityFilter('all'); setReviewedFilter('all');
               setStartDate(''); setEndDate('');
+              setUserFilter('');
               setSortByDate('desc');
               setSortByUploader(null);
+              fetchCalls();
             }}
             searchGridSize={{ xs: 12, md: 5 }}
             actions={(

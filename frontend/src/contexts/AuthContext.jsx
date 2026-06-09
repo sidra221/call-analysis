@@ -16,6 +16,14 @@ const API_URL =
 
 export const AuthContext = createContext(undefined);
 
+function normalizeUserData(userData) {
+  if (!userData) return userData;
+  return {
+    ...userData,
+    avatar_style: userData.avatar_style === 'dicebear' ? 'initial' : (userData.avatar_style || 'initial'),
+  };
+}
+
 // ========================================
 // Auth Provider
 // ========================================
@@ -32,7 +40,7 @@ export function AuthProvider({ children }) {
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('authUser');
-    return savedUser ? JSON.parse(savedUser) : null;
+    return savedUser ? normalizeUserData(JSON.parse(savedUser)) : null;
   });
 
   const [loading, setLoading] = useState(true);
@@ -46,7 +54,7 @@ export function AuthProvider({ children }) {
     const savedUser = localStorage.getItem('authUser');
 
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      setUser(normalizeUserData(JSON.parse(savedUser)));
     }
 
     if (!token) {
@@ -64,7 +72,7 @@ export function AuthProvider({ children }) {
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!data) return;
-        const userData = data?.data || data;
+        const userData = normalizeUserData(data?.data || data);
         localStorage.setItem('authUser', JSON.stringify(userData));
         setUser(userData);
       })
@@ -129,7 +137,7 @@ export function AuthProvider({ children }) {
 
     const meData = await meResponse.json();
 
-    const userData = meData?.data || meData;
+    const userData = normalizeUserData(meData?.data || meData);
 
     // Save user
     localStorage.setItem('authUser', JSON.stringify(userData));
@@ -249,7 +257,7 @@ export function AuthProvider({ children }) {
   const updateUser = useCallback((partial) => {
     setUser((prev) => {
       if (!prev) return prev;
-      const next = { ...prev, ...partial };
+      const next = normalizeUserData({ ...prev, ...partial });
       localStorage.setItem('authUser', JSON.stringify(next));
       return next;
     });

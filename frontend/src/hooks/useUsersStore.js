@@ -18,17 +18,23 @@ const useUsersStore = create((set) => ({
   },
 
   addUser: async (userData) => {
-    const res = await usersApi.register(userData);
-    const newUser = res?.data;
-    if (newUser) {
-      set((state) => ({ users: [...state.users, newUser] }));
-    }
-    return newUser;
+    await usersApi.register(userData);
+  },
+
+  updateUser: async (id, data) => {
+    const res = await usersApi.update(id, data);
+    const updated = res?.data || res;
+    set((state) => ({
+      users: state.users.map((u) => (String(u.id) === String(id) ? updated : u))
+    }));
+    return updated;
   },
 
   deleteUser: async (id) => {
     await usersApi.delete(id);
-    set((state) => ({ users: state.users.filter((u) => u.id !== id) }));
+    set((state) => ({
+      users: state.users.filter((u) => String(u.id) !== String(id))
+    }));
   }
 }));
 

@@ -317,6 +317,12 @@ export const accountsApi = {
       true
     ),
 
+  setAvatarStyle: (avatarStyle) =>
+    request('/api/accounts/me/avatar/', {
+      method: 'PUT',
+      body: JSON.stringify({ avatar_style: avatarStyle })
+    }),
+
   managerOnly: () =>
     request('/api/accounts/manager-only/'),
 
@@ -335,6 +341,21 @@ export const usersApi = {
   register: (data) =>
     request('/api/accounts/register/', {
       method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  get: (id) =>
+    request(`/api/accounts/users/${id}/`),
+
+  stats: (id) =>
+    request(`/api/accounts/users/${id}/stats/`),
+
+  activity: (id) =>
+    request(`/api/accounts/users/${id}/activity/`),
+
+  update: (id, data) =>
+    request(`/api/accounts/users/${id}/`, {
+      method: 'PATCH',
       body: JSON.stringify(data)
     }),
 

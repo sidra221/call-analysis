@@ -9,12 +9,14 @@ import purpleColor from './theme/purple';
 import tealColor from './theme/teal';
 import indigoColor from './theme/indigo';
 import roseColor from './theme/rose';
+import greenColor from './theme/green';
 
 const themeColors = {
   manager: managerColor,
   qa: qaColor,
   agent: agentColor,
   purple: purpleColor,
+  green: greenColor,
   teal: tealColor,
   indigo: indigoColor,
   rose: roseColor,
