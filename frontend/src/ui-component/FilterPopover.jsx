@@ -5,11 +5,17 @@ export default function FilterPopover({
   open,
   anchorEl,
   onClose,
+  onApply,
   title,
   children,
   width = 300,
   applyLabel = 'Apply Filters'
 }) {
+  const handleApply = () => {
+    if (onApply) onApply();
+    onClose();
+  };
+
   return (
     <Popover
       open={open}
@@ -24,7 +30,7 @@ export default function FilterPopover({
       </Typography>
       <Stack spacing={2.5}>
         {children}
-        <Button variant="contained" fullWidth onClick={onClose}>
+        <Button variant="contained" fullWidth onClick={handleApply}>
           {applyLabel}
         </Button>
       </Stack>
@@ -36,6 +42,7 @@ FilterPopover.propTypes = {
   open: PropTypes.bool.isRequired,
   anchorEl: PropTypes.object,
   onClose: PropTypes.func.isRequired,
+  onApply: PropTypes.func,
   title: PropTypes.string.isRequired,
   children: PropTypes.node,
   width: PropTypes.number,

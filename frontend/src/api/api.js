@@ -247,8 +247,13 @@ export const dashboardApi = {
 // ─────────────────────────────────────────────
 
 export const logsApi = {
-  list: () =>
-    request('/api/logs/')
+  list: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/logs/${query ? `?${query}` : ''}`);
+  },
+
+  usernames: () =>
+    request('/api/logs/usernames/')
 };
 
 // ─────────────────────────────────────────────
