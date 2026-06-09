@@ -5,10 +5,14 @@ import ThemeCustomization from 'themes';
 import useAuth from 'hooks/useAuth';
 import AuthRoutes from 'routes/AuthRoutes';
 import getMainRoutes from 'routes/MainRoutes';
+import { SplashProvider } from 'contexts/SplashContext';
+import useSplash from 'hooks/useSplash';
+import SplashScreen from 'ui-component/SplashScreen';
 
 function AppContent() {
   const { user, loading } = useAuth();
-  
+  const { showSplash, splashVariant, completeSplash, handleLogoutExitStart } = useSplash();
+
   // Validate token on every render
   const token = localStorage.getItem('access_token');
   if (!token) {
@@ -20,19 +24,32 @@ function AppContent() {
     [...getMainRoutes(), AuthRoutes],
     { basename: import.meta.env.VITE_APP_BASE_NAME }
   );
-  
+
   if (loading) {
     return <div>Loading...</div>;
   }
-  
-  return <RouterProvider router={router} key={user?.id || 'logout'} />;
+
+  return (
+    <>
+      {showSplash && (
+        <SplashScreen
+          variant={splashVariant}
+          onComplete={completeSplash}
+          onLogoutExitStart={handleLogoutExitStart}
+        />
+      )}
+      <RouterProvider router={router} key={user?.id || 'logout'} />
+    </>
+  );
 }
 
 export default function App() {
   return (
     <ThemeCustomization>
       <NavigationScroll>
-        <AppContent />
+        <SplashProvider>
+          <AppContent />
+        </SplashProvider>
       </NavigationScroll>
     </ThemeCustomization>
   );

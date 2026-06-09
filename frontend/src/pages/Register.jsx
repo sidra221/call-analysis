@@ -1,35 +1,54 @@
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+
 import {
-  Box, Button, Card, CardContent, Grid, Link,
-  MenuItem, TextField, Typography, Alert, CircularProgress
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Link,
+  CircularProgress,
+  IconButton,
+  InputAdornment,
+  Alert,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
+
+import {
+  Visibility,
+  VisibilityOff
+} from '@mui/icons-material';
+
 import useAuth from 'hooks/useAuth';
+import AuthCard from 'ui-component/AuthCard';
 
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  const [form, setForm] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'qa'
-  });
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isAgent, setIsAgent] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const onChange = (key) => (event) =>
-    setForm((prev) => ({ ...prev, [key]: event.target.value }));
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
-    // Validate passwords match
-    if (form.password !== form.confirmPassword) {
+    if (!username || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
@@ -37,10 +56,10 @@ export default function Register() {
     setLoading(true);
     try {
       await register({
-        username: form.username,
-        email: form.email,
-        password: form.password,
-        role: form.role
+        username,
+        email,
+        password,
+        role: isAgent ? 'agent' : 'qa'
       });
       navigate('/login');
     } catch (err) {
@@ -61,12 +80,27 @@ export default function Register() {
         p: 2
       }}
     >
-      <Card sx={{ width: '100%', maxWidth: 520 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom>
+      <AuthCard>
+          <Typography
+            variant="h3"
+            sx={{
+              mb: 1,
+              fontWeight: 700,
+              color: 'primary.main',
+              textAlign: 'center'
+            }}
+          >
             Register
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 4,
+              color: 'text.secondary',
+              textAlign: 'center'
+            }}
+          >
             Create your account for Call Analysis
           </Typography>
 
@@ -77,90 +111,114 @@ export default function Register() {
           )}
 
           <Box component="form" onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
+            <TextField
+              label="Username"
+              type="text"
+              fullWidth
+              size="medium"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              sx={{ mb: 3 }}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+            />
 
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label="Username"
-                  fullWidth
-                  required
-                  value={form.username}
-                  onChange={onChange('username')}
+            <TextField
+              label="Email"
+              type="email"
+              fullWidth
+              size="medium"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ mb: 3 }}
+              autoComplete="off"
+            />
+
+            <TextField
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              fullWidth
+              size="medium"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ mb: 3 }}
+              autoComplete="new-password"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                    >
+                      {showPassword ? <Visibility /> : <VisibilityOff />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+
+            <TextField
+              label="Confirm Password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              fullWidth
+              size="medium"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              sx={{ mb: 2 }}
+              autoComplete="new-password"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      edge="end"
+                    >
+                      {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isAgent}
+                  onChange={(e) => setIsAgent(e.target.checked)}
+                  color="primary"
                 />
-              </Grid>
+              }
+              label="Register as Agent"
+              sx={{ mb: 2, display: 'flex', ml: 0 }}
+            />
 
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label="Email"
-                  type="email"
-                  fullWidth
-                  required
-                  value={form.email}
-                  onChange={onChange('email')}
-                />
-              </Grid>
+            <Button
+              fullWidth
+              variant="contained"
+              type="submit"
+              disabled={loading}
+              sx={{ py: 1.4 }}
+            >
+              {loading
+                ? <CircularProgress size={24} color="inherit" />
+                : 'Register'}
+            </Button>
 
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  required
-                  value={form.password}
-                  onChange={onChange('password')}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  label="Confirm Password"
-                  type="password"
-                  fullWidth
-                  required
-                  value={form.confirmPassword}
-                  onChange={onChange('confirmPassword')}
-                />
-              </Grid>
-
-              {/* Role selector — required by Backend */}
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  select
-                  label="Role"
-                  fullWidth
-                  required
-                  value={form.role}
-                  onChange={onChange('role')}
-                >
-                  <MenuItem value="manager">Manager</MenuItem>
-                  <MenuItem value="qa">QA</MenuItem>
-                  <MenuItem value="agent">Agent</MenuItem>
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  type="submit"
-                  disabled={loading}
-                  sx={{ py: 1.4 }}
-                >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Register'}
-                </Button>
-              </Grid>
-
-            </Grid>
+            <Typography
+              variant="body2"
+              sx={{
+                mt: 3,
+                textAlign: 'center'
+              }}
+            >
+              Already have an account?{' '}
+              <Link component={RouterLink} to="/login" underline="hover">
+                Login
+              </Link>
+            </Typography>
           </Box>
-
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            Already have an account?{' '}
-            <Link component={RouterLink} to="/login" underline="hover">
-              Login
-            </Link>
-          </Typography>
-        </CardContent>
-      </Card>
+      </AuthCard>
     </Box>
   );
 }

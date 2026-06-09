@@ -22,13 +22,15 @@ import {
 
 // hooks
 import useAuth from 'hooks/useAuth';
+import useLogout from 'hooks/useLogout';
 import useConfig from 'hooks/useConfig';
 import LogoutConfirmDialog from 'ui-component/LogoutConfirmDialog';
 import { alpha, useColorScheme, useTheme } from '@mui/material/styles';
 import { getAvatarInitial, getAvatarUrl, getRoleAvatarBorderSx } from 'utils/avatar';
 
 export default function ProfileSection() {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
+  const logout = useLogout();
 
   const {
     state: { language },

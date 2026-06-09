@@ -195,12 +195,9 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('authUser');
-  
+
     setUser(null);
     setIsLoggedIn(false);
-    
-    // Force reload to clear all routes and state
-    window.location.href = '/login';
   }, []);
 
   // ========================================
