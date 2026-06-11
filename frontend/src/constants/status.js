@@ -18,6 +18,25 @@ export const sentimentColor = {
   neutral: 'default'
 };
 
+/** Matches MUI Chip text color used in Calls table (light variant). */
+export const getSentimentChipColor = (theme, sentiment) => {
+  const colorKey = sentimentColor[sentiment];
+  if (!colorKey || colorKey === 'default') {
+    return theme.palette.text.secondary;
+  }
+
+  const paletteColor = theme.palette[colorKey];
+  if (!paletteColor) {
+    return theme.palette.text.secondary;
+  }
+
+  if (colorKey === 'success' || colorKey === 'warning') {
+    return paletteColor.dark;
+  }
+
+  return paletteColor.main;
+};
+
 export const priorityColor = {
   high: 'error',
   medium: 'warning',

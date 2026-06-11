@@ -119,7 +119,6 @@ dmypy.json
 backend/media/
 backend/staticfiles/
 outputs/
-logs/
 *.json
 
 # Audio & Media files

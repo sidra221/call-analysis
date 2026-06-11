@@ -289,7 +289,6 @@ export default function ProfilePage() {
 
   return (
     <PageCard bordered contentSX={{ p: 0 }}>
-      {/* Hero */}
       <Box
         sx={{
           px: { xs: 2, sm: 4 },
@@ -388,19 +387,7 @@ export default function ProfilePage() {
         </Stack>
       </Box>
 
-      {/* Settings */}
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2.5 }}>
-          <Typography variant="h5" fontWeight={600}>
-            {isAr ? 'الإعدادات' : 'Settings'}
-          </Typography>
-          {isEditing && (
-            <Typography variant="caption" color="primary.main" fontWeight={600}>
-              {isAr ? 'وضع التعديل' : 'Editing'}
-            </Typography>
-          )}
-        </Stack>
-
         <Grid container spacing={2} sx={{ mb: 2 }} alignItems="stretch">
           <Grid size={{ xs: 12, sm: 4 }}>
             <SettingTile
@@ -663,7 +650,6 @@ export default function ProfilePage() {
             </Box>
           </Collapse>
         </Card>
-
       </Box>
 
       <Dialog

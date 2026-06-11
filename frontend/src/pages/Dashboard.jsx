@@ -1,20 +1,24 @@
 import {
   Box, Card, CardContent, Typography, Table, TableBody, TableCell,
   TableHead, TableRow, Chip, Divider, Avatar, Stack, CircularProgress,
-  Select, MenuItem, FormControl, InputLabel, IconButton, useTheme
+  Select, MenuItem, FormControl, InputLabel, IconButton, LinearProgress, useTheme
 } from "@mui/material";
+import { alpha } from '@mui/material/styles';
 import { useNavigate } from "react-router-dom";
-import { IconEye, IconEdit, IconArrowUp, IconArrowDown, IconAlertCircle } from '@tabler/icons-react';
-import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
-import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import LowPriorityIcon from "@mui/icons-material/LowPriority";
-import WarningIcon from "@mui/icons-material/Warning";
+import {
+  IconEye,
+  IconEdit,
+  IconArrowUp,
+  IconArrowDown,
+  IconMinus,
+  IconAlertTriangle
+} from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from "chart.js";
 import { useState, useMemo, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { dashboardApi } from 'api/api';
-import { sentimentColor, priorityColor } from 'constants/status';
+import { sentimentColor, priorityColor, getSentimentChipColor } from 'constants/status';
 import StatusChip from 'ui-component/StatusChip';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import {
@@ -26,6 +30,219 @@ import {
 } from 'constants/table';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+
+const PRIORITY_HIGH_ORANGE = '#ff9800';
+
+const getPriorityCardStyle = (theme, level) => {
+  const accent = {
+    critical: {
+      main: theme.palette.error.main,
+      hover: theme.palette.error.main
+    },
+    high: {
+      main: PRIORITY_HIGH_ORANGE,
+      hover: '#e65100'
+    },
+    medium: {
+      main: theme.palette.warning.dark,
+      hover: theme.palette.warning.dark
+    },
+    low: {
+      main: theme.palette.success.dark,
+      hover: theme.palette.success.dark
+    }
+  }[level] || {
+    main: theme.palette.text.secondary,
+    hover: theme.palette.text.secondary
+  };
+
+  return {
+    avatarBg: alpha(accent.main, 0.14),
+    iconColor: accent.main,
+    hoverColor: accent.hover
+  };
+};
+
+function OverviewMetric({ label, value, total, color, progressColor, onClick }) {
+  const percent = total > 0 ? (value / total) * 100 : 0;
+  const usesThemeColor = Boolean(progressColor);
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          onClick={onClick}
+          sx={{
+            cursor: onClick ? 'pointer' : 'default',
+            '&:hover': onClick ? { textDecoration: 'underline', color } : undefined
+          }}
+        >
+          {label}
+        </Typography>
+        <Typography variant="body2" fontWeight={600}>
+          {value}
+        </Typography>
+      </Box>
+      <LinearProgress
+        variant="determinate"
+        value={percent}
+        color={usesThemeColor ? progressColor : undefined}
+        sx={{
+          height: 8,
+          borderRadius: 5,
+          ...(!usesThemeColor && {
+            bgcolor: alpha(color, 0.12),
+            '& .MuiLinearProgress-bar': { borderRadius: 5, bgcolor: color }
+          }),
+          ...(usesThemeColor && {
+            '& .MuiLinearProgress-bar': { borderRadius: 5 }
+          })
+        }}
+      />
+    </Box>
+  );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const filterCallsByRange = (calls, range) => {
+  const list = Array.isArray(calls) ? calls : [];
+  const today = startOfDay(new Date());
+
+  switch (range) {
+    case 'day':
+      return list.filter((call) => startOfDay(call.created_at).getTime() === today.getTime());
+    case 'week': {
+      const start = new Date(today);
+      start.setDate(start.getDate() - 6);
+      return list.filter((call) => startOfDay(call.created_at) >= start);
+    }
+    case 'month': {
+      const start = new Date(today);
+      start.setDate(start.getDate() - 27);
+      return list.filter((call) => startOfDay(call.created_at) >= start);
+    }
+    case 'year': {
+      const start = new Date(today);
+      start.setMonth(start.getMonth() - 11, 1);
+      return list.filter((call) => new Date(call.created_at) >= start);
+    }
+    default:
+      return list;
+  }
+};
+
+const buildSentimentChartData = (calls, range, theme) => {
+  const positiveColor = getSentimentChipColor(theme, 'positive');
+  const negativeColor = getSentimentChipColor(theme, 'negative');
+  const filtered = filterCallsByRange(calls, range);
+  const today = startOfDay(new Date());
+
+  const makeDatasets = (labels, posData, negData) => ({
+    labels,
+    datasets: [
+      { label: 'Positive', data: posData, backgroundColor: positiveColor, borderRadius: 5 },
+      { label: 'Negative', data: negData, backgroundColor: negativeColor, borderRadius: 5 }
+    ]
+  });
+
+  if (range === 'day') {
+    const labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+    const posData = new Array(24).fill(0);
+    const negData = new Array(24).fill(0);
+
+    filtered.forEach((call) => {
+      const hour = new Date(call.created_at).getHours();
+      if (call.analysis?.sentiment === 'positive') posData[hour] += 1;
+      if (call.analysis?.sentiment === 'negative') negData[hour] += 1;
+    });
+
+    return makeDatasets(labels, posData, negData);
+  }
+
+  if (range === 'week') {
+    const labels = [];
+    const dayStarts = [];
+
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dayStarts.push(d.getTime());
+      labels.push(d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }));
+    }
+
+    const posData = new Array(7).fill(0);
+    const negData = new Array(7).fill(0);
+
+    filtered.forEach((call) => {
+      const idx = dayStarts.indexOf(startOfDay(call.created_at).getTime());
+      if (idx === -1) return;
+      if (call.analysis?.sentiment === 'positive') posData[idx] += 1;
+      if (call.analysis?.sentiment === 'negative') negData[idx] += 1;
+    });
+
+    return makeDatasets(labels, posData, negData);
+  }
+
+  if (range === 'month') {
+    const rangeStart = new Date(today);
+    rangeStart.setDate(rangeStart.getDate() - 27);
+
+    const labels = Array.from({ length: 4 }, (_, w) => {
+      const ws = new Date(rangeStart);
+      ws.setDate(ws.getDate() + w * 7);
+      const we = new Date(ws);
+      we.setDate(we.getDate() + 6);
+      return `${ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${we.toLocaleDateString('en-US', { day: 'numeric' })}`;
+    });
+
+    const posData = new Array(4).fill(0);
+    const negData = new Array(4).fill(0);
+
+    filtered.forEach((call) => {
+      const callDay = startOfDay(call.created_at);
+      const diffDays = Math.floor((callDay.getTime() - rangeStart.getTime()) / DAY_MS);
+      if (diffDays < 0 || diffDays > 27) return;
+      const idx = Math.min(3, Math.floor(diffDays / 7));
+      if (call.analysis?.sentiment === 'positive') posData[idx] += 1;
+      if (call.analysis?.sentiment === 'negative') negData[idx] += 1;
+    });
+
+    return makeDatasets(labels, posData, negData);
+  }
+
+  const labels = [];
+  const monthKeys = [];
+
+  for (let i = 11; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(1);
+    d.setMonth(d.getMonth() - i);
+    monthKeys.push(`${d.getFullYear()}-${d.getMonth()}`);
+    labels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+  }
+
+  const posData = new Array(12).fill(0);
+  const negData = new Array(12).fill(0);
+
+  filtered.forEach((call) => {
+    const d = new Date(call.created_at);
+    const idx = monthKeys.indexOf(`${d.getFullYear()}-${d.getMonth()}`);
+    if (idx === -1) return;
+    if (call.analysis?.sentiment === 'positive') posData[idx] += 1;
+    if (call.analysis?.sentiment === 'negative') negData[idx] += 1;
+  });
+
+  return makeDatasets(labels, posData, negData);
+};
 
 const getCircularColor = (percent, theme, type) => {
   if (type === 'negative') {
@@ -62,6 +279,38 @@ export default function Dashboard() {
     ).length;
   }, [calls]);
 
+  const totalCalls = dashboardData?.overview?.total_calls || 0;
+
+  const overviewMetrics = useMemo(() => [
+    {
+      label: 'Neutral Calls',
+      value: dashboardData?.sentiment?.neutral || 0,
+      color: getSentimentChipColor(theme, 'neutral'),
+      filter: { type: 'sentiment', value: 'neutral' }
+    },
+    {
+      label: 'Positive Calls',
+      value: dashboardData?.sentiment?.positive || 0,
+      color: getSentimentChipColor(theme, 'positive'),
+      progressColor: 'success',
+      filter: { type: 'sentiment', value: 'positive' }
+    },
+    {
+      label: 'Negative Calls',
+      value: dashboardData?.sentiment?.negative || 0,
+      color: getSentimentChipColor(theme, 'negative'),
+      progressColor: 'error',
+      filter: { type: 'sentiment', value: 'negative' }
+    },
+    {
+      label: 'Needs Follow-up',
+      value: dashboardData?.follow_ups?.needs_followup || 0,
+      color: theme.palette.warning.dark,
+      progressColor: 'warning',
+      filter: { type: 'needs_followup', value: 'true' }
+    }
+  ], [dashboardData, theme]);
+
   useEffect(() => {
     fetchCalls();
     loadDashboard();
@@ -85,33 +334,6 @@ export default function Dashboard() {
 
   const navigateToCallsWithFilter = (filterType, filterValue) => {
     navigate("/calls", { state: { filter: filterType, value: filterValue } });
-  };
-
-  const getFilteredCallsForChart = () => {
-    let filtered = [...calls];
-    const now = new Date();
-    
-    switch (chartTimeRange) {
-      case 'day':
-        const today = new Date().toDateString();
-        filtered = calls.filter(call => new Date(call.created_at).toDateString() === today);
-        break;
-      case 'week':
-        const weekAgo = new Date(now.setDate(now.getDate() - 7));
-        filtered = calls.filter(call => new Date(call.created_at) >= weekAgo);
-        break;
-      case 'month':
-        const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-        filtered = calls.filter(call => new Date(call.created_at) >= monthAgo);
-        break;
-      case 'year':
-        const yearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-        filtered = calls.filter(call => new Date(call.created_at) >= yearAgo);
-        break;
-      default:
-        filtered = calls;
-    }
-    return filtered;
   };
 
   const latestCalls = useMemo(() => {
@@ -196,47 +418,42 @@ export default function Dashboard() {
     return { negative: negativeWithPercent.slice(0, 6), positive: positiveWithPercent.slice(0, 6) };
   }, [topicsData]);
 
-  const sentimentChartData = useMemo(() => {
-    const filteredCalls = getFilteredCallsForChart();
-    
-    if (chartTimeRange === 'day') {
-      const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-      const posData = new Array(24).fill(0);
-      const negData = new Array(24).fill(0);
-      
-      filteredCalls.forEach((call) => {
-        const hour = new Date(call.created_at).getHours();
-        if (call.analysis?.sentiment === 'positive') posData[hour]++;
-        if (call.analysis?.sentiment === 'negative') negData[hour]++;
-      });
-      
-      return {
-        labels: hours,
-        datasets: [
-          { label: "Positive", data: posData, backgroundColor: theme.palette.success.main, borderRadius: 5, barThickness: 10 },
-          { label: "Negative", data: negData, backgroundColor: theme.palette.error.main, borderRadius: 5, barThickness: 10 }
-        ]
-      };
-    } else {
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const posData = new Array(7).fill(0);
-      const negData = new Array(7).fill(0);
-      
-      filteredCalls.forEach((call) => {
-        const day = new Date(call.created_at).getDay();
-        if (call.analysis?.sentiment === 'positive') posData[day]++;
-        if (call.analysis?.sentiment === 'negative') negData[day]++;
-      });
-      
-      return {
-        labels: days,
-        datasets: [
-          { label: "Positive", data: posData, backgroundColor: theme.palette.success.main, borderRadius: 5, barThickness: 14 },
-          { label: "Negative", data: negData, backgroundColor: theme.palette.error.main, borderRadius: 5, barThickness: 14 }
-        ]
-      };
-    }
-  }, [calls, chartTimeRange, theme]);
+  const sentimentChartData = useMemo(
+    () => buildSentimentChartData(calls, chartTimeRange, theme),
+    [calls, chartTimeRange, theme]
+  );
+
+  const sentimentChartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false }
+    },
+    datasets: {
+      bar: {
+        barPercentage: 0.72,
+        categoryPercentage: 0.82,
+        maxBarThickness: chartTimeRange === 'day' ? 14 : chartTimeRange === 'year' ? 28 : 36
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          maxRotation: chartTimeRange === 'month' ? 25 : 0,
+          autoSkip: true,
+          maxTicksLimit: chartTimeRange === 'day' ? 12 : undefined
+        }
+      },
+      y: {
+        beginAtZero: true,
+        grace: '8%',
+        ticks: { stepSize: 1, precision: 0 },
+        grid: { drawBorder: false }
+      }
+    },
+    layout: { padding: { top: 4 } }
+  }), [chartTimeRange]);
 
   if (dashLoading) {
     return (
@@ -251,180 +468,160 @@ export default function Dashboard() {
 
       {/* Priority Cards */}
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-        
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Avatar sx={{ bgcolor: theme.palette.error.light, width: 48, height: 48 }}>
-              <WarningIcon sx={{ color: theme.palette.error.main, fontSize: 28 }} />
-            </Avatar>
-            <Box>
-              <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.error.main } }}
-                onClick={() => navigateToCallsWithFilter('priority', 'critical')}
-              >
-                Critical Priority
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {criticalCount}
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
+        {[
+          {
+            level: 'critical',
+            label: 'Critical Priority',
+            value: criticalCount,
+            filter: 'critical',
+            Icon: IconAlertTriangle
+          },
+          {
+            level: 'high',
+            label: 'High Priority',
+            value: dashboardData?.priority?.high || 0,
+            filter: 'high',
+            Icon: IconArrowUp
+          },
+          {
+            level: 'medium',
+            label: 'Medium Priority',
+            value: dashboardData?.priority?.medium || 0,
+            filter: 'medium',
+            Icon: IconMinus
+          },
+          {
+            level: 'low',
+            label: 'Low Priority',
+            value: dashboardData?.priority?.low || 0,
+            filter: 'low',
+            Icon: IconArrowDown
+          }
+        ].map(({ level, label, value, filter, Icon }) => {
+          const accent = getPriorityCardStyle(theme, level);
 
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Avatar sx={{ bgcolor: theme.palette.error.light, width: 48, height: 48 }}>
-              <PriorityHighIcon sx={{ color: theme.palette.error.main, fontSize: 28 }} />
-            </Avatar>
-            <Box>
-              <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.error.main } }}
-                onClick={() => navigateToCallsWithFilter('priority', 'high')}
-              >
-                High Priority
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {dashboardData?.priority?.high || 0}
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Avatar sx={{ bgcolor: theme.palette.warning.light, width: 48, height: 48 }}>
-              <ReportProblemIcon sx={{ color: theme.palette.warning.main, fontSize: 28 }} />
-            </Avatar>
-            <Box>
-              <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.warning.main } }}
-                onClick={() => navigateToCallsWithFilter('priority', 'medium')}
-              >
-                Medium Priority
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {dashboardData?.priority?.medium || 0}
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Avatar sx={{ bgcolor: theme.palette.success.light, width: 48, height: 48 }}>
-              <LowPriorityIcon sx={{ color: theme.palette.success.main, fontSize: 28 }} />
-            </Avatar>
-            <Box>
-              <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.success.main } }}
-                onClick={() => navigateToCallsWithFilter('priority', 'low')}
-              >
-                Low Priority
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {dashboardData?.priority?.low || 0}
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
+          return (
+            <Card key={level} sx={{ flex: 1, minWidth: 0 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: accent.avatarBg, width: 48, height: 48 }}>
+                  <Icon size={26} color={accent.iconColor} stroke={2} />
+                </Avatar>
+                <Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': { textDecoration: 'underline', color: accent.hoverColor }
+                    }}
+                    onClick={() => navigateToCallsWithFilter('priority', filter)}
+                  >
+                    {label}
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    {value}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          );
+        })}
       </Box>
 
       {/* Overview + Sentiment Section */}
-      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "stretch" }}>
         
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardContent>
-            <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>Overview</Typography>
-            <Box sx={{ width: "100%", p: 3, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
-              
-              <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mb: 3 }}>
-                <Typography variant="body1" fontWeight={600}>Total Calls:</Typography>
-                <Typography variant="h4" fontWeight={700}>{dashboardData?.overview?.total_calls || 0}</Typography>
-              </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.info.main } }}
-                    onClick={() => navigateToCallsWithFilter('sentiment', 'neutral')}
-                  >
-                    Neutral Calls
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>{dashboardData?.sentiment?.neutral || 0}</Typography>
-                </Box>
-                <Box sx={{ height: 8, borderRadius: 5, bgcolor: "action.hover", overflow: "hidden" }}>
-                  <Box sx={{ width: `${((dashboardData?.sentiment?.neutral || 0) / (dashboardData?.overview?.total_calls || 1)) * 100}%`, height: "100%", borderRadius: 5, bgcolor: theme.palette.info.main }} />
-                </Box>
-              </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.success.main } }}
-                    onClick={() => navigateToCallsWithFilter('sentiment', 'positive')}
-                  >
-                    Positive Calls
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>{dashboardData?.sentiment?.positive || 0}</Typography>
-                </Box>
-                <Box sx={{ height: 8, borderRadius: 5, bgcolor: "action.hover", overflow: "hidden" }}>
-                  <Box sx={{ width: `${((dashboardData?.sentiment?.positive || 0) / (dashboardData?.overview?.total_calls || 1)) * 100}%`, height: "100%", borderRadius: 5, bgcolor: theme.palette.success.main }} />
-                </Box>
-              </Box>
-              
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.error.main } }}
-                    onClick={() => navigateToCallsWithFilter('sentiment', 'negative')}
-                  >
-                    Negative Calls
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>{dashboardData?.sentiment?.negative || 0}</Typography>
-                </Box>
-                <Box sx={{ height: 8, borderRadius: 5, bgcolor: "action.hover", overflow: "hidden" }}>
-                  <Box sx={{ width: `${((dashboardData?.sentiment?.negative || 0) / (dashboardData?.overview?.total_calls || 1)) * 100}%`, height: "100%", borderRadius: 5, bgcolor: theme.palette.error.main }} />
-                </Box>
-              </Box>
-              
-              <Box>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: theme.palette.warning.main } }}
-                    onClick={() => navigateToCallsWithFilter('needs_followup', 'true')}
-                  >
-                    Needs Follow-up
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>{dashboardData?.follow_ups?.needs_followup || 0}</Typography>
-                </Box>
-                <Box sx={{ height: 8, borderRadius: 5, bgcolor: "action.hover", overflow: "hidden" }}>
-                  <Box sx={{ width: `${((dashboardData?.follow_ups?.needs_followup || 0) / (dashboardData?.overview?.total_calls || 1)) * 100}%`, height: "100%", borderRadius: 5, bgcolor: theme.palette.warning.main }} />
-                </Box>
+        <Card sx={{ flex: 1, minWidth: 0, display: "flex" }}>
+          <CardContent
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              py: 3,
+              px: 3,
+              "&:last-child": { pb: 3 }
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, minHeight: 40 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, lineHeight: 1.2 }}>Overview</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" fontWeight={600}>
+                  Total Calls:
+                </Typography>
+                <Typography variant="h6" fontWeight={700}>
+                  {totalCalls}
+                </Typography>
               </Box>
             </Box>
+            <Stack sx={{ flex: 1, justifyContent: "space-evenly" }}>
+              {overviewMetrics.map(({ label, value, color, progressColor, filter }) => (
+                <OverviewMetric
+                  key={label}
+                  label={label}
+                  value={value}
+                  total={totalCalls}
+                  color={color}
+                  progressColor={progressColor}
+                  onClick={() => navigateToCallsWithFilter(filter.type, filter.value)}
+                />
+              ))}
+            </Stack>
           </CardContent>
         </Card>
         
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 600 }}>Sentiment Analysis</Typography>
+        <Card sx={{ flex: 1, minWidth: 0, display: "flex" }}>
+          <CardContent
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              py: 3,
+              px: 3,
+              "&:last-child": { pb: 3 }
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                mb: 2,
+                minHeight: 40
+              }}
+            >
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                <Typography variant="h4" sx={{ fontWeight: 600, lineHeight: 1.2 }}>Sentiment Analysis</Typography>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Stack direction="row" alignItems="center" spacing={0.75}>
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 0.5,
+                        bgcolor: getSentimentChipColor(theme, 'positive')
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      Positive
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" alignItems="center" spacing={0.75}>
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 0.5,
+                        bgcolor: getSentimentChipColor(theme, 'negative')
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      Negative
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
               <FormControl size="small" sx={{ minWidth: 100 }}>
                 <Select
                   value={chartTimeRange}
@@ -438,8 +635,12 @@ export default function Dashboard() {
                 </Select>
               </FormControl>
             </Box>
-            <Box sx={{ height: 280, mt: 1 }}>
-              <Bar data={sentimentChartData} options={{ responsive: true, maintainAspectRatio: false }} />
+            <Box sx={{ flex: 1, minHeight: 300, position: 'relative' }}>
+              <Bar
+                key={chartTimeRange}
+                data={sentimentChartData}
+                options={sentimentChartOptions}
+              />
             </Box>
           </CardContent>
         </Card>

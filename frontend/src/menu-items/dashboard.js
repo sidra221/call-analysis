@@ -45,7 +45,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'reports',
-            title: 'Published Reports',
+            title: 'Reports',
             type: 'item',
             url: '/reports',
             icon: icons.IconReportAnalytics,
@@ -69,7 +69,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'profile',
-            title: 'Profile',
+            title: 'Settings',
             type: 'item',
             url: '/profile',
             icon: icons.IconSettings2,
@@ -79,7 +79,7 @@ const dashboard = (role) => ({
       : [
           {
             id: 'dashboard',
-            title: 'QA Dashboard',
+            title: 'Dashboard',
             type: 'item',
             url: '/dashboard',
             icon: icons.IconDashboard,
@@ -111,7 +111,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'profile',
-            title: 'Profile',
+            title: 'Settings',
             type: 'item',
             url: '/profile',
             icon: icons.IconSettings2,

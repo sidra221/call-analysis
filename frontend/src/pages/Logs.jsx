@@ -21,15 +21,19 @@ import {
   IconPhone,
   IconReportAnalytics,
   IconUserPlus,
-  IconRefresh,
+  IconLoader2,
   IconCheck,
   IconTrash,
   IconFileText,
+  IconFileX,
   IconUserMinus,
+  IconUserEdit,
   IconClock,
   IconEdit,
   IconMessagePlus,
-  IconMessageMinus
+  IconMessageMinus,
+  IconSwitchHorizontal,
+  IconHistory
 } from '@tabler/icons-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -202,18 +206,19 @@ export default function Logs() {
   const getIcon = (action) => {
     if (action === 'upload_call') return <IconPhone size={18} />;
     if (action === 'delete_call') return <IconTrash size={18} />;
-    if (action === 'call_processing') return <IconRefresh size={18} />;
-    if (action === 'call_status_change') return <IconRefresh size={18} />;
+    if (action === 'call_processing') return <IconLoader2 size={18} />;
+    if (action === 'call_status_change') return <IconSwitchHorizontal size={18} />;
     if (action === 'review_call') return <IconCheck size={18} />;
     if (action === 'publish_report') return <IconReportAnalytics size={18} />;
     if (action === 'generate_report') return <IconFileText size={18} />;
-    if (action === 'delete_report') return <IconTrash size={18} />;
+    if (action === 'delete_report') return <IconFileX size={18} />;
     if (action === 'user_created') return <IconUserPlus size={18} />;
+    if (action === 'user_updated') return <IconUserEdit size={18} />;
     if (action === 'user_deleted') return <IconUserMinus size={18} />;
     if (action === 'create_followup') return <IconMessagePlus size={18} />;
     if (action === 'delete_followup') return <IconMessageMinus size={18} />;
     if (action === 'update_followup') return <IconEdit size={18} />;
-    return <IconRefresh size={18} />;
+    return <IconHistory size={18} />;
   };
 
   const getActionLabel = (action) => {
