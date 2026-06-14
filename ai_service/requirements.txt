@@ -20,6 +20,7 @@ pyannote-database==6.1.1
 pyannote-pipeline==4.0.0
 
 # NLP Analysis
+sentence-transformers==5.1.0
 spacy==3.8.14
 en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz#sha256=1075c2aa2bc2fee105ab6e90a01a5d1a428c9f5b20a1fa003dc2cb6a438d295e
 nltk==3.9.4
