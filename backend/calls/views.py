@@ -27,6 +27,16 @@ from .tasks import analyze_call
 from logs.utils import create_log
 
 
+logger = logging.getLogger(__name__)
+
+
+def _user_role(user):
+    try:
+        return user.profile.role.lower()
+    except Exception:
+        return None
+
+
 class CallViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated, IsManagerOrQA]
@@ -232,7 +242,8 @@ class CallViewSet(viewsets.ModelViewSet):
                 followup = FollowUp.objects.create(
                     call=call,
                     assigned_to=request.user,
-                    notes=followup_notes or ""
+                    created_by=request.user,
+                    creator_notes=followup_notes or "",
                 )
                 
                 create_log(
@@ -393,7 +404,10 @@ class FollowUpViewSet(viewsets.ModelViewSet):
 
     queryset = FollowUp.objects.select_related(
         'call',
-        'assigned_to'
+        'assigned_to',
+        'assigned_to__profile',
+        'created_by',
+        'created_by__profile',
     ).order_by('-created_at')
 
     serializer_class = FollowUpSerializer
@@ -405,16 +419,39 @@ class FollowUpViewSet(viewsets.ModelViewSet):
 
     http_method_names = ['get', 'post', 'patch', 'delete']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        role = _user_role(self.request.user)
+        if role == 'manager':
+            return qs
+        if role == 'qa':
+            return qs.filter(
+                Q(assigned_to_id=self.request.user.pk)
+                | Q(created_by_id=self.request.user.pk)
+            ).distinct()
+        return qs.none()
+
     # ─────────────────────────────────────
     # Create follow-up
     # ─────────────────────────────────────
     def create(self, request, *args, **kwargs):
 
+        role = _user_role(request.user)
+        if role not in ('manager', 'qa'):
+            return error_response(
+                "Only managers and QA can create follow-ups",
+                code="permission_denied",
+                status_code=403,
+            )
+
         call_id = request.data.get('call_id')
 
         assigned_to = request.data.get('assigned_to')
 
-        notes = request.data.get('notes', '')
+        creator_notes = (
+            request.data.get('creator_notes')
+            or request.data.get('notes', '')
+        )
 
         if not call_id:
 
@@ -468,7 +505,8 @@ class FollowUpViewSet(viewsets.ModelViewSet):
         followup = FollowUp.objects.create(
             call=call,
             assigned_to=assigned_user,
-            notes=notes,
+            created_by=request.user,
+            creator_notes=creator_notes,
             status='pending'
         )
 
@@ -501,10 +539,68 @@ class FollowUpViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
 
         instance = self.get_object()
+        role = _user_role(request.user)
+
+        if role == 'manager':
+            return error_response(
+                "Managers can only view follow-ups",
+                code="permission_denied",
+                status_code=403,
+            )
+
+        is_assignee = instance.assigned_to_id == request.user.id
+        is_creator = instance.created_by_id == request.user.id
+
+        if not is_assignee and not is_creator:
+            return error_response(
+                "You can only update follow-ups you created or are assigned to",
+                code="permission_denied",
+                status_code=403,
+            )
+
+        patch_data = {}
+
+        if is_creator and 'creator_notes' in request.data:
+            patch_data['creator_notes'] = request.data.get('creator_notes', '')
+
+        if is_assignee:
+            if 'assignee_notes' in request.data or 'notes' in request.data:
+                patch_data['assignee_notes'] = request.data.get(
+                    'assignee_notes',
+                    request.data.get('notes', instance.assignee_notes),
+                )
+            if 'status' in request.data:
+                patch_data['status'] = request.data['status']
+
+        if not patch_data:
+            return error_response(
+                "No valid fields to update",
+                code="validation_error",
+                status_code=400,
+            )
+
+        new_status = patch_data.get('status', instance.status)
+        new_assignee_notes = patch_data.get(
+            'assignee_notes',
+            instance.assignee_notes,
+        )
+        if new_status == 'done' and not (new_assignee_notes or '').strip():
+            return error_response(
+                "Follow-up notes are required before marking as done",
+                code="validation_error",
+                status_code=400,
+            )
+
+        if new_status == 'done' and not is_assignee:
+            return error_response(
+                "Only the assigned QA can mark a follow-up as done",
+                code="permission_denied",
+                status_code=403,
+            )
 
         serializer = self.get_serializer(
             instance,
-            data=request.data,
+            data=patch_data,
             partial=True
         )
 
@@ -526,7 +622,21 @@ class FollowUpViewSet(viewsets.ModelViewSet):
     # Destroy follow-up
     # ─────────────────────────────────────
     def destroy(self, request, *args, **kwargs):
+        role = _user_role(request.user)
         followup = self.get_object()
-        call_id = followup.call.id
-        create_log(request.user, 'delete_followup', f'Deleted followup for call #{call_id}')
-        return super().destroy(request, *args, **kwargs)
+
+        if role == 'manager':
+            call_id = followup.call.id
+            create_log(request.user, 'delete_followup', f'Deleted followup for call #{call_id}')
+            return super().destroy(request, *args, **kwargs)
+
+        if role == 'qa' and followup.created_by_id == request.user.pk:
+            call_id = followup.call.id
+            create_log(request.user, 'delete_followup', f'Deleted followup for call #{call_id}')
+            return super().destroy(request, *args, **kwargs)
+
+        return error_response(
+            "Only the creator can delete this follow-up",
+            code="permission_denied",
+            status_code=403,
+        )

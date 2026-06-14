@@ -32,5 +32,5 @@ class CallAnalysisAdmin(admin.ModelAdmin):
 class FollowUpAdmin(admin.ModelAdmin):
     list_display = ('call', 'assigned_to', 'status', 'created_at', 'updated_at')
     list_filter = ('status', 'created_at')
-    search_fields = ('notes',)
+    search_fields = ('creator_notes', 'assignee_notes')
     readonly_fields = ('created_at', 'updated_at')

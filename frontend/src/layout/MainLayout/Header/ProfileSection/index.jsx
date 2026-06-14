@@ -74,8 +74,8 @@ export default function ProfileSection() {
         disableRipple
         sx={{
           ml: 2,
-          height: 48,
-          borderRadius: '27px',
+          height: 40,
+          borderRadius: '20px',
           bgcolor: 'transparent !important',
           border: 'none',
           outline: 'none',
@@ -129,7 +129,10 @@ export default function ProfileSection() {
             src={avatarSrc}
             alt="user"
             sx={{
-              margin: '8px 0 8px 8px !important',
+              width: 32,
+              height: 32,
+              margin: '4px 0 4px 8px !important',
+              fontSize: 13,
               ...avatarBorderSx,
               outline: 'none',
               boxShadow: 'none',

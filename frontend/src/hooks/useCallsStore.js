@@ -11,13 +11,24 @@ const useCallsStore = create((set) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await callsApi.list(params);
+      let all = [];
+      let page = 1;
+      let total = Infinity;
 
-      const payload = res?.data ?? res;
-      const results = payload?.results || (Array.isArray(payload) ? payload : []);
+      while (all.length < total) {
+        const res = await callsApi.list({ ...params, page, page_size: 100 });
+        const payload = res?.data ?? res;
+        const results = payload?.results || (Array.isArray(payload) ? payload : []);
+        const count = payload?.count ?? results.length;
+
+        all = [...all, ...results];
+        total = count;
+        if (!results.length) break;
+        page += 1;
+      }
 
       set({
-        calls: results,
+        calls: all,
         loading: false,
       });
     } catch (err) {

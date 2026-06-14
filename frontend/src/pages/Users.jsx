@@ -123,6 +123,7 @@ export default function UsersPage() {
   // Sorting states
   const [sortByDate, setSortByDate] = useState('desc');
   const [sortByUsername, setSortByUsername] = useState('asc');
+  const [activeSortColumn, setActiveSortColumn] = useState('date');
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ username: '', email: '', password: '', role: 'qa' });
@@ -178,28 +179,28 @@ export default function UsersPage() {
       return matchesSearch && matchesRole;
     });
 
-    result = [...result].sort((a, b) => {
-      const nameA = a.username.toLowerCase();
-      const nameB = b.username.toLowerCase();
-      if (sortByUsername === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
+    if (activeSortColumn === 'username') {
+      result = [...result].sort((a, b) => {
+        const nameA = a.username.toLowerCase();
+        const nameB = b.username.toLowerCase();
+        if (sortByUsername === 'asc') {
+          return nameA.localeCompare(nameB);
+        }
         return nameB.localeCompare(nameA);
-      }
-    });
-
-    result = [...result].sort((a, b) => {
-      const dateA = new Date(a.created_at);
-      const dateB = new Date(b.created_at);
-      if (sortByDate === 'desc') {
-        return dateB - dateA;
-      } else {
+      });
+    } else {
+      result = [...result].sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        if (sortByDate === 'desc') {
+          return dateB - dateA;
+        }
         return dateA - dateB;
-      }
-    });
+      });
+    }
 
     return result;
-  }, [users, search, roleFilter, sortByUsername, sortByDate]);
+  }, [users, search, roleFilter, sortByUsername, sortByDate, activeSortColumn]);
 
   const activeFilterCount = (search ? 1 : 0) + (roleFilter !== 'All' ? 1 : 0);
 
@@ -213,11 +214,13 @@ export default function UsersPage() {
   };
 
   const toggleSortByUsername = () => {
+    setActiveSortColumn('username');
     setSortByUsername(prev => prev === 'asc' ? 'desc' : 'asc');
     setPage(0);
   };
 
   const toggleSortByDate = () => {
+    setActiveSortColumn('date');
     setSortByDate(prev => prev === 'desc' ? 'asc' : 'desc');
     setPage(0);
   };

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // material-ui
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
 import Badge from '@mui/material/Badge';
@@ -31,6 +31,7 @@ import { IconBell } from '@tabler/icons-react';
 // API
 import { callsApi, followupsApi, reportsApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
+import { getRoleAvatarBorderSx } from 'utils/avatar';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -38,6 +39,7 @@ export default function NotificationSection() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
+  const avatarRoleSx = getRoleAvatarBorderSx(user?.role, 2);
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('all');
@@ -319,23 +321,30 @@ export default function NotificationSection() {
       <Box sx={{ ml: 2 }}>
         <Badge badgeContent={unreadCount} color="error">
           <Avatar
-            variant="rounded"
             sx={{
-              ...theme.typography.commonAvatar,
-              ...theme.typography.mediumAvatar,
+              width: 32,
+              height: 32,
               cursor: 'pointer',
-              color: theme.vars.palette.primary.dark,
-              backgroundColor: theme.vars.palette.primary.light,
-              transition: 'all 0.2s ease-in-out',
+              color: avatarRoleSx.color,
+              backgroundColor: avatarRoleSx.bgcolor,
+              boxShadow: 'none',
+              outline: 'none',
+              transition: 'box-shadow 0.22s ease',
               '&:hover': {
-                color: theme.vars.palette.primary.contrastText || '#fff',
-                backgroundColor: theme.vars.palette.primary.main
-              }
+                color: `${avatarRoleSx.color} !important`,
+                backgroundColor: `${avatarRoleSx.bgcolor} !important`,
+                boxShadow: `0 6px 20px ${alpha(avatarRoleSx.color, 0.55)}`,
+              },
+              '&:active': {
+                color: `${avatarRoleSx.color} !important`,
+                backgroundColor: `${avatarRoleSx.bgcolor} !important`,
+                boxShadow: `0 3px 12px ${alpha(avatarRoleSx.color, 0.42)}`,
+              },
             }}
             ref={anchorRef}
             onClick={handleToggle}
           >
-            <IconBell stroke={1.5} size="20px" />
+            <IconBell stroke={1.5} size={18} />
           </Avatar>
         </Badge>
       </Box>

@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  Avatar, Box, Button, Chip, Dialog, DialogActions,
+  Box, Button, Dialog, DialogActions,
   DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem,
   Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TextField, Typography, alpha, useTheme, Drawer, Divider,
+  TableRow, TextField, Typography, Drawer, Divider,
   IconButton, CircularProgress, Alert, TablePagination, Autocomplete
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   IconChecks, IconClipboardText, IconPlus,
   IconClockHour4, IconX, IconEdit, IconDeviceFloppy,
-  IconEye, IconArrowUp, IconArrowDown, IconUser
+  IconEye, IconArrowUp, IconArrowDown, IconMessage, IconWriting, IconTrash,
 } from '@tabler/icons-react';
 import { followupsApi } from 'api/api';
 import PageCard from 'ui-component/PageCard';
@@ -27,13 +28,45 @@ import {
 } from 'constants/table';
 import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
+import UserAvatarWithName from 'ui-component/UserAvatarWithName';
+import useAuth from 'hooks/useAuth';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const rowsPerPage = 6;
 
+const followupStatusColor = {
+  pending: 'warning',
+  in_progress: 'info',
+  done: 'success',
+};
+
+const creatorNotesBoxSx = {
+  p: 2,
+  mb: 2,
+  borderRadius: 1.5,
+  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.1),
+  border: '1px solid',
+  borderColor: 'warning.light',
+};
+
+const assigneeNotesBoxSx = {
+  p: 2,
+  mb: 2,
+  borderRadius: 1.5,
+  bgcolor: (theme) => alpha(theme.palette.info.main, 0.1),
+  border: '1px solid',
+  borderColor: 'info.light',
+};
+
 export default function Followups() {
-  const theme = useTheme();
   const location = useLocation();
+  const { user } = useAuth();
+  const role = (user?.role || '').toLowerCase();
+  const isManager = role === 'manager';
+  const isQA = role === 'qa';
+  const canCreateFollowup = isManager || isQA;
+  const currentUserId = user?.id;
+  const currentUsername = (user?.user || user?.username || '').toLowerCase();
 
   const [followups, setFollowups] = useState([]);
   const [users, setUsers] = useState([]);
@@ -42,7 +75,7 @@ export default function Followups() {
   const [page, setPage] = useState(0);
 
   const [statusFilter, setStatusFilter] = useState('all');
-  const [assignedFilter, setAssignedFilter] = useState('all');
+  const [createdByFilter, setCreatedByFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
 
   // Sorting states
@@ -51,15 +84,50 @@ export default function Followups() {
 
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [assignedTo, setAssignedTo] = useState('');
-  const [notes, setNotes] = useState('');
+  const [creatorNotes, setCreatorNotes] = useState('');
   const [callIdInput, setCallIdInput] = useState('');
   const [creating, setCreating] = useState(false);
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [selectedFollowup, setSelectedFollowup] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editableNotes, setEditableNotes] = useState('');
+  const [editableAssigneeNotes, setEditableAssigneeNotes] = useState('');
+  const [editableCreatorNotes, setEditableCreatorNotes] = useState('');
   const [editableStatus, setEditableStatus] = useState('pending');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [savingFollowup, setSavingFollowup] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [followupToDelete, setFollowupToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const matchFollowupUserId = (fieldId) => {
+    if (fieldId == null || currentUserId == null) return false;
+    return Number(fieldId) === Number(currentUserId);
+  };
+
+  const isFollowupCreator = (item) => {
+    if (!item) return false;
+    if (matchFollowupUserId(item.created_by)) return true;
+    return (item.created_by_username || '').toLowerCase() === currentUsername;
+  };
+
+  const isFollowupAssignee = (item) => {
+    if (!item) return false;
+    if (matchFollowupUserId(item.assigned_to)) return true;
+    return (item.assigned_to_username || '').toLowerCase() === currentUsername;
+  };
+
+  const canEditFollowup = (item) => (
+    !isManager
+    && item?.status !== 'done'
+    && (isFollowupCreator(item) || isFollowupAssignee(item))
+  );
+
+  const canDeleteFollowup = (item) => !isManager && isFollowupCreator(item);
+
+  const visibleFollowups = useMemo(() => {
+    if (isManager) return followups;
+    return followups.filter((f) => isFollowupCreator(f) || isFollowupAssignee(f));
+  }, [followups, isManager, currentUserId, currentUsername]);
 
   // Filter popover state
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -70,15 +138,15 @@ export default function Followups() {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (statusFilter !== 'all') count++;
-    if (assignedFilter !== 'all') count++;
+    if (createdByFilter !== 'all') count++;
     if (dateFilter) count++;
     return count;
-  }, [statusFilter, assignedFilter, dateFilter]);
+  }, [statusFilter, createdByFilter, dateFilter]);
 
   // Reset all filters
   const handleReset = () => {
     setStatusFilter('all');
-    setAssignedFilter('all');
+    setCreatedByFilter('all');
     setDateFilter('');
     setSortBy('created_at');
     setSortOrder('desc');
@@ -87,8 +155,10 @@ export default function Followups() {
 
   useEffect(() => {
     loadFollowups();
-    loadUsers();
-  }, []);
+    if (canCreateFollowup) {
+      loadUsers();
+    }
+  }, [canCreateFollowup]);
 
   useEffect(() => {
     if (location.state?.openCreateFollowup) {
@@ -99,15 +169,47 @@ export default function Followups() {
           (u) => (u.username || '').toLowerCase() === location.state.assignedToUsername.toLowerCase()
         );
         if (match) setAssignedTo(match.id);
+      } else if (isQA && currentUserId && !assignedTo) {
+        setAssignedTo(currentUserId);
       }
       window.history.replaceState({}, document.title);
     }
     if (location.state?.filter === 'assignee' && location.state?.value) {
-      setAssignedFilter(location.state.value);
+      setCreatedByFilter(location.state.value);
       setPage(0);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, users]);
+  }, [location.state, users, isQA, currentUserId, assignedTo]);
+
+  const handleMarkDone = async () => {
+    if (!selectedFollowup || !isFollowupAssignee(selectedFollowup)) return;
+    if (!editableAssigneeNotes.trim()) {
+      setError('Follow-up notes are required before marking as done');
+      return;
+    }
+    try {
+      setSavingFollowup(true);
+      await followupsApi.patch(selectedFollowup.id, {
+        status: 'done',
+        assignee_notes: editableAssigneeNotes.trim(),
+      });
+      const updated = {
+        ...selectedFollowup,
+        status: 'done',
+        assignee_notes: editableAssigneeNotes.trim(),
+      };
+      setFollowups((prev) =>
+        prev.map((f) => (f.id === selectedFollowup.id ? updated : f))
+      );
+      setSelectedFollowup(updated);
+      setEditableStatus('done');
+      setIsEditMode(false);
+    } catch (err) {
+      setError(err.message || 'Update failed');
+    } finally {
+      setSavingFollowup(false);
+    }
+  };
 
   const loadFollowups = async () => {
     try {
@@ -156,13 +258,13 @@ export default function Followups() {
 
   const filteredAndSorted = useMemo(() => {
     // First filter
-    let result = followups.filter((f) => {
+    let result = visibleFollowups.filter((f) => {
       const matchesStatus = statusFilter === 'all' || f.status === statusFilter;
-      const assignedName = f.assigned_to_username || '';
-      const matchesAssigned = assignedFilter === 'all' || assignedName === assignedFilter;
+      const creatorName = f.created_by_username || '';
+      const matchesCreatedBy = createdByFilter === 'all' || creatorName === createdByFilter;
       const createdDate = f.created_at ? f.created_at.split('T')[0] : '';
       const matchesDate = !dateFilter || createdDate === dateFilter;
-      return matchesStatus && matchesAssigned && matchesDate;
+      return matchesStatus && matchesCreatedBy && matchesDate;
     });
 
     // Then sort
@@ -173,9 +275,9 @@ export default function Followups() {
           aVal = a.call_id || a.call;
           bVal = b.call_id || b.call;
           break;
-        case 'assigned_to':
-          aVal = (a.assigned_to_username || '').toLowerCase();
-          bVal = (b.assigned_to_username || '').toLowerCase();
+        case 'created_by':
+          aVal = (a.created_by_username || '').toLowerCase();
+          bVal = (b.created_by_username || '').toLowerCase();
           break;
         case 'created_at':
           aVal = new Date(a.created_at);
@@ -194,30 +296,21 @@ export default function Followups() {
     });
 
     return result;
-  }, [followups, statusFilter, assignedFilter, dateFilter, sortBy, sortOrder]);
+  }, [visibleFollowups, statusFilter, createdByFilter, dateFilter, sortBy, sortOrder]);
 
   const paginatedFollowups = filteredAndSorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
-  const pendingCount = followups.filter((f) => f.status === 'pending').length;
-  const doneCount = followups.filter((f) => f.status === 'done').length;
-
-  const handleMarkDone = async (id) => {
-    try {
-      await followupsApi.patch(id, { status: 'done' });
-      setFollowups((prev) => prev.map((f) => f.id === id ? { ...f, status: 'done' } : f));
-    } catch (err) {
-      setError(err.message || 'Update failed');
-    }
-  };
+  const pendingCount = visibleFollowups.filter((f) => f.status === 'pending').length;
+  const doneCount = visibleFollowups.filter((f) => f.status === 'done').length;
 
   const handleCreateFollowup = async () => {
-    if (!assignedTo || !notes.trim() || !callIdInput) return;
+    if (!assignedTo || !callIdInput) return;
     try {
       setCreating(true);
       const res = await followupsApi.create({
         call_id: parseInt(callIdInput, 10),
         assigned_to: parseInt(assignedTo, 10),
-        notes: notes.trim(),
+        creator_notes: creatorNotes.trim(),
       });
       if (res?.data) {
         setFollowups((prev) => [res.data, ...prev]);
@@ -225,7 +318,7 @@ export default function Followups() {
       await loadFollowups();
       setOpenCreateDialog(false);
       setAssignedTo('');
-      setNotes('');
+      setCreatorNotes('');
       setCallIdInput('');
     } catch (err) {
       setError(err.message || 'Failed to create follow-up');
@@ -234,36 +327,72 @@ export default function Followups() {
     }
   };
 
-  const openFollowupDrawer = (item) => {
-    setSelectedFollowup(item);
-    setEditableNotes(item.notes || '');
-    setEditableStatus(item.status);
-    setIsEditMode(false);
-    setOpenDrawer(true);
-  };
-
   const handleSaveFollowup = async () => {
-    if (!selectedFollowup) return;
+    if (!selectedFollowup || isManager || selectedFollowup.status === 'done') return;
+    const payload = {};
+    if (isFollowupCreator(selectedFollowup)) {
+      payload.creator_notes = editableCreatorNotes.trim();
+    }
+    if (isFollowupAssignee(selectedFollowup)) {
+      payload.assignee_notes = editableAssigneeNotes.trim();
+      payload.status = editableStatus;
+    }
+    if (Object.keys(payload).length === 0) return;
     try {
-      await followupsApi.patch(selectedFollowup.id, {
-        notes: editableNotes,
-        status: editableStatus,
-      });
+      setSavingFollowup(true);
+      await followupsApi.patch(selectedFollowup.id, payload);
+      const updated = { ...selectedFollowup, ...payload };
       setFollowups((prev) =>
-        prev.map((f) =>
-          f.id === selectedFollowup.id
-            ? { ...f, notes: editableNotes, status: editableStatus }
-            : f
-        )
+        prev.map((f) => (f.id === selectedFollowup.id ? updated : f))
       );
+      setSelectedFollowup(updated);
       setIsEditMode(false);
-      setOpenDrawer(false);
     } catch (err) {
       setError(err.message || 'Save failed');
+    } finally {
+      setSavingFollowup(false);
     }
   };
 
-  const uniqueAssignees = [...new Set(followups.map((f) => f.assigned_to_username).filter(Boolean))];
+  const handleDeleteFollowup = async () => {
+    if (!followupToDelete) return;
+    try {
+      setDeleting(true);
+      await followupsApi.delete(followupToDelete.id);
+      setFollowups((prev) => prev.filter((f) => f.id !== followupToDelete.id));
+      if (selectedFollowup?.id === followupToDelete.id) {
+        closeFollowupDrawer();
+      }
+      setOpenDeleteDialog(false);
+      setFollowupToDelete(null);
+    } catch (err) {
+      setError(err.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteConfirm = (item) => {
+    setFollowupToDelete(item);
+    setOpenDeleteDialog(true);
+  };
+
+  const openFollowupDrawer = (item, edit = false) => {
+    setSelectedFollowup(item);
+    setEditableCreatorNotes(item.creator_notes || '');
+    setEditableAssigneeNotes(item.assignee_notes || '');
+    setEditableStatus(item.status);
+    setIsEditMode(edit);
+    setOpenDrawer(true);
+  };
+
+  const closeFollowupDrawer = () => {
+    setOpenDrawer(false);
+    setSelectedFollowup(null);
+    setIsEditMode(false);
+  };
+
+  const uniqueCreators = [...new Set(visibleFollowups.map((f) => f.created_by_username).filter(Boolean))];
 
   return (
     <>
@@ -271,9 +400,9 @@ export default function Followups() {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
       )}
 
-      {assignedFilter !== 'all' && (
+      {createdByFilter !== 'all' && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Showing follow-ups assigned to <strong>{assignedFilter}</strong>
+          Showing follow-ups created by <strong>{createdByFilter}</strong>
         </Alert>
       )}
 
@@ -282,7 +411,7 @@ export default function Followups() {
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatSummaryCard icon={<IconClipboardText size={20} />} label="Total Follow-ups" value={followups.length} />
+              <StatSummaryCard icon={<IconClipboardText size={20} />} label="Total Follow-ups" value={visibleFollowups.length} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <StatSummaryCard icon={<IconClockHour4 size={20} />} label="Pending" value={pendingCount} color="warning" />
@@ -299,11 +428,14 @@ export default function Followups() {
             activeFilterCount={activeFilterCount}
             onOpenFilters={openFilters}
             onResetFilters={handleReset}
-            actions={(
-              <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={() => setOpenCreateDialog(true)}>
+            actions={canCreateFollowup ? (
+              <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={() => {
+                if (isQA && currentUserId) setAssignedTo(currentUserId);
+                setOpenCreateDialog(true);
+              }}>
                 Create
               </Button>
-            )}
+            ) : null}
           />
 
           <FilterPopover
@@ -323,10 +455,10 @@ export default function Followups() {
             </FormControl>
 
             <FormControl fullWidth size="small">
-              <InputLabel>Assigned To</InputLabel>
-              <Select value={assignedFilter} label="Assigned To" onChange={(e) => setAssignedFilter(e.target.value)}>
+              <InputLabel>Created By</InputLabel>
+              <Select value={createdByFilter} label="Created By" onChange={(e) => setCreatedByFilter(e.target.value)}>
                 <MenuItem value="all">All</MenuItem>
-                {uniqueAssignees.map((name) => (
+                {uniqueCreators.map((name) => (
                   <MenuItem key={name} value={name}>{name}</MenuItem>
                 ))}
               </Select>
@@ -354,15 +486,16 @@ export default function Followups() {
                   </TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Assigned To
-                      <IconButton size="small" onClick={() => handleSort('assigned_to')} sx={{ p: 0, flexShrink: 0 }}>
-                        {getSortIcon('assigned_to')}
+                      Created By
+                      <IconButton size="small" onClick={() => handleSort('created_by')} sx={{ p: 0, flexShrink: 0 }}>
+                        {getSortIcon('created_by')}
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%' }}>Status</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '26%' }}>Notes</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%' }}>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>Status</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>Creator Notes</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>Follow-up Notes</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
                       Created At
                       <IconButton size="small" onClick={() => handleSort('created_at')} sx={{ p: 0, flexShrink: 0 }}>
@@ -376,7 +509,7 @@ export default function Followups() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                       <CircularProgress size={28} />
                     </TableCell>
                   </TableRow>
@@ -386,24 +519,30 @@ export default function Followups() {
                       #{item.call_id || item.call}
                     </TableCell>
                     <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
-                          <IconUser size={14} />
-                        </Avatar>
-                        <Typography sx={{ whiteSpace: 'nowrap' }}>{item.assigned_to_username}</Typography>
-                      </Stack>
+                      <UserAvatarWithName
+                        username={item.created_by_username}
+                        role={item.created_by_role || 'qa'}
+                        avatar={item.created_by_avatar}
+                        avatarStyle={item.created_by_avatar_style}
+                      />
                     </TableCell>
                     <TableCell><StatusChip status={item.status} /></TableCell>
                     <TableCell>
                       <Typography
-                        sx={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={item.notes}
+                        variant="body2"
+                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={item.creator_notes}
                       >
-                        {item.notes}
+                        {item.creator_notes || '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={item.assignee_notes}
+                      >
+                        {item.assignee_notes || '—'}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -413,30 +552,41 @@ export default function Followups() {
                     </TableCell>
                     <TableCell align="center">
                       <Stack direction="row" spacing={0.5} justifyContent="center">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           sx={{ color: 'info.main' }}
-                          onClick={() => openFollowupDrawer(item)}
+                          onClick={() => openFollowupDrawer(item, false)}
                           title="View Follow-up"
                         >
                           <IconEye size={18} />
                         </IconButton>
-                        <IconButton 
-                          size="small" 
-                          color="success"
-                          disabled={item.status === 'done'}
-                          onClick={() => handleMarkDone(item.id)}
-                          title="Mark Done"
-                        >
-                          <IconChecks size={18} />
-                        </IconButton>
+                        {canEditFollowup(item) && (
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => openFollowupDrawer(item, true)}
+                            title="Edit Follow-up"
+                          >
+                            <IconEdit size={18} />
+                          </IconButton>
+                        )}
+                        {canDeleteFollowup(item) && (
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => openDeleteConfirm(item)}
+                            title="Delete Follow-up"
+                          >
+                            <IconTrash size={18} />
+                          </IconButton>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
                 {!loading && paginatedFollowups.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <Box sx={{ py: 5, textAlign: 'center' }}>
                         <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>No follow-ups found</Typography>
                         <Typography variant="body2" color="text.secondary">No follow-ups match the selected filters.</Typography>
@@ -491,13 +641,13 @@ export default function Followups() {
                 )}
                 renderOption={(props, option) => (
                   <li {...props}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Avatar sx={{ width: 24, height: 24, fontSize: 12 }}>
-                        {option.username?.[0]?.toUpperCase()}
-                      </Avatar>
-                      <span>{option.username}</span>
-                      <Chip label={option.role} size="small" variant="outlined" />
-                    </Stack>
+                    <UserAvatarWithName
+                      username={option.username}
+                      role={option.role}
+                      avatar={option.avatar}
+                      avatarStyle={option.avatar_style}
+                      size={24}
+                    />
                   </li>
                 )}
                 isOptionEqualToValue={(option, value) => option.id === value?.id}
@@ -506,9 +656,10 @@ export default function Followups() {
             </Grid>
             <Grid size={{ xs: 12 }}>
               <TextField
-                label="Notes" multiline minRows={4} value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                label="Creator notes (optional)" multiline minRows={3} value={creatorNotes}
+                onChange={(e) => setCreatorNotes(e.target.value)}
                 fullWidth
+                placeholder="Describe what needs follow-up..."
               />
             </Grid>
           </Grid>
@@ -516,7 +667,7 @@ export default function Followups() {
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
           <DialogCancelButton onClick={() => setOpenCreateDialog(false)} />
           <Button variant="contained" onClick={handleCreateFollowup}
-            disabled={!assignedTo || !notes.trim() || !callIdInput || creating}
+            disabled={!assignedTo || !callIdInput || creating}
             sx={{ px: 2.5 }}>
             {creating ? <CircularProgress size={18} color="inherit" /> : 'Create'}
           </Button>
@@ -524,63 +675,186 @@ export default function Followups() {
       </Dialog>
 
       {/* Follow-up Drawer */}
-      <Drawer anchor="right" open={openDrawer} onClose={() => setOpenDrawer(false)}
-        PaperProps={{ sx: { width: { xs: '100%', sm: 450 } } }}>
-        <Box sx={{ p: 3 }}>
+      <Drawer anchor="right" open={openDrawer} onClose={closeFollowupDrawer}>
+        <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
           {selectedFollowup && (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h5">Follow-up Details</Typography>
-                <IconButton onClick={() => setOpenDrawer(false)} size="small"><IconX size={18} /></IconButton>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    backgroundColor: (t) => t.palette[followupStatusColor[selectedFollowup.status] || 'grey']?.main || '#999',
+                  }} />
+                  <Typography variant="h5">
+                    Follow-up #{selectedFollowup.id}
+                  </Typography>
+                  {canEditFollowup(selectedFollowup) && (
+                    <IconButton
+                      size="small"
+                      title={isEditMode ? 'Save' : 'Edit Follow-up'}
+                      onClick={() => { if (isEditMode) { handleSaveFollowup(); } else { setIsEditMode(true); } }}
+                      sx={{ color: 'text.primary' }}
+                    >
+                      {isEditMode ? <IconDeviceFloppy size={22} /> : <IconEdit size={18} />}
+                    </IconButton>
+                  )}
+                </Box>
+                <IconButton onClick={closeFollowupDrawer} size="small"><IconX size={18} /></IconButton>
               </Box>
-              <Divider sx={{ mb: 2 }} />
 
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Call ID</Typography>
-              <Typography sx={{ mb: 2 }}>#{selectedFollowup.call_id || selectedFollowup.call}</Typography>
-
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Assigned To</Typography>
-              <Typography sx={{ mb: 2 }}>{selectedFollowup.assigned_to_username}</Typography>
-
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Status</Typography>
-              {isEditMode ? (
-                <Select fullWidth size="small" value={editableStatus}
-                  onChange={(e) => setEditableStatus(e.target.value)} sx={{ mb: 2 }}>
-                  <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="in_progress">In Progress</MenuItem>
-                  <MenuItem value="done">Done</MenuItem>
-                </Select>
-              ) : (
-                <Box sx={{ mb: 2 }}><StatusChip status={selectedFollowup.status} /></Box>
-              )}
-
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Notes</Typography>
-              {isEditMode ? (
-                <TextField fullWidth multiline minRows={3} value={editableNotes}
-                  onChange={(e) => setEditableNotes(e.target.value)} sx={{ mb: 2 }} />
-              ) : (
-                <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>{selectedFollowup.notes}</Typography>
-              )}
-
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Created: {selectedFollowup.created_at ? selectedFollowup.created_at.split('T')[0] : ''}
-              </Typography>
-
-              <Stack direction="row" spacing={1}>
-                {isEditMode ? (
-                  <>
-                    <Button variant="contained" startIcon={<IconDeviceFloppy size={16} />}
-                      onClick={handleSaveFollowup}>Save</Button>
-                    <Button variant="outlined" onClick={() => setIsEditMode(false)}>Cancel</Button>
-                  </>
-                ) : (
-                  <Button variant="outlined" startIcon={<IconEdit size={16} />}
-                    onClick={() => setIsEditMode(true)}>Edit</Button>
-                )}
+              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedFollowup.created_at ? selectedFollowup.created_at.split('T')[0] : '—'}
+                </Typography>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="body2" color="text.secondary">Created by</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {selectedFollowup.created_by_username || '—'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="body2" color="text.secondary">Assigned to</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {selectedFollowup.assigned_to_username || '—'}
+                  </Typography>
+                </Stack>
               </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              {!isManager && isEditMode && isFollowupAssignee(selectedFollowup) && selectedFollowup.status !== 'done' ? (
+                <>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Status</Typography>
+                  <Select
+                    fullWidth
+                    size="small"
+                    value={editableStatus}
+                    onChange={(e) => setEditableStatus(e.target.value)}
+                    sx={{ mb: 2 }}
+                  >
+                    <MenuItem value="pending">Pending</MenuItem>
+                    <MenuItem value="in_progress">In Progress</MenuItem>
+                  </Select>
+                  <Divider sx={{ my: 2 }} />
+                </>
+              ) : (
+                <>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Status</Typography>
+                  <Box sx={{ mb: 2 }}>
+                    <StatusChip status={selectedFollowup.status} />
+                  </Box>
+                  <Divider sx={{ my: 2 }} />
+                </>
+              )}
+
+              <Box sx={creatorNotesBoxSx}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, color: 'warning.dark' }}>
+                  <IconMessage size={18} />
+                  <Typography variant="subtitle2" color="warning.dark" fontWeight={700}>
+                    Creator Notes
+                  </Typography>
+                </Stack>
+                {isEditMode && isFollowupCreator(selectedFollowup) && selectedFollowup.status !== 'done' ? (
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    value={editableCreatorNotes}
+                    onChange={(e) => setEditableCreatorNotes(e.target.value)}
+                    placeholder="Describe what needs follow-up..."
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'background.paper',
+                      },
+                    }}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {selectedFollowup.creator_notes || '—'}
+                  </Typography>
+                )}
+              </Box>
+
+              <Box sx={assigneeNotesBoxSx}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, color: 'info.dark' }}>
+                  <IconWriting size={18} />
+                  <Typography variant="subtitle2" color="info.dark" fontWeight={700}>
+                    Follow-up Notes
+                  </Typography>
+                </Stack>
+                {!isManager && isEditMode && isFollowupAssignee(selectedFollowup) && selectedFollowup.status !== 'done' ? (
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={4}
+                    value={editableAssigneeNotes}
+                    onChange={(e) => setEditableAssigneeNotes(e.target.value)}
+                    placeholder="Describe what you did when completing this follow-up..."
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'background.paper',
+                      },
+                    }}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {selectedFollowup.assignee_notes || '—'}
+                  </Typography>
+                )}
+              </Box>
+
+              {isEditMode && isFollowupAssignee(selectedFollowup) && selectedFollowup.status !== 'done' && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={savingFollowup ? <CircularProgress size={18} color="inherit" /> : <IconChecks size={18} />}
+                  onClick={handleMarkDone}
+                  disabled={!editableAssigneeNotes.trim() || savingFollowup}
+                  fullWidth
+                  sx={{ mt: 1 }}
+                >
+                  Mark as Done
+                </Button>
+              )}
+
+              {canDeleteFollowup(selectedFollowup) && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<IconTrash size={18} />}
+                  onClick={() => openDeleteConfirm(selectedFollowup)}
+                  fullWidth
+                  sx={{ mt: 1 }}
+                >
+                  Delete Follow-up
+                </Button>
+              )}
             </>
           )}
         </Box>
       </Drawer>
+
+      <Dialog open={openDeleteDialog} onClose={() => { setOpenDeleteDialog(false); setFollowupToDelete(null); }} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete Follow-up</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Delete follow-up #{followupToDelete?.id} for call #{followupToDelete?.call_id || followupToDelete?.call}?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <DialogCancelButton onClick={() => { setOpenDeleteDialog(false); setFollowupToDelete(null); }} />
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteFollowup}
+            disabled={deleting}
+          >
+            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

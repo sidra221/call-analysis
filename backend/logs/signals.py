@@ -70,8 +70,9 @@ def log_call_status_change(sender, instance, **kwargs):
 @receiver(post_save, sender=FollowUp)
 def log_followup_created(sender, instance, created, **kwargs):
     if created:
+        user = instance.created_by or instance.assigned_to
         create_log(
-            user=instance.assigned_to,
+            user=user,
             action='create_followup',
             description=f"Created followup for call #{instance.call.id}"
         )

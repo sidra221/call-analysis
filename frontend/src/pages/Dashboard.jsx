@@ -18,7 +18,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Lege
 import { useState, useMemo, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { dashboardApi } from 'api/api';
-import { sentimentColor, priorityColor, getSentimentChipColor } from 'constants/status';
+import { getSentimentChipColor } from 'constants/status';
 import StatusChip from 'ui-component/StatusChip';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import {
@@ -62,6 +62,30 @@ const getPriorityCardStyle = (theme, level) => {
     hoverColor: accent.hover
   };
 };
+
+const getPriorityChipSx = (theme, level) => {
+  const { iconColor } = getPriorityCardStyle(theme, level);
+  return {
+    bgcolor: alpha(iconColor, 0.12),
+    color: iconColor,
+    borderColor: alpha(iconColor, 0.35),
+    fontWeight: 600,
+  };
+};
+
+const getSentimentChipSx = (theme, sentiment) => {
+  const color = getSentimentChipColor(theme, sentiment);
+  return {
+    bgcolor: alpha(color, 0.12),
+    color,
+    borderColor: alpha(color, 0.35),
+    fontWeight: 600,
+  };
+};
+
+const getIssueRingColor = (theme, type) => (
+  type === 'negative' ? theme.palette.error.main : theme.palette.success.dark
+);
 
 function OverviewMetric({ label, value, total, color, progressColor, onClick }) {
   const percent = total > 0 ? (value / total) * 100 : 0;
@@ -244,19 +268,7 @@ const buildSentimentChartData = (calls, range, theme) => {
   return makeDatasets(labels, posData, negData);
 };
 
-const getCircularColor = (percent, theme, type) => {
-  if (type === 'negative') {
-    if (percent > 40) return theme.palette.error.main;
-    if (percent > 30) return theme.palette.error.light;
-    if (percent > 20) return theme.palette.warning.main;
-    return theme.palette.grey[500];
-  } else {
-    if (percent > 40) return theme.palette.success.main;
-    if (percent > 30) return theme.palette.success.light;
-    if (percent > 20) return theme.palette.warning.main;
-    return theme.palette.grey[500];
-  }
-};
+const getCircularColor = (percent, theme, type) => getIssueRingColor(theme, type);
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -685,9 +697,23 @@ export default function Dashboard() {
                 {sortedCalls.map((call) => (
                     <TableRow key={call.id} hover>
                       <TableCell sx={TABLE_BODY_CELL_SX}>#{call.id}</TableCell>
-                      <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
+                      <TableCell>
+                        <Chip
+                          label={call.priority}
+                          size="small"
+                          variant="outlined"
+                          sx={getPriorityChipSx(theme, call.priority)}
+                        />
+                      </TableCell>
                       <TableCell><StatusChip status={call.status} /></TableCell>
-                      <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
+                      <TableCell>
+                        <Chip
+                          label={call.sentiment}
+                          size="small"
+                          variant="outlined"
+                          sx={getSentimentChipSx(theme, call.sentiment)}
+                        />
+                      </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.createdAt}</TableCell>
                       <TableCell><Chip label={call.is_reviewed ? 'Yes' : 'No'} color={call.is_reviewed ? 'success' : 'error'} size="small" /></TableCell>
@@ -764,7 +790,17 @@ export default function Dashboard() {
                       {issue.count} occurrence{issue.count !== 1 ? 's' : ''}
                     </Typography>
                   </Box>
-                  <Chip label={`#${idx + 1}`} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                  <Chip
+                    label={`#${idx + 1}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontWeight: 600,
+                      color: theme.palette.error.main,
+                      borderColor: alpha(theme.palette.error.main, 0.35),
+                      bgcolor: alpha(theme.palette.error.main, 0.08),
+                    }}
+                  />
                 </Box>
               ))}
             </Stack>
@@ -818,7 +854,17 @@ export default function Dashboard() {
                       {issue.count} occurrence{issue.count !== 1 ? 's' : ''}
                     </Typography>
                   </Box>
-                  <Chip label={`#${idx + 1}`} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                  <Chip
+                    label={`#${idx + 1}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontWeight: 600,
+                      color: theme.palette.success.dark,
+                      borderColor: alpha(theme.palette.success.dark, 0.35),
+                      bgcolor: alpha(theme.palette.success.dark, 0.08),
+                    }}
+                  />
                 </Box>
               ))}
             </Stack>

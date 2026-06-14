@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   IconEye, IconEdit, IconTrash, IconX, IconDots,
   IconUpload, IconDeviceFloppy, IconCheck,
-  IconTrashX, IconArrowUp, IconArrowDown
+  IconTrashX, IconArrowUp, IconArrowDown,
+  IconRefresh, IconClipboardText
 } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
@@ -86,6 +87,8 @@ function buildNormalizedCall(call) {
     keywords: formatKeywords(call.analysis?.keywords),
     uploadedBy: call.uploaded_by_username || '',
     uploadedByRole: call.uploaded_by_role,
+    uploadedByAvatar: call.uploaded_by_avatar || null,
+    uploadedByAvatarStyle: call.uploaded_by_avatar_style || 'initial',
     needs_followup: Boolean(call.analysis?.needs_followup),
     createdAt: call.created_at ? call.created_at.split('T')[0] : '',
     duration: call.duration
@@ -97,6 +100,10 @@ function buildNormalizedCall(call) {
 export default function Calls() {
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
+  const [editableTranscript, setEditableTranscript] = useState('');
+  const [editableSentiment, setEditableSentiment] = useState('neutral');
+  const [editablePriority, setEditablePriority] = useState('medium');
+  const [editableKeywords, setEditableKeywords] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -144,9 +151,6 @@ export default function Calls() {
         if (fresh) {
           if (openViewDrawer && viewingCall?.id === callId) {
             setViewingCall(fresh);
-          }
-          if (selectedCall?.id === callId) {
-            setSelectedCall(fresh);
             setEditableKeywords(fresh.keywords || '');
             setEditableIssue(fresh.issue || '');
             setEditableTranscript(fresh.transcript || '');
@@ -287,8 +291,10 @@ export default function Calls() {
   const { user } = useAuth();
   const role = (user?.role || '').toLowerCase();
   const isManager = role === 'manager';
+  const canCreateFollowup = isManager || role === 'qa';
 
   const handleAssignFollowup = (call) => {
+    closeCallDrawer();
     navigate('/followups', {
       state: {
         openCreateFollowup: true,
@@ -298,17 +304,59 @@ export default function Calls() {
     });
   };
 
-  const renderFollowUpSection = (call) => (
+  const renderFollowUpSection = (call) => {
+    const followUpChip = call.status !== 'completed'
+      ? { label: 'Awaiting AI analysis', color: 'default', variant: 'outlined' }
+      : call.needs_followup
+        ? { label: 'Needs Follow-up', color: 'warning', variant: 'filled' }
+        : { label: 'No Follow-up Needed', color: 'success', variant: 'outlined' };
+
+    return (
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>Follow-up</Typography>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={1}>
+          <Chip label={followUpChip.label} color={followUpChip.color} variant={followUpChip.variant} size="small" />
+          {call.needs_followup && call.status === 'completed' && canCreateFollowup && (
+            <Button
+              variant="contained"
+              size="small"
+              color="warning"
+              startIcon={<IconClipboardText size={16} />}
+              onClick={() => handleAssignFollowup(call)}
+            >
+              Create Follow-up
+            </Button>
+          )}
+        </Stack>
+      </Box>
+    );
+  };
+
+  const renderDrawerActions = (call) => (
     <>
-      <Typography variant="subtitle1" gutterBottom>Follow-up</Typography>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-        {call.status !== 'completed' ? (
-          <Chip label="Awaiting AI analysis" size="small" variant="outlined" />
-        ) : call.needs_followup ? (
-          <Chip label="Follow-up Required" color="warning" size="small" />
-        ) : (
-          <Chip label="No Follow-up Needed" color="success" size="small" variant="outlined" />
+      <Typography variant="subtitle1" gutterBottom>Actions</Typography>
+      <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+        {call.status === 'completed' && !call.keywordItems?.length && (
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={reanalyzingId === call.id}
+            startIcon={reanalyzingId === call.id ? <CircularProgress size={16} /> : <IconRefresh size={16} />}
+            onClick={() => handleReanalyze(call.id)}
+          >
+            Re-analyze
+          </Button>
         )}
+        <Button
+          variant={call.is_reviewed ? 'contained' : 'outlined'}
+          size="small"
+          color={call.is_reviewed ? 'success' : 'primary'}
+          disabled={call.is_reviewed}
+          startIcon={<IconCheck size={16} />}
+          onClick={() => handleMarkReviewed(call.id)}
+        >
+          {call.is_reviewed ? 'Reviewed' : 'Mark Reviewed'}
+        </Button>
       </Stack>
     </>
   );
@@ -322,7 +370,6 @@ export default function Calls() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [userFilter, setUserFilter] = useState('');
-  const [selectedCall, setSelectedCall] = useState(null);
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
   const openFilters = (event) => setFilterAnchorEl(event.currentTarget);
@@ -341,11 +388,36 @@ export default function Calls() {
     return count;
   }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, needsFollowupFilter, startDate, endDate, userFilter]);
 
-  const [openDrawer, setOpenDrawer] = useState(false);
-  const [editableTranscript, setEditableTranscript] = useState('');
-  const [editableSentiment, setEditableSentiment] = useState('neutral');
-  const [editablePriority, setEditablePriority] = useState('medium');
-  const [editableKeywords, setEditableKeywords] = useState('');
+  const initEditableFields = (call) => {
+    setEditableTranscript(call.transcript || '');
+    setEditableSentiment(call.sentiment || 'neutral');
+    setEditablePriority(call.priority || 'low');
+    setEditableIssue(call.issue || '');
+    setEditableKeywords(call.keywords || '');
+    setIsDirty(false);
+  };
+
+  const openCallDrawer = async (call, edit = false) => {
+    setOpenViewDrawer(true);
+    setViewingCall(buildNormalizedCall(call));
+    initEditableFields(call);
+    setIsEditMode(edit);
+    setDrawerLoading(true);
+    try {
+      const res = await callsApi.get(call.id);
+      const fresh = buildNormalizedCall(res?.data || res);
+      if (fresh) {
+        setViewingCall(fresh);
+        initEditableFields(fresh);
+      }
+    } catch (err) {
+      console.error('Failed to refresh call details:', err);
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const openViewDrawerFunc = (call) => openCallDrawer(call, false);
 
   const normalizedCalls = useMemo(() => {
     if (!Array.isArray(calls)) return [];
@@ -455,32 +527,6 @@ export default function Calls() {
     setPage(0);
   };
 
-  const openCallDrawer = (call, edit = false) => {
-    setSelectedCall(call);
-    setEditableTranscript(call.transcript || '');
-    setEditableSentiment(call.sentiment || 'neutral');
-    setEditablePriority(call.priority || 'low');
-    setEditableIssue(call.issue || '');
-    setEditableKeywords(call.keywords || '');
-    setIsEditMode(edit);
-    setOpenDrawer(true);
-  };
-
-  const openViewDrawerFunc = async (call) => {
-    setOpenViewDrawer(true);
-    setViewingCall(buildNormalizedCall(call));
-    setDrawerLoading(true);
-    try {
-      const res = await callsApi.get(call.id);
-      const fresh = buildNormalizedCall(res?.data || res);
-      if (fresh) setViewingCall(fresh);
-    } catch (err) {
-      console.error('Failed to refresh call details:', err);
-    } finally {
-      setDrawerLoading(false);
-    }
-  };
-
   const handleReanalyze = async (callId) => {
     try {
       setReanalyzingId(callId);
@@ -508,14 +554,16 @@ export default function Calls() {
   }, [normalizedCalls]);
 
   const closeCallDrawer = () => {
-    setOpenDrawer(false);
-    setSelectedCall(null);
+    setOpenViewDrawer(false);
+    setViewingCall(null);
+    setIsEditMode(false);
+    setIsDirty(false);
   };
 
   const handleSave = async () => {
-    if (!selectedCall) return;
+    if (!viewingCall) return;
     try {
-      await patchCall(selectedCall.id, {
+      await patchCall(viewingCall.id, {
         main_issue: editableIssue,
         sentiment: editableSentiment,
         priority: editablePriority,
@@ -524,8 +572,13 @@ export default function Calls() {
       });
       setIsDirty(false);
       setIsEditMode(false);
-      setOpenDrawer(false);
       await fetchCalls();
+      const res = await callsApi.get(viewingCall.id);
+      const fresh = buildNormalizedCall(res?.data || res);
+      if (fresh) {
+        setViewingCall(fresh);
+        initEditableFields(fresh);
+      }
     } catch (err) {
       setUploadError(err.message || 'Save failed');
     }
@@ -534,9 +587,6 @@ export default function Calls() {
   const handleMarkReviewed = async (callId) => {
     try {
       await markReviewed(callId);
-      if (selectedCall?.id === callId) {
-        setSelectedCall((prev) => ({ ...prev, is_reviewed: true }));
-      }
       if (viewingCall?.id === callId) {
         setViewingCall((prev) => ({ ...prev, is_reviewed: true }));
       }
@@ -795,6 +845,8 @@ export default function Calls() {
                         <UserAvatarWithName
                           username={call.uploadedBy}
                           role={call.uploadedByRole}
+                          avatar={call.uploadedByAvatar}
+                          avatarStyle={call.uploadedByAvatarStyle}
                         />
                       </TableCell>
                       <TableCell align="center" sx={{ ...CALLS_ACTIONS_CELL_SX, pl: 0.5, pr: 1 }}>
@@ -874,10 +926,8 @@ export default function Calls() {
         </DialogActions>
       </Dialog>
 
-      {/* ================================================================
-          View Call Drawer
-          ================================================================ */}
-      <Drawer anchor="right" open={openViewDrawer} onClose={() => setOpenViewDrawer(false)}>
+      {/* Call Drawer */}
+      <Drawer anchor="right" open={openViewDrawer} onClose={closeCallDrawer}>
         <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
           {viewingCall && (
             <>
@@ -888,175 +938,47 @@ export default function Calls() {
                     backgroundColor: (theme) => theme.palette[stateColor[viewingCall.status]]?.main || '#999'
                   }} />
                   <Typography variant="h5">Call #{viewingCall.id}</Typography>
-                </Box>
-                <IconButton onClick={() => setOpenViewDrawer(false)} size="small"><IconX size={18} /></IconButton>
-              </Box>
-
-              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">{viewingCall.createdAt}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Uploaded by <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {viewingCall.uploadedBy}
-                  </Box>
-                </Typography>
-              </Stack>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Main Issue</Typography>
-              <Typography variant="body2" sx={{ mb: 3 }}>
-                {viewingCall.issue || '—'}
-              </Typography>
-
-              <Typography variant="subtitle1" gutterBottom>Analysis</Typography>
-              <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
-                <Chip label={viewingCall.sentiment} color={sentimentColor[viewingCall.sentiment]} size="small" />
-                <Chip label={`${viewingCall.priority} Priority`} color={priorityColor[viewingCall.priority]} size="small" />
-              </Stack>
-
-              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>Keywords</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3, gap: 1 }}>
-                {drawerLoading ? (
-                  <CircularProgress size={18} />
-                ) : viewingCall.keywordItems?.length ? viewingCall.keywordItems.map((item, i) => (
-                  <Chip
-                    key={`${item.text}-${i}`}
-                    label={item.text}
+                  <IconButton
                     size="small"
-                    color={getKeywordChipColor(item.polarity)}
-                    variant={item.polarity === 'neutral' ? 'outlined' : 'filled'}
-                  />
-                )) : (
-                  <Typography variant="body2" color="text.secondary">—</Typography>
-                )}
-              </Stack>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
-              <TextField
-                fullWidth
-                multiline
-                minRows={4}
-                maxRows={8}
-                value={viewingCall.transcript || '—'}
-                InputProps={{ readOnly: true }}
-                variant="outlined"
-                size="small"
-                sx={{
-                  mb: 2,
-                  '& .MuiInputBase-input': {
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    lineHeight: 1.5
-                  }
-                }}
-              />
-
-              <Divider sx={{ my: 2 }} />
-
-              {renderFollowUpSection(viewingCall)}
-
-              <Typography variant="subtitle1" gutterBottom>Audio</Typography>
-              <Box sx={{ mb: 2, width: '100%' }}>
-                {viewingCall.audio_file && (
-                  <audio
-                    ref={audioRef}
-                    controls
-                    preload="metadata"
-                    style={{ width: '100%', height: '40px', display: 'block' }}
-                    key={`audio-${viewingCall.id}`}
-                  >
-                    <source
-                      src={viewingCall.audio_file?.startsWith('http') ? viewingCall.audio_file : `${API_URL}${viewingCall.audio_file}`}
-                      type="audio/wav"
-                    />
-                    Your browser does not support the audio element.
-                  </audio>
-                )}
-              </Box>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="subtitle1" gutterBottom>Actions</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                {viewingCall.status === 'completed' && !viewingCall.keywordItems?.length && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    disabled={reanalyzingId === viewingCall.id}
-                    onClick={() => handleReanalyze(viewingCall.id)}
-                  >
-                    {reanalyzingId === viewingCall.id ? (
-                      <CircularProgress size={16} />
-                    ) : (
-                      'Re-analyze'
-                    )}
-                  </Button>
-                )}
-                {viewingCall.needs_followup && viewingCall.status === 'completed' && isManager && (
-                  <Button variant="contained" size="small" color="warning"
-                    onClick={() => handleAssignFollowup(viewingCall)}>
-                    Assign Follow-up
-                  </Button>
-                )}
-                <Button
-                  variant={viewingCall.is_reviewed ? 'contained' : 'outlined'}
-                  size="small"
-                  color={viewingCall.is_reviewed ? 'success' : 'primary'}
-                  disabled={viewingCall.is_reviewed}
-                  onClick={() => handleMarkReviewed(viewingCall.id)}>
-                  {viewingCall.is_reviewed ? 'Reviewed ✓' : 'Mark Reviewed'}
-                </Button>
-              </Stack>
-            </>
-          )}
-        </Box>
-      </Drawer>
-
-      {/* ================================================================
-          Edit Call Drawer
-          ================================================================ */}
-      <Drawer anchor="right" open={openDrawer} onClose={closeCallDrawer}>
-        <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
-          {selectedCall && (
-            <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{
-                    width: 10, height: 10, borderRadius: '50%',
-                    backgroundColor: (theme) => theme.palette[stateColor[selectedCall.status]]?.main || '#999'
-                  }} />
-                  <Typography variant="h5">Call #{selectedCall.id}</Typography>
-                  <IconButton size="small"
+                    title={isEditMode ? 'Save' : 'Edit Call'}
                     onClick={() => { if (isEditMode) { handleSave(); } else { setIsEditMode(true); } }}
-                    sx={{ color: isDirty ? 'primary.main' : 'text.primary' }}>
+                    sx={{ color: isDirty ? 'primary.main' : 'text.primary' }}
+                  >
                     {isEditMode ? <IconDeviceFloppy size={22} /> : <IconEdit size={18} />}
                   </IconButton>
                 </Box>
                 <IconButton onClick={closeCallDrawer} size="small"><IconX size={18} /></IconButton>
               </Box>
 
-              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">{selectedCall.createdAt}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Uploaded by <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {selectedCall.uploadedBy}
-                  </Box>
-                </Typography>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">{viewingCall.createdAt}</Typography>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="body2" color="text.secondary">Uploaded by</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {viewingCall.uploadedBy}
+                  </Typography>
+                </Stack>
               </Stack>
 
-              <Divider sx={{ mb: 2 }} />
+              <Divider sx={{ my: 2 }} />
+
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Main Issue</Typography>
               {isEditMode ? (
-                <TextField fullWidth size="small" value={editableIssue}
-                  onChange={(e) => { setEditableIssue(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={editableIssue}
+                  onChange={(e) => { setEditableIssue(e.target.value); setIsDirty(true); }}
+                  sx={{ mb: 2 }}
+                />
               ) : (
-                <Typography variant="body2" sx={{ mb: 3 }}>{editableIssue || '—'}</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>{editableIssue || '—'}</Typography>
               )}
 
+              <Divider sx={{ my: 2 }} />
+
               <Typography variant="subtitle1" gutterBottom>Analysis</Typography>
-              <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
                 {isEditMode ? (
                   <>
                     <Select fullWidth size="small" value={editableSentiment}
@@ -1081,14 +1003,23 @@ export default function Calls() {
                 )}
               </Stack>
 
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Keywords</Typography>
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>Keywords</Typography>
               {isEditMode ? (
-                <TextField fullWidth size="small" placeholder="comma separated..."
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="comma separated..."
                   value={editableKeywords}
-                  onChange={(e) => { setEditableKeywords(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
+                  onChange={(e) => { setEditableKeywords(e.target.value); setIsDirty(true); }}
+                  sx={{ mb: 3 }}
+                />
               ) : (
                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3, gap: 1 }}>
-                  {selectedCall.keywordItems?.length ? selectedCall.keywordItems.map((item, i) => (
+                  {drawerLoading ? (
+                    <CircularProgress size={18} />
+                  ) : viewingCall.keywordItems?.length ? viewingCall.keywordItems.map((item, i) => (
                     <Chip
                       key={`${item.text}-${i}`}
                       label={item.text}
@@ -1102,41 +1033,57 @@ export default function Calls() {
                 </Stack>
               )}
 
-              <Divider sx={{ mb: 2 }} />
-              {renderFollowUpSection(selectedCall)}
-              <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
-              <TextField fullWidth multiline minRows={4} value={editableTranscript}
-                disabled={!isEditMode}
-                onChange={(e) => { setEditableTranscript(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
-              <Divider sx={{ mb: 2 }} />
+              <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
+              <TextField
+                fullWidth
+                multiline
+                minRows={4}
+                maxRows={8}
+                value={editableTranscript}
+                disabled={!isEditMode}
+                onChange={(e) => { setEditableTranscript(e.target.value); setIsDirty(true); }}
+                variant="outlined"
+                size="small"
+                sx={{
+                  mb: 2,
+                  '& .MuiInputBase-input': {
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    lineHeight: 1.5
+                  }
+                }}
+              />
+
+              <Divider sx={{ my: 2 }} />
+
               <Typography variant="subtitle1" gutterBottom>Audio</Typography>
-              <Box sx={{ mb: 2 }}>
-                <audio
-                  controls
-                  style={{ width: '100%' }}
-                  src={selectedCall.audio_file?.startsWith('http') ? selectedCall.audio_file : `${API_URL}${selectedCall.audio_file}`}
-                />
+              <Box sx={{ mb: 2, width: '100%' }}>
+                {viewingCall.audio_file && (
+                  <audio
+                    ref={audioRef}
+                    controls
+                    preload="metadata"
+                    style={{ width: '100%', height: '40px', display: 'block' }}
+                    key={`audio-${viewingCall.id}`}
+                  >
+                    <source
+                      src={viewingCall.audio_file?.startsWith('http') ? viewingCall.audio_file : `${API_URL}${viewingCall.audio_file}`}
+                      type="audio/wav"
+                    />
+                    Your browser does not support the audio element.
+                  </audio>
+                )}
               </Box>
 
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="subtitle1" gutterBottom>Actions</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                {selectedCall.needs_followup && selectedCall.status === 'completed' && isManager && (
-                  <Button variant="contained" size="small" color="warning"
-                    onClick={() => handleAssignFollowup(selectedCall)}>
-                    Assign Follow-up
-                  </Button>
-                )}
-                <Button
-                  variant={selectedCall.is_reviewed ? 'contained' : 'outlined'}
-                  size="small"
-                  color={selectedCall.is_reviewed ? 'success' : 'primary'}
-                  disabled={selectedCall.is_reviewed}
-                  onClick={() => handleMarkReviewed(selectedCall.id)}>
-                  {selectedCall.is_reviewed ? 'Reviewed ✓' : 'Mark Reviewed'}
-                </Button>
-              </Stack>
+              <Divider sx={{ my: 2 }} />
+
+              {renderFollowUpSection(viewingCall)}
+
+              <Divider sx={{ my: 2 }} />
+
+              {renderDrawerActions(viewingCall)}
             </>
           )}
         </Box>

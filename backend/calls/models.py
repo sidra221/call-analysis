@@ -104,9 +104,18 @@ class FollowUp(models.Model):
 
     call = models.ForeignKey(Call, on_delete=models.CASCADE)
 
-    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE)
+    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_followups')
 
-    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_followups',
+    )
+
+    creator_notes = models.TextField(blank=True)
+    assignee_notes = models.TextField(blank=True)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
