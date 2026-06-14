@@ -446,7 +446,7 @@ class FollowUpViewSet(viewsets.ModelViewSet):
         from django.contrib.auth.models import User
 
         try:
-            assigned_user = User.objects.get(
+            assigned_user = User.objects.select_related('profile').get(
                 id=assigned_to
             )
 
@@ -456,6 +456,13 @@ class FollowUpViewSet(viewsets.ModelViewSet):
                 "Assigned user not found",
                 code="user_not_found",
                 status_code=404
+            )
+
+        if not hasattr(assigned_user, 'profile') or assigned_user.profile.role != 'qa':
+            return error_response(
+                "Follow-ups can only be assigned to QA users",
+                code="invalid_assignee",
+                status_code=400
             )
 
         followup = FollowUp.objects.create(

@@ -11,7 +11,6 @@ class UserProfile(models.Model):
     ROLE_CHOICES = [
         ('manager', 'Manager'),
         ('qa', 'Quality Assurance'),
-        ('agent', 'Agent'),
     ]
 
     # One-to-one link to Django's User — deleting the user deletes the profile too

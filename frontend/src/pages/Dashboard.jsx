@@ -349,7 +349,7 @@ export default function Dashboard() {
         ? call.analysis.keywords.join(', ')
         : '',
       uploadedBy: call.uploaded_by_username || '',
-      uploadedByRole: call.uploaded_by_role || 'agent',
+      uploadedByRole: call.uploaded_by_role || 'qa',
       createdAt: call.created_at ? call.created_at.split('T')[0] : '',
       duration: call.duration
         ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`

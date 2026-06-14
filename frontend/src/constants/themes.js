@@ -1,7 +1,6 @@
 export const ROLE_THEME_MAP = {
   manager: 'manager',
   qa: 'purple',
-  agent: 'agent'
 };
 
 export const THEME_PRESETS = [
@@ -11,7 +10,7 @@ export const THEME_PRESETS = [
     label: { en: 'Blue', ar: 'أزرق' }
   },
   {
-    id: 'agent',
+    id: 'orange',
     swatch: '#ef6c00',
     label: { en: 'Orange', ar: 'برتقالي' }
   },
@@ -44,6 +43,7 @@ export const THEME_PRESETS = [
 
 export function normalizePresetColor(presetColor) {
   if (presetColor === 'qa') return 'purple';
+  if (presetColor === 'agent') return 'orange';
   return presetColor;
 }
 

@@ -4,7 +4,7 @@ import { extendPaletteWithChannels } from 'utils/colorUtils';
 // assets
 import managerColor from './theme/manager';
 import qaColor from './theme/qa';
-import agentColor from './theme/agent';
+import orangeColor from './theme/agent';
 import purpleColor from './theme/purple';
 import tealColor from './theme/teal';
 import indigoColor from './theme/indigo';
@@ -14,7 +14,7 @@ import greenColor from './theme/green';
 const themeColors = {
   manager: managerColor,
   qa: qaColor,
-  agent: agentColor,
+  orange: orangeColor,
   purple: purpleColor,
   green: greenColor,
   teal: tealColor,

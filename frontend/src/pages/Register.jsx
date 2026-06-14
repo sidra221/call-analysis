@@ -10,9 +10,7 @@ import {
   CircularProgress,
   IconButton,
   InputAdornment,
-  Alert,
-  FormControlLabel,
-  Checkbox
+  Alert
 } from '@mui/material';
 
 import {
@@ -31,8 +29,6 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isAgent, setIsAgent] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -59,7 +55,7 @@ export default function Register() {
         username,
         email,
         password,
-        role: isAgent ? 'agent' : 'qa'
+        role: 'qa'
       });
       navigate('/login');
     } catch (err) {
@@ -179,18 +175,6 @@ export default function Register() {
                   </InputAdornment>
                 )
               }}
-            />
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isAgent}
-                  onChange={(e) => setIsAgent(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Register as Agent"
-              sx={{ mb: 2, display: 'flex', ml: 0 }}
             />
 
             <Button

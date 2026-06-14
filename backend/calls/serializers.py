@@ -107,3 +107,10 @@ class FollowUpSerializer(serializers.ModelSerializer):
             'notes', 'status', 'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def validate_assigned_to(self, value):
+        if not hasattr(value, 'profile') or value.profile.role != 'qa':
+            raise serializers.ValidationError(
+                "Follow-ups can only be assigned to QA users."
+            )
+        return value

@@ -65,7 +65,6 @@ const STAT_CARDS = [
 
 const ROLE_LABELS = {
   manager: 'Manager',
-  agent: 'Agent',
   qa: 'QA',
 };
 
@@ -126,7 +125,7 @@ export default function UsersPage() {
   const [sortByUsername, setSortByUsername] = useState('asc');
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ username: '', email: '', password: '', role: 'agent' });
+  const [form, setForm] = useState({ username: '', email: '', password: '', role: 'qa' });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -137,7 +136,7 @@ export default function UsersPage() {
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDrawerEditMode, setIsDrawerEditMode] = useState(false);
-  const [drawerDraft, setDrawerDraft] = useState({ email: '', role: 'agent', is_active: true });
+  const [drawerDraft, setDrawerDraft] = useState({ email: '', role: 'qa', is_active: true });
   const [drawerError, setDrawerError] = useState('');
   const [drawerSaving, setDrawerSaving] = useState(false);
   const [drawerStats, setDrawerStats] = useState(null);
@@ -270,7 +269,7 @@ export default function UsersPage() {
   };
 
   const resetForm = () => {
-    setForm({ username: '', email: '', password: '', role: 'agent' });
+    setForm({ username: '', email: '', password: '', role: 'qa' });
     setErrors({});
     setFormError('');
   };
@@ -300,7 +299,7 @@ export default function UsersPage() {
 
   const buildDrawerDraft = (user) => ({
     email: user?.email || '',
-    role: user?.role || 'agent',
+    role: user?.role || 'qa',
     is_active: user?.is_active !== false,
   });
 
@@ -376,7 +375,7 @@ export default function UsersPage() {
     setIsUserDrawerOpen(false);
     setSelectedUser(null);
     setIsDrawerEditMode(false);
-    setDrawerDraft({ email: '', role: 'agent', is_active: true });
+    setDrawerDraft({ email: '', role: 'qa', is_active: true });
     setDrawerError('');
     setDrawerStats(null);
     setDrawerActivity([]);
@@ -479,7 +478,6 @@ export default function UsersPage() {
             <Select value={roleFilter} label="Role" onChange={(e) => setRoleFilter(e.target.value)}>
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="manager">Manager</MenuItem>
-              <MenuItem value="agent">Agent</MenuItem>
               <MenuItem value="qa">QA</MenuItem>
             </Select>
           </FormControl>
@@ -647,7 +645,6 @@ export default function UsersPage() {
               <TextField select label="Role" fullWidth value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 <MenuItem value="manager">Manager</MenuItem>
-                <MenuItem value="agent">Agent</MenuItem>
                 <MenuItem value="qa">QA</MenuItem>
               </TextField>
             </Stack>
@@ -767,7 +764,6 @@ export default function UsersPage() {
                       }
                     >
                       <MenuItem value="manager">Manager</MenuItem>
-                      <MenuItem value="agent">Agent</MenuItem>
                       <MenuItem value="qa">QA</MenuItem>
                     </TextField>
                     {role === 'manager' && selectedUser.username !== currentUser?.user && (

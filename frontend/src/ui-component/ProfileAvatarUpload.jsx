@@ -14,7 +14,7 @@ export default function ProfileAvatarUpload({
   size = 96,
   sx = {},
   editable = true,
-  role = 'agent',
+  role = 'qa',
   displayName = 'User',
   user,
   value,

@@ -370,7 +370,7 @@ class ManagerOrQAView(APIView):
 
 class UsersForFollowupsView(APIView):
     """
-    Returns list of users (agents and managers) for follow-up assignment.
+    Returns list of QA users for follow-up assignment.
     Accessible by QA and Manager.
     GET /api/accounts/users-for-followups/
     """
@@ -381,7 +381,7 @@ class UsersForFollowupsView(APIView):
         from .models import UserProfile
         
         users = User.objects.filter(
-            profile__role__in=['agent', 'manager']
+            profile__role='qa'
         ).select_related('profile').order_by('username')
         
         serializer = UserListSerializer(users, many=True, context={'request': request})

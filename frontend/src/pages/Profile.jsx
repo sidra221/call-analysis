@@ -109,7 +109,7 @@ export default function ProfilePage() {
   const [showPasswordSection, setShowPasswordSection] = useState(false);
 
   const displayName = user?.user || user?.username || 'User';
-  const userRole = user?.role?.toLowerCase() || 'agent';
+  const userRole = user?.role?.toLowerCase() || 'qa';
   const userEmail = user?.email || '—';
   const roleDefaultTheme = getRoleDefaultTheme(userRole);
   const savedPreset = isLegacyPreset(presetColor) ? roleDefaultTheme : presetColor;

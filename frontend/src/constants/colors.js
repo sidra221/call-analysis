@@ -1,6 +1,5 @@
 export const roleColors = {
   manager: { bg: '#e3f2fd', color: '#1e88e5' },
-  agent: { bg: '#fff3e0', color: '#ef6c00' },
   qa: { bg: '#f3e5f5', color: '#7b1fa2' }
 };
 
