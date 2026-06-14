@@ -292,7 +292,7 @@ class CallViewSet(viewsets.ModelViewSet):
 
         call = self.get_object()
 
-        async_result = analyze_call.delay(call.id)
+        async_result = analyze_call.delay(call.id, force=True)
         
         create_log(
             request.user,

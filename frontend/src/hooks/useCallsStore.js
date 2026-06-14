@@ -13,7 +13,8 @@ const useCallsStore = create((set) => ({
     try {
       const res = await callsApi.list(params);
 
-      const results = res?.results || res || [];
+      const payload = res?.data ?? res;
+      const results = payload?.results || (Array.isArray(payload) ? payload : []);
 
       set({
         calls: results,

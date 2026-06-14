@@ -119,27 +119,35 @@ export default function NotificationSection() {
 
       const getReportsList = (res) => res?.data || res?.results || [];
 
-      // 1. Get recent calls (last 24 hours) - PUBLIC (show to everyone)
-      const callsRes = await callsApi.list();
-      const recentCalls = (callsRes?.results || []).filter(call => {
-        const callDate = new Date(call.created_at);
-        const hoursAgo = (new Date() - callDate) / (1000 * 60 * 60);
-        return hoursAgo <= 24 && call.status === 'completed';
-      });
-
-      recentCalls.forEach(call => {
-        newNotifications.push({
-          id: `call-${call.id}`,
-          user: call.uploaded_by_username || 'System',
-          text: `uploaded a new call #${call.id}`,
-          time: timeAgo(call.created_at),
-          createdAt: new Date(call.created_at).getTime(),
-          unread: isUnread('call', call.id),
-          type: 'call',
-          link: `/calls`,
-          callId: call.id
+      // 1. Get recent completed calls (last 24 hours)
+      // Notify manager + other QA only — never the uploader
+      if (currentRole === 'manager' || currentRole === 'qa') {
+        const callsRes = await callsApi.list();
+        const recentCalls = (callsRes?.results || []).filter(call => {
+          const callDate = new Date(call.created_at);
+          const hoursAgo = (new Date() - callDate) / (1000 * 60 * 60);
+          const uploaderUsername = (call.uploaded_by_username || '').toLowerCase();
+          return (
+            hoursAgo <= 24 &&
+            call.status === 'completed' &&
+            uploaderUsername !== currentUser
+          );
         });
-      });
+
+        recentCalls.forEach(call => {
+          newNotifications.push({
+            id: `call-${call.id}`,
+            user: call.uploaded_by_username || 'System',
+            text: `uploaded a new call #${call.id}`,
+            time: timeAgo(call.created_at),
+            createdAt: new Date(call.created_at).getTime(),
+            unread: isUnread('call', call.id),
+            type: 'call',
+            link: `/calls`,
+            callId: call.id
+          });
+        });
+      }
 
       // 2. Get followups assigned to current user - PRIVATE (only for assigned user)
       const followupsRes = await followupsApi.list();

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserProfile
 from .models import Call, CallAnalysis, FollowUp
+from .services import _normalize_keywords
 
 
 class CallAnalysisSerializer(serializers.ModelSerializer):
@@ -15,6 +16,11 @@ class CallAnalysisSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['keywords'] = _normalize_keywords(data.get('keywords'))
+        return data
 
 
 class CallSerializer(serializers.ModelSerializer):

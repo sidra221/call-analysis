@@ -94,13 +94,20 @@ export default function Followups() {
     if (location.state?.openCreateFollowup) {
       setOpenCreateDialog(true);
       setCallIdInput(location.state.callId ? String(location.state.callId) : '');
+      if (location.state.assignedToUsername && users.length) {
+        const match = users.find(
+          (u) => (u.username || '').toLowerCase() === location.state.assignedToUsername.toLowerCase()
+        );
+        if (match) setAssignedTo(match.id);
+      }
+      window.history.replaceState({}, document.title);
     }
     if (location.state?.filter === 'assignee' && location.state?.value) {
       setAssignedFilter(location.state.value);
       setPage(0);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, users]);
 
   const loadFollowups = async () => {
     try {

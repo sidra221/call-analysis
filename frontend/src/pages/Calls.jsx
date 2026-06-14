@@ -23,6 +23,7 @@ import {
   DialogActions, Alert, Checkbox
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
+import { formatKeywords, parseKeywords, getKeywordChipColor } from 'utils/keywords';
 import { callsApi } from 'api/api';
 import {
   TABLE_LAYOUT_SX,
@@ -72,6 +73,27 @@ const CALLS_ACTIONS_CELL_SX = {
   pr: 1
 };
 
+function buildNormalizedCall(call) {
+  if (!call) return null;
+  return {
+    ...call,
+    sentiment: call.analysis?.sentiment || 'neutral',
+    priority: call.analysis?.priority || 'low',
+    is_reviewed: call.analysis?.is_reviewed || false,
+    issue: call.analysis?.main_issue || '',
+    transcript: call.analysis?.transcript || '',
+    keywordItems: parseKeywords(call.analysis?.keywords),
+    keywords: formatKeywords(call.analysis?.keywords),
+    uploadedBy: call.uploaded_by_username || '',
+    uploadedByRole: call.uploaded_by_role,
+    needs_followup: Boolean(call.analysis?.needs_followup),
+    createdAt: call.created_at ? call.created_at.split('T')[0] : '',
+    duration: call.duration
+      ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`
+      : '00:00',
+  };
+}
+
 export default function Calls() {
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
@@ -111,10 +133,28 @@ export default function Calls() {
     stopPolling();
     updateCallFromWebSocket(callId);
     setProcessingProgress(100);
-    setTimeout(() => {
+    setReanalyzingId(null);
+    setTimeout(async () => {
       setIsProcessing(false);
       setProcessingProgress(0);
-      fetchCalls();
+      await fetchCalls();
+      try {
+        const res = await callsApi.get(callId);
+        const fresh = buildNormalizedCall(res?.data || res);
+        if (fresh) {
+          if (openViewDrawer && viewingCall?.id === callId) {
+            setViewingCall(fresh);
+          }
+          if (selectedCall?.id === callId) {
+            setSelectedCall(fresh);
+            setEditableKeywords(fresh.keywords || '');
+            setEditableIssue(fresh.issue || '');
+            setEditableTranscript(fresh.transcript || '');
+            setEditableSentiment(fresh.sentiment || 'neutral');
+            setEditablePriority(fresh.priority || 'low');
+          }
+        }
+      } catch { /* ignore */ }
     }, 1200);
   };
 
@@ -140,15 +180,16 @@ export default function Calls() {
   const startPolling = (callId) => {
     stopPolling();
     let waited = 0;
-    const maxWait = 60;
+    const maxWait = 300;
 
     pollRef.current = setInterval(async () => {
       waited += 2;
-      setProcessingProgress((prev) => Math.min(prev + 3, 90));
+      setProcessingProgress((prev) => Math.min(prev + 2, 95));
 
       try {
         const res = await callsApi.get(callId);
-        const status = res?.data?.status;
+        const callData = res?.data || res;
+        const status = callData?.status;
         if (status === 'completed' || status === 'failed') {
           finishProcessing(callId);
           return;
@@ -159,6 +200,7 @@ export default function Calls() {
         stopPolling();
         setIsProcessing(false);
         setProcessingProgress(0);
+        setReanalyzingId(null);
       }
     }, 2000);
   };
@@ -180,7 +222,6 @@ export default function Calls() {
         throw new Error('Upload failed — no call ID returned');
       }
       connectWebSocket(callId);
-      await processCall(callId);
       setProcessingProgress(50);
       startPolling(callId);
     } catch (err) {
@@ -216,6 +257,8 @@ export default function Calls() {
   const [callToDelete, setCallToDelete] = useState(null);
   const [openViewDrawer, setOpenViewDrawer] = useState(false);
   const [viewingCall, setViewingCall] = useState(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [reanalyzingId, setReanalyzingId] = useState(null);
 
   // Force reload audio when viewingCall changes
   useEffect(() => {
@@ -245,11 +288,37 @@ export default function Calls() {
   const role = (user?.role || '').toLowerCase();
   const isManager = role === 'manager';
 
+  const handleAssignFollowup = (call) => {
+    navigate('/followups', {
+      state: {
+        openCreateFollowup: true,
+        callId: call.id,
+        assignedToUsername: call.uploadedByRole === 'qa' ? call.uploadedBy : undefined,
+      }
+    });
+  };
+
+  const renderFollowUpSection = (call) => (
+    <>
+      <Typography variant="subtitle1" gutterBottom>Follow-up</Typography>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        {call.status !== 'completed' ? (
+          <Chip label="Awaiting AI analysis" size="small" variant="outlined" />
+        ) : call.needs_followup ? (
+          <Chip label="Follow-up Required" color="warning" size="small" />
+        ) : (
+          <Chip label="No Follow-up Needed" color="success" size="small" variant="outlined" />
+        )}
+      </Stack>
+    </>
+  );
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [reviewedFilter, setReviewedFilter] = useState('all');
+  const [needsFollowupFilter, setNeedsFollowupFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [userFilter, setUserFilter] = useState('');
@@ -265,11 +334,12 @@ export default function Calls() {
     if (sentimentFilter !== 'all') count++;
     if (priorityFilter !== 'all') count++;
     if (reviewedFilter !== 'all') count++;
+    if (needsFollowupFilter !== 'all') count++;
     if (startDate) count++;
     if (endDate) count++;
     if (userFilter) count++;
     return count;
-  }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, startDate, endDate, userFilter]);
+  }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, needsFollowupFilter, startDate, endDate, userFilter]);
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [editableTranscript, setEditableTranscript] = useState('');
@@ -279,23 +349,7 @@ export default function Calls() {
 
   const normalizedCalls = useMemo(() => {
     if (!Array.isArray(calls)) return [];
-    return calls.map((call) => ({
-      ...call,
-      sentiment: call.analysis?.sentiment || 'neutral',
-      priority: call.analysis?.priority || 'low',
-      is_reviewed: call.analysis?.is_reviewed || false,
-      issue: call.analysis?.main_issue || '',
-      transcript: call.analysis?.transcript || '',
-      keywords: Array.isArray(call.analysis?.keywords)
-        ? call.analysis.keywords.join(', ')
-        : '',
-      uploadedBy: call.uploaded_by_username || '',
-      uploadedByRole: call.uploaded_by_role,
-      createdAt: call.created_at ? call.created_at.split('T')[0] : '',
-      duration: call.duration
-        ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`
-        : '00:00',
-    }));
+    return calls.map(buildNormalizedCall).filter(Boolean);
   }, [calls]);
 
   const filteredCalls = useMemo(() => {
@@ -311,6 +365,8 @@ export default function Calls() {
       const matchesPriority = priorityFilter === 'all' || call.priority === priorityFilter;
       const matchesReviewed = reviewedFilter === 'all' ||
         (reviewedFilter === 'Yes' ? call.is_reviewed : !call.is_reviewed);
+      const matchesNeedsFollowup = needsFollowupFilter === 'all' ||
+        (needsFollowupFilter === 'yes' ? call.needs_followup : !call.needs_followup);
 
       let matchesDate = true;
       if (startDate || endDate) {
@@ -324,7 +380,7 @@ export default function Calls() {
       }
 
       return matchesSearch && matchesStatus && matchesSentiment &&
-        matchesPriority && matchesReviewed && matchesDate;
+        matchesPriority && matchesReviewed && matchesNeedsFollowup && matchesDate;
     });
 
     result = [...result].sort((a, b) => {
@@ -344,7 +400,7 @@ export default function Calls() {
     }
 
     return result;
-  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter,
+  }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter, needsFollowupFilter,
     startDate, endDate, normalizedCalls, sortByDate, sortByUploader]);
 
   // Apply filter from navigation state (from Dashboard)
@@ -358,6 +414,7 @@ export default function Calls() {
       setSentimentFilter('all');
       setPriorityFilter('all');
       setReviewedFilter('all');
+      setNeedsFollowupFilter('all');
       setSearch('');
       setStartDate('');
       setEndDate('');
@@ -368,7 +425,7 @@ export default function Calls() {
       } else if (filter === 'sentiment') {
         setSentimentFilter(filterValue);
       } else if (filter === 'needs_followup') {
-        setReviewedFilter(filterValue === 'true' ? 'No' : 'all');
+        setNeedsFollowupFilter(filterValue === 'true' ? 'yes' : 'no');
       } else if (filter === 'issue') {
         setSearch(filterValue);
       } else if (filter === 'user') {
@@ -409,9 +466,32 @@ export default function Calls() {
     setOpenDrawer(true);
   };
 
-  const openViewDrawerFunc = (call) => {
-    setViewingCall(call);
+  const openViewDrawerFunc = async (call) => {
     setOpenViewDrawer(true);
+    setViewingCall(buildNormalizedCall(call));
+    setDrawerLoading(true);
+    try {
+      const res = await callsApi.get(call.id);
+      const fresh = buildNormalizedCall(res?.data || res);
+      if (fresh) setViewingCall(fresh);
+    } catch (err) {
+      console.error('Failed to refresh call details:', err);
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const handleReanalyze = async (callId) => {
+    try {
+      setReanalyzingId(callId);
+      setUploadError('');
+      connectWebSocket(callId);
+      await processCall(callId);
+      startPolling(callId);
+    } catch (err) {
+      setReanalyzingId(null);
+      setUploadError(err?.message || 'Re-analysis failed');
+    }
   };
 
   useEffect(() => {
@@ -534,6 +614,7 @@ export default function Calls() {
             onResetFilters={() => {
               setStatusFilter('all'); setSentimentFilter('all');
               setPriorityFilter('all'); setReviewedFilter('all');
+              setNeedsFollowupFilter('all');
               setStartDate(''); setEndDate('');
               setUserFilter('');
               setSortByDate('desc');
@@ -610,6 +691,15 @@ export default function Calls() {
                   <MenuItem value="all">All Reviews</MenuItem>
                   <MenuItem value="Yes">Reviewed</MenuItem>
                   <MenuItem value="No">Not Reviewed</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Follow-up</InputLabel>
+                <Select value={needsFollowupFilter} label="Follow-up" onChange={(e) => setNeedsFollowupFilter(e.target.value)}>
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="yes">Needs Follow-up</MenuItem>
+                  <MenuItem value="no">No Follow-up</MenuItem>
                 </Select>
               </FormControl>
 
@@ -826,9 +916,19 @@ export default function Calls() {
 
               <Typography variant="subtitle1" sx={{ mb: 1.5 }}>Keywords</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3, gap: 1 }}>
-                {(viewingCall.keywords || '').split(',').filter(Boolean).map((k, i) => (
-                  <Chip key={i} label={k.trim()} size="small" color="primary" />
-                ))}
+                {drawerLoading ? (
+                  <CircularProgress size={18} />
+                ) : viewingCall.keywordItems?.length ? viewingCall.keywordItems.map((item, i) => (
+                  <Chip
+                    key={`${item.text}-${i}`}
+                    label={item.text}
+                    size="small"
+                    color={getKeywordChipColor(item.polarity)}
+                    variant={item.polarity === 'neutral' ? 'outlined' : 'filled'}
+                  />
+                )) : (
+                  <Typography variant="body2" color="text.secondary">—</Typography>
+                )}
               </Stack>
 
               <Divider sx={{ my: 2 }} />
@@ -855,6 +955,8 @@ export default function Calls() {
 
               <Divider sx={{ my: 2 }} />
 
+              {renderFollowUpSection(viewingCall)}
+
               <Typography variant="subtitle1" gutterBottom>Audio</Typography>
               <Box sx={{ mb: 2, width: '100%' }}>
                 {viewingCall.audio_file && (
@@ -878,12 +980,26 @@ export default function Calls() {
 
               <Typography variant="subtitle1" gutterBottom>Actions</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                <Button variant="contained" size="small"
-                  onClick={() => navigate('/followups', {
-                    state: { openCreateFollowup: true, callId: viewingCall.id }
-                  })}>
-                  {isManager ? 'Assign Follow-up' : 'Needs Follow-up'}
-                </Button>
+                {viewingCall.status === 'completed' && !viewingCall.keywordItems?.length && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={reanalyzingId === viewingCall.id}
+                    onClick={() => handleReanalyze(viewingCall.id)}
+                  >
+                    {reanalyzingId === viewingCall.id ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      'Re-analyze'
+                    )}
+                  </Button>
+                )}
+                {viewingCall.needs_followup && viewingCall.status === 'completed' && isManager && (
+                  <Button variant="contained" size="small" color="warning"
+                    onClick={() => handleAssignFollowup(viewingCall)}>
+                    Assign Follow-up
+                  </Button>
+                )}
                 <Button
                   variant={viewingCall.is_reviewed ? 'contained' : 'outlined'}
                   size="small"
@@ -972,13 +1088,22 @@ export default function Calls() {
                   onChange={(e) => { setEditableKeywords(e.target.value); setIsDirty(true); }} sx={{ mb: 2 }} />
               ) : (
                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3, gap: 1 }}>
-                  {(editableKeywords || '').split(',').filter(Boolean).map((k, i) => (
-                    <Chip key={i} label={k.trim()} size="small" variant="outlined" />
-                  ))}
+                  {selectedCall.keywordItems?.length ? selectedCall.keywordItems.map((item, i) => (
+                    <Chip
+                      key={`${item.text}-${i}`}
+                      label={item.text}
+                      size="small"
+                      color={getKeywordChipColor(item.polarity)}
+                      variant={item.polarity === 'neutral' ? 'outlined' : 'filled'}
+                    />
+                  )) : (
+                    <Typography variant="body2" color="text.secondary">—</Typography>
+                  )}
                 </Stack>
               )}
 
               <Divider sx={{ mb: 2 }} />
+              {renderFollowUpSection(selectedCall)}
               <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
               <TextField fullWidth multiline minRows={4} value={editableTranscript}
                 disabled={!isEditMode}
@@ -997,12 +1122,12 @@ export default function Calls() {
               <Divider sx={{ mb: 2 }} />
               <Typography variant="subtitle1" gutterBottom>Actions</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                <Button variant="contained" size="small"
-                  onClick={() => navigate('/followups', {
-                    state: { openCreateFollowup: true, callId: selectedCall.id }
-                  })}>
-                  {isManager ? 'Assign Follow-up' : 'Needs Follow-up'}
-                </Button>
+                {selectedCall.needs_followup && selectedCall.status === 'completed' && isManager && (
+                  <Button variant="contained" size="small" color="warning"
+                    onClick={() => handleAssignFollowup(selectedCall)}>
+                    Assign Follow-up
+                  </Button>
+                )}
                 <Button
                   variant={selectedCall.is_reviewed ? 'contained' : 'outlined'}
                   size="small"

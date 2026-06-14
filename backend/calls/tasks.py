@@ -8,7 +8,7 @@ from pydub.utils import mediainfo
 
 from .models import Call, CallAnalysis
 from .ai_client import analyze_audio_file
-from .services import map_ai_response
+from .services import map_ai_response, _normalize_keywords
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=5, max_retries=3)
-def analyze_call(self, call_id: str):
+def analyze_call(self, call_id: str, force: bool = False):
 
     channel_layer = get_channel_layer()
     group = f'call_{call_id}'
@@ -27,6 +27,28 @@ def analyze_call(self, call_id: str):
         with transaction.atomic():
 
             call = Call.objects.select_for_update().get(id=call_id)
+
+            if call.status == 'processing':
+                logger.warning(
+                    "Skipping duplicate analyze_call for call %s (already processing)",
+                    call_id,
+                )
+                return {
+                    "call_id": call_id,
+                    "status": "skipped",
+                    "reason": "already_processing",
+                }
+
+            if call.status == 'completed' and not force:
+                logger.warning(
+                    "Skipping analyze_call for call %s (already completed)",
+                    call_id,
+                )
+                return {
+                    "call_id": call_id,
+                    "status": "skipped",
+                    "reason": "already_completed",
+                }
 
             call.status = 'processing'
 
@@ -79,6 +101,15 @@ def analyze_call(self, call_id: str):
             }
 
         mapped = map_ai_response(call, ai_result)
+
+        raw_keywords = ai_result.get('keywords') or ai_result.get('keywords_detail')
+        mapped['keywords'] = _normalize_keywords(raw_keywords)
+        if not mapped['keywords'] and raw_keywords:
+            logger.warning(
+                "Keywords empty after normalization for call %s (type=%s)",
+                call_id,
+                type(raw_keywords).__name__,
+            )
 
         with transaction.atomic():
 

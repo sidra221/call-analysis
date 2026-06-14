@@ -1,5 +1,5 @@
 def _normalize_keywords(raw):
-    """Accept v7 flat list or legacy structured keyword payloads."""
+    """Accept v8 structured dict, v7 flat list, or legacy keyword payloads."""
     if isinstance(raw, list):
         return [
             k.strip() for k in raw
@@ -8,10 +8,29 @@ def _normalize_keywords(raw):
 
     if isinstance(raw, dict):
         merged = []
+        seen = set()
+
+        def _add(item):
+            if not isinstance(item, str):
+                return
+            cleaned = item.strip()
+            key = cleaned.lower()
+            if cleaned and key not in seen:
+                seen.add(key)
+                merged.append(cleaned)
+
         for bucket in ("negative", "positive", "neutral"):
             for item in raw.get(bucket, []) or []:
-                if isinstance(item, str) and item.strip():
-                    merged.append(item.strip())
+                _add(item)
+
+        categories = raw.get("categories") or {}
+        if isinstance(categories, dict):
+            for items in categories.values():
+                if not isinstance(items, list):
+                    continue
+                for item in items:
+                    _add(item)
+
         return merged
 
     return []
