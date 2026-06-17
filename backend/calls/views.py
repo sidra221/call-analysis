@@ -239,11 +239,16 @@ class CallViewSet(viewsets.ModelViewSet):
                 'needs_followup'
             ) is True:
 
+                default_notes = (
+                    followup_notes
+                    or getattr(analysis, 'followup_reason', '')
+                    or ""
+                )
                 followup = FollowUp.objects.create(
                     call=call,
                     assigned_to=request.user,
                     created_by=request.user,
-                    creator_notes=followup_notes or "",
+                    creator_notes=default_notes,
                 )
                 
                 create_log(

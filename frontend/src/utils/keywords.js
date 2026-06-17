@@ -6,6 +6,27 @@ const keywordPolarityColor = {
   neutral: 'primary',
 };
 
+const ISSUE_TYPE_LABELS = {
+  technical: 'Technical',
+  financial: 'Financial',
+  account: 'Account',
+  delivery: 'Delivery',
+  legal: 'Legal',
+  fraud: 'Fraud',
+  scam: 'Scam',
+  escalation: 'Escalation',
+  anger: 'Anger',
+  product_inquiry: 'Product Inquiry',
+  sales_inquiry: 'Sales Inquiry',
+  positive_feedback: 'Positive Feedback',
+  general: 'General',
+};
+
+export function formatIssueType(type) {
+  if (!type) return '';
+  return ISSUE_TYPE_LABELS[type] || type.replace(/_/g, ' ');
+}
+
 export function parseKeywords(raw) {
   if (!raw) return [];
 
@@ -28,13 +49,30 @@ export function parseKeywords(raw) {
   const items = [];
   const seen = new Set();
 
-  const pushItem = (text, polarity = 'neutral') => {
+  const pushItem = (text, polarity = 'neutral', category = '', keywordRole = '') => {
     const trimmed = text.trim();
     const key = trimmed.toLowerCase();
     if (!trimmed || seen.has(key)) return;
     seen.add(key);
-    items.push({ text: trimmed, polarity });
+    items.push({ text: trimmed, polarity, category, keywordRole });
   };
+
+  const display = raw.display;
+  if (Array.isArray(display) && display.length) {
+    display.forEach((item) => {
+      if (typeof item === 'string') {
+        pushItem(item, raw.primary_polarity || 'neutral', raw.primary_issue_type || '');
+      } else if (item && typeof item.text === 'string') {
+        pushItem(
+          item.text,
+          item.polarity || 'neutral',
+          item.category || '',
+          item.keyword_role || item.keywordRole || '',
+        );
+      }
+    });
+    return items;
+  }
 
   KEYWORD_BUCKETS.forEach((bucket) => {
     const list = raw[bucket];
@@ -43,16 +81,6 @@ export function parseKeywords(raw) {
       if (typeof item === 'string') pushItem(item, bucket);
     });
   });
-
-  const categories = raw.categories;
-  if (categories && typeof categories === 'object') {
-    Object.values(categories).forEach((list) => {
-      if (!Array.isArray(list)) return;
-      list.forEach((item) => {
-        if (typeof item === 'string') pushItem(item, 'neutral');
-      });
-    });
-  }
 
   return items;
 }
@@ -65,4 +93,14 @@ export function formatKeywords(raw) {
 
 export function getKeywordChipColor(polarity) {
   return keywordPolarityColor[polarity] || 'primary';
+}
+
+export function getKeywordsMeta(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { primary_polarity: '', primary_issue_type: '' };
+  }
+  return {
+    primary_polarity: raw.primary_polarity || '',
+    primary_issue_type: raw.primary_issue_type || '',
+  };
 }

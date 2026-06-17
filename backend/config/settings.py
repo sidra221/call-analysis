@@ -200,6 +200,8 @@ SIMPLE_JWT = {
 # CELERY SETTINGS
 # -----------------------------
 
+from celery.schedules import crontab
+
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
 CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', 'False').lower() in ('true', '1', 'yes')
@@ -209,10 +211,41 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 # -----------------------------
+# AUTO REPORT SCHEDULE (Celery Beat)
+# -----------------------------
+
+AUTO_REPORT_ENABLED = os.getenv('AUTO_REPORT_ENABLED', 'True').lower() in ('true', '1', 'yes')
+AUTO_REPORT_USERNAME = os.getenv('AUTO_REPORT_USERNAME', '')
+REPORT_DAILY_HOUR = int(os.getenv('REPORT_DAILY_HOUR', '6'))
+REPORT_DAILY_MINUTE = int(os.getenv('REPORT_DAILY_MINUTE', '0'))
+REPORT_WEEKLY_DAY = int(os.getenv('REPORT_WEEKLY_DAY', '1'))  # 0=Sun … 6=Sat (Monday=1)
+REPORT_WEEKLY_HOUR = int(os.getenv('REPORT_WEEKLY_HOUR', '6'))
+REPORT_WEEKLY_MINUTE = int(os.getenv('REPORT_WEEKLY_MINUTE', '0'))
+
+CELERY_BEAT_SCHEDULE = {}
+if AUTO_REPORT_ENABLED:
+    CELERY_BEAT_SCHEDULE = {
+        'generate-daily-report': {
+            'task': 'reports.tasks.generate_scheduled_report',
+            'schedule': crontab(hour=REPORT_DAILY_HOUR, minute=REPORT_DAILY_MINUTE),
+            'kwargs': {'period': 'daily'},
+        },
+        'generate-weekly-report': {
+            'task': 'reports.tasks.generate_scheduled_report',
+            'schedule': crontab(
+                hour=REPORT_WEEKLY_HOUR,
+                minute=REPORT_WEEKLY_MINUTE,
+                day_of_week=REPORT_WEEKLY_DAY,
+            ),
+            'kwargs': {'period': 'weekly'},
+        },
+    }
+
+# -----------------------------
 # AI SERVICE SETTINGS
 # -----------------------------
 
-AI_SERVICE_URL = os.getenv('AI_SERVICE_URL', 'http://ai-service:9000/analyze')
+AI_SERVICE_URL = os.getenv('AI_SERVICE_URL', 'http://ai_service:9000/analyze-call')
 AI_SERVICE_API_KEY = os.getenv('AI_SERVICE_API_KEY', '')
 AI_SERVICE_TIMEOUT = int(os.getenv('AI_SERVICE_TIMEOUT', '120'))
 

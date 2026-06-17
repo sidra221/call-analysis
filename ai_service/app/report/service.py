@@ -41,7 +41,9 @@ RETRY_DELAY = 1.5
 REQUEST_TIMEOUT = 25
 
 FALLBACK_RESPONSE = {
-    "repeated_issues": []
+    "repeated_issues": [],
+    "positives": "",
+    "recommendations": "",
 }
 
 # ─────────────────────────────────────────
@@ -81,6 +83,11 @@ def validate_report_structure(data: dict) -> bool:
         missing = required_fields - set(issue.keys())
         if missing:
             logger.warning(f"Missing fields: {missing}")
+            return False
+
+    for text_field in ("positives", "recommendations"):
+        if text_field in data and not isinstance(data[text_field], str):
+            logger.warning(f"Invalid type for {text_field}")
             return False
 
     return True

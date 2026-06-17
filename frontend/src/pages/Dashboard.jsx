@@ -19,6 +19,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { dashboardApi } from 'api/api';
 import { getSentimentChipColor } from 'constants/status';
+import { formatKeywords } from 'utils/keywords';
 import StatusChip from 'ui-component/StatusChip';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import {
@@ -357,9 +358,7 @@ export default function Dashboard() {
       is_reviewed: call.analysis?.is_reviewed || false,
       issue: call.analysis?.main_issue || '',
       transcript: call.analysis?.transcript || '',
-      keywords: Array.isArray(call.analysis?.keywords)
-        ? call.analysis.keywords.join(', ')
-        : '',
+      keywords: formatKeywords(call.analysis?.keywords),
       uploadedBy: call.uploaded_by_username || '',
       uploadedByRole: call.uploaded_by_role || 'qa',
       createdAt: call.created_at ? call.created_at.split('T')[0] : '',

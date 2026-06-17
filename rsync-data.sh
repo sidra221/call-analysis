@@ -8,7 +8,7 @@
 #   ./rsync-data.sh --dry-run
 #   ./rsync-data.sh --no-deploy   # sync only, skip restart
 #
-# Deploy restarts web + frontend only (not ai_service).
+# Deploy restarts web, frontend, celery, redis, and ai_service via scripts/remote-deploy.sh.
 #
 set -euo pipefail
 
@@ -144,11 +144,22 @@ AI_SERVICE_EXCLUDES=(
 )
 
 echo "→ Remote:     $REMOTE"
+echo "→ Root:       scripts/, docker-compose*.yml"
 echo "→ ai_service: $ROOT/ai_service/"
 echo "→ Backend:    $ROOT/backend/"
 echo "→ Frontend:   $ROOT/frontend/"
 [[ "$DRY_RUN" -eq 1 ]] && echo "(dry run — no files changed)"
 echo
+
+ssh -o ControlPath="$SSH_SOCKET" "$REMOTE_HOST" "mkdir -p ${REMOTE_DIR}/scripts"
+
+"${RSYNC[@]}" "${COMMON_EXCLUDES[@]}" \
+  "$ROOT/scripts/" "$REMOTE/scripts/"
+
+"${RSYNC[@]}" "${COMMON_EXCLUDES[@]}" \
+  "$ROOT/docker-compose.yml" \
+  "$ROOT/docker-compose.prod.yml" \
+  "$REMOTE/"
 
 "${RSYNC[@]}" "${AI_SERVICE_EXCLUDES[@]}" \
   "$ROOT/ai_service/" "$REMOTE/ai_service/"
@@ -168,13 +179,12 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
 fi
 
 if [[ "$DEPLOY" -eq 1 ]]; then
-  echo "→ Restarting web + frontend on server: $REMOTE_DIR (ai_service unchanged)"
+  echo "→ Deploying on server: $REMOTE_DIR (web, frontend, celery, redis, ai_service)"
   ssh -o ControlPath="$SSH_SOCKET" "$REMOTE_HOST" bash -s <<EOF
 set -euo pipefail
 cd ${REMOTE_DIR}
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build web frontend
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T web \
-  python manage.py migrate --noinput --skip-checks
+chmod +x scripts/remote-deploy.sh
+./scripts/remote-deploy.sh
 EOF
   echo "Deploy done."
 else

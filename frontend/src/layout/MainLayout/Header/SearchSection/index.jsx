@@ -21,6 +21,7 @@ import Transitions from 'ui-component/extended/Transitions';
 import useSearchStore from 'hooks/useSearchStore';
 import useCallsStore from 'hooks/useCallsStore';
 import useUsersStore from 'hooks/useUsersStore';
+import { formatKeywords } from 'utils/keywords';
 import menuItems from 'menu-items';
 import SearchList from './SearchList';
 
@@ -200,9 +201,7 @@ export default function SearchSection() {
           ''
         ).toLowerCase();
 
-        const keywords = Array.isArray(call?.analysis?.keywords)
-          ? call.analysis.keywords.join(', ').toLowerCase()
-          : String(call?.keywords || '').toLowerCase();
+        const keywords = formatKeywords(call?.analysis?.keywords ?? call?.keywords).toLowerCase();
 
         if (
           callId.includes(searchLower) ||

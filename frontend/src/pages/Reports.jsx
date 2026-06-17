@@ -741,25 +741,6 @@ export default function Reports() {
               </Box>
             )}
             <Stack spacing={3} mt={1}>
-              <TextField
-                label="Summary (Issues & Solutions)" multiline minRows={3}
-                value={selectedReport.summary || ''}
-                onChange={(e) => handleFieldChange('summary', e.target.value)}
-                disabled={!isEditable} fullWidth
-              />
-              <TextField
-                label="Positives" multiline minRows={2}
-                value={selectedReport.positives || ''}
-                onChange={(e) => handleFieldChange('positives', e.target.value)}
-                disabled={!isEditable} fullWidth
-              />
-              <TextField
-                label="Recommendations" multiline minRows={2}
-                value={selectedReport.recommendations || ''}
-                onChange={(e) => handleFieldChange('recommendations', e.target.value)}
-                disabled={!isEditable} fullWidth
-              />
-
               {(selectedReport.manager_notes || '').trim() && (
                 <Alert severity="info">
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
@@ -775,6 +756,29 @@ export default function Reports() {
                   )}
                 </Alert>
               )}
+
+              <TextField
+                label="Summary (Issues & Solutions)" multiline minRows={3}
+                value={selectedReport.summary || ''}
+                onChange={(e) => handleFieldChange('summary', e.target.value)}
+                disabled={!isEditable} fullWidth
+              />
+              <TextField
+                label="Positives"
+                placeholder="Positive highlights and strengths observed in calls (e.g. good resolutions, satisfied customers)"
+                multiline minRows={2}
+                value={selectedReport.positives || ''}
+                onChange={(e) => handleFieldChange('positives', e.target.value)}
+                disabled={!isEditable} fullWidth
+              />
+              <TextField
+                label="Recommendations"
+                placeholder="General improvement recommendations for QA, training, and operations"
+                multiline minRows={2}
+                value={selectedReport.recommendations || ''}
+                onChange={(e) => handleFieldChange('recommendations', e.target.value)}
+                disabled={!isEditable} fullWidth
+              />
 
               <Divider />
 

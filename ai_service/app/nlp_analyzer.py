@@ -36,6 +36,8 @@ log = logging.getLogger("call_nlp_v8")
 # ───────────────────────────────────────────────────────────────
 PRIORITY_LEVELS = ["low", "medium", "high", "critical"]
 MAX_KEYWORDS    = 12
+DISPLAY_KEYWORDS_MIN = 3
+DISPLAY_KEYWORDS_MAX = 4
 CHUNK_WORDS     = 180
 OVERLAP_WORDS   = 40
 SEM_THRESHOLD   = 0.72
@@ -256,6 +258,19 @@ DOMAIN_REGISTRY: List[Tuple[str, str, str, int, bool]] = [
     ("pending",             "technical",  "medium",    5, True),   # ambiguous
     ("nothing seems to work","technical", "medium",    8, False),
     ("keep getting",        "technical",  "medium",    7, False),
+    ("server is down",      "technical",  "high",      9, False),
+    ("system is down",      "technical",  "high",      9, False),
+    ("data loss",           "technical",  "high",      9, False),
+    ("lost access",         "technical",  "high",      8, False),
+    ("critical issue",      "technical",  "medium",    8, False),
+    ("business operations", "technical",  "medium",    7, False),
+    ("technical support",   "technical",  "medium",    7, False),
+    ("back online",         "technical",  "medium",    7, False),
+    ("major problem",       "technical",  "medium",    8, False),
+    ("outage",              "technical",  "high",      8, False),
+    ("service interruption","technical",  "high",      9, False),
+    ("account recovery",    "account",    "medium",    8, False),
+    ("billing inquiry",     "financial",  "medium",    7, False),
     # Delivery — ONLY unambiguous forms (tracking-specific)
     ("hasn't updated",      "delivery",   "medium",    7, False),
     ("tracking number",     "delivery",   "low",       6, False),
@@ -317,6 +332,7 @@ DOMAIN_REGISTRY: List[Tuple[str, str, str, int, bool]] = [
     ("escalate",            "escalation", "high",      7, False),
     ("not resolved",        "escalation", "high",      7, False),
     ("still waiting",       "escalation", "high",      6, False),
+    ("immediate assistance","escalation", "high",      8, False),
     ("every time i call",   "escalation", "high",      8, False),
     ("fourth time",         "escalation", "high",      7, False),
     ("nothing gets fixed",  "escalation", "high",      8, False),
@@ -344,6 +360,69 @@ _KW_STOPWORDS: Set[str] = {
     "friday", "saturday", "sunday", "week", "month", "year",
     "time", "times", "day", "days", "hour", "hours", "minute",
     "call", "calling", "name", "number",
+}
+
+_KW_GENERIC_BLACKLIST: Set[str] = {
+    "issue", "problem", "online", "order", "access", "connect", "operation",
+    "lose", "lost", "help", "back", "get", "work", "working", "system",
+}
+
+_KW_PHRASE_ANCHORS: Set[str] = {
+    "server", "system", "data", "access", "payment", "account", "refund",
+    "withdrawal", "delivery", "tracking", "support", "network", "error",
+    "business", "fraud", "blocked", "down", "crash", "invoice", "billing",
+}
+
+_NEG_KW_CATEGORIES: Set[str] = {"scam", "fraud", "legal", "anger", "escalation"}
+_POS_KW_CATEGORIES: Set[str] = {"satisfaction", "positive_feedback"}
+_PROBLEM_CATEGORIES: Set[str] = {"technical", "account", "financial", "delivery", "fraud", "scam"}
+_INTENT_CATEGORIES: Set[str] = {"escalation", "sales_inquiry"}
+
+_SPACY_EXCLUDED_ENTITY_LABELS: Set[str] = {
+    "PERSON", "CARDINAL", "DATE", "TIME", "ORDINAL", "MONEY",
+}
+
+_REFERENCE_PHRASES_EXACT: Set[str] = {
+    "order number", "ticket number", "customer number", "reference number",
+    "phone number", "account number", "tracking number", "confirmation number",
+    "serial number", "case number", "invoice number", "my order number",
+    "the order number", "your order number",
+}
+
+_REFERENCE_SUFFIX_RE = re.compile(
+    r"\b(number|id|code|reference|identifier)s?\s*$",
+    re.IGNORECASE,
+)
+
+_INTENT_PHRASE_HINTS: Tuple[str, ...] = (
+    "technical support", "immediate assistance", "back online",
+    "account recovery", "billing inquiry", "escalate", "supervisor", "manager",
+)
+
+_PROBLEM_PHRASE_HINTS: Tuple[str, ...] = (
+    "system is down", "critical issue", "lost access", "major problem",
+    "data loss", "outage", "service interruption", "not working", "error",
+    "failed", "down", "blocked", "offline",
+)
+
+# Shown only if fewer than DISPLAY_KEYWORDS_MIN candidates remain
+_LOW_VALUE_DISPLAY_PHRASES: Set[str] = {
+    "business operations", "our business operations", "back online",
+    "get this back online", "major problem", "a major problem",
+}
+
+_ROLE_DISPLAY_BONUS: Dict[str, float] = {
+    "problem":  100.0,
+    "intent":    60.0,
+    "negative":  40.0,
+    "positive":  40.0,
+}
+
+_ROLE_DISPLAY_QUOTAS: Dict[str, int] = {
+    "problem":  2,
+    "intent":   2,
+    "negative": 1,
+    "positive": 2,
 }
 
 _TIME_PATTERN = re.compile(
@@ -439,14 +518,393 @@ def _safe_get_language(data: dict) -> str:
 def _is_time_phrase(text: str) -> bool:
     return bool(_TIME_PATTERN.fullmatch(text.strip()))
 
+def _phrase_pattern(phrase: str) -> re.Pattern:
+    escaped = re.escape(phrase.lower().strip())
+    body = escaped.replace(r"\ ", r"\s+") if " " in phrase.strip() else escaped
+    return re.compile(r"(?<!\w)" + body + r"(?!\w)", re.IGNORECASE)
+
+def _phrase_in_text(phrase: str, text_lower: str) -> bool:
+    if not phrase or not text_lower:
+        return False
+    return bool(_phrase_pattern(phrase).search(text_lower))
+
+def _phrase_span(phrase: str, text_lower: str) -> Tuple[int, int]:
+    match = _phrase_pattern(phrase).search(text_lower)
+    if not match:
+        return -1, -1
+    return match.start(), match.end()
+
+def _is_generic_kw(text: str) -> bool:
+    t = text.lower().strip()
+    return t in _KW_GENERIC_BLACKLIST
+
+def _clean_keyphrase(text: str) -> str:
+    cleaned = re.sub(
+        r"^(a|an|the|my|our|your|their|this|that)\s+",
+        "",
+        text.strip(),
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
+
+def _category_polarity(category: str) -> str:
+    if category in _NEG_KW_CATEGORIES:
+        return "negative"
+    if category in _POS_KW_CATEGORIES:
+        return "positive"
+    return "neutral"
+
+def _domain_weight(weight: int, category: str, sentiment: str) -> int:
+    if sentiment == "negative" and category in _NEG_KW_CATEGORIES | {"technical", "account"}:
+        return weight + 3
+    if sentiment == "positive" and category in _POS_KW_CATEGORIES:
+        return weight + 3
+    return weight
+
+def _extract_merged_phrases(text: str) -> List[str]:
+    """Build bigrams/trigrams anchored on domain-relevant terms."""
+    found: List[str] = []
+    seen: Set[str] = set()
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    for sentence in sentences:
+        clean = re.sub(r"[^\w\s']", " ", sentence.lower())
+        words = [w for w in clean.split() if w]
+        for size in (3, 2):
+            for i in range(len(words) - size + 1):
+                chunk = words[i:i + size]
+                if not any(w in _KW_PHRASE_ANCHORS for w in chunk):
+                    continue
+                phrase = _clean_keyphrase(" ".join(chunk))
+                key = phrase.lower()
+                if key in seen or not _valid_keyphrase(phrase) or _is_reference_phrase(phrase):
+                    continue
+                seen.add(key)
+                found.append(phrase)
+    return found
+
 def _valid_kw(text: str) -> bool:
     t = text.lower().strip()
     if len(t) < 3:                         return False
     if t in _KW_STOPWORDS:                 return False
+    if _is_generic_kw(text):               return False
     if _is_time_phrase(t):                 return False
     if all(c in ".,!?;:-" for c in t):    return False
     if re.fullmatch(r"\d+", t):            return False
     return True
+
+def _valid_keyphrase(text: str) -> bool:
+    if not _valid_kw(text):
+        return False
+    t = text.lower().strip()
+    if re.match(r"^(with|and|or|to|for|in|on|at|the|is)\s", t):
+        return False
+    words = t.split()
+    edge_stop = {"is", "and", "or", "the", "a", "an", "to", "for", "in", "on", "at"}
+    if words[0] in edge_stop or words[-1] in edge_stop:
+        return False
+    digit_words = [w for w in words if re.fullmatch(r"\d+", w)]
+    if len(digit_words) > 1:
+        return False
+    if digit_words and not any(x in t for x in ("order", "server", "account", "phone")):
+        return False
+    if "'" in t:
+        return False
+    return True
+
+def _contains_digits(text: str) -> bool:
+    return any(ch.isdigit() for ch in text)
+
+
+def _is_reference_phrase(text: str) -> bool:
+    """Identifying / reference phrases — not analytically useful as keywords."""
+    t = _clean_keyphrase(text).lower().strip()
+    if not t:
+        return True
+    if t in _REFERENCE_PHRASES_EXACT:
+        return True
+    if _REFERENCE_SUFFIX_RE.search(t):
+        return True
+    if _contains_digits(text):
+        return True
+    return False
+
+
+def _is_excluded_entity(ent) -> bool:
+    if ent.label_ in _SPACY_EXCLUDED_ENTITY_LABELS:
+        return True
+    if _contains_digits(ent.text):
+        return True
+    return False
+
+
+def _keyword_role(text: str, category: str, polarity: str, primary_issue: str) -> str:
+    if _is_reference_phrase(text):
+        return ""
+    tl = text.lower()
+    if category in _POS_KW_CATEGORIES or polarity == "positive":
+        return "positive"
+    if category in _INTENT_CATEGORIES or any(h in tl for h in _INTENT_PHRASE_HINTS):
+        return "intent"
+    if any(h in tl for h in _PROBLEM_PHRASE_HINTS):
+        return "problem"
+    if polarity == "negative" or category in _NEG_KW_CATEGORIES:
+        return "negative"
+    if category in _PROBLEM_CATEGORIES or category == primary_issue:
+        return "problem"
+    return ""
+
+
+def _is_analytical_candidate(text: str, from_domain: bool = False) -> bool:
+    """Reject reference/identity noise; allow domain registry matches."""
+    if from_domain and not _is_reference_phrase(text):
+        return True
+    if _is_reference_phrase(text):
+        return False
+    if from_domain:
+        return True
+    # spaCy-derived candidates must be multi-word analytical phrases
+    if len(text.split()) < 2:
+        return False
+    return True
+
+
+def _drop_subsumed(phrases: List[str]) -> List[str]:
+    """Remove shorter keywords absorbed by a longer phrase in the same bucket."""
+    kept: List[str] = []
+    lower = [p.lower() for p in phrases]
+    for i, phrase in enumerate(phrases):
+        pl = lower[i]
+        if any(
+            j != i and len(lower[j]) > len(pl) and _phrase_in_text(pl, lower[j])
+            for j in range(len(phrases))
+        ):
+            continue
+        kept.append(phrase)
+    return kept
+
+
+def _phrase_frequency(phrase: str, text_lower: str) -> int:
+    return max(1, len(_phrase_pattern(phrase).findall(text_lower)))
+
+
+def _lookup_phrase_category(text: str, categories: Dict[str, List[str]]) -> str:
+    tl = text.lower()
+    for cat, phrases in categories.items():
+        for p in phrases:
+            if p.lower() == tl:
+                return cat
+    return ""
+
+
+def _resolve_phrase_polarity(
+    text: str,
+    domain_pol: str,
+    call_sentiment: str,
+) -> str:
+    if domain_pol in ("negative", "positive"):
+        return domain_pol
+    pol, compound = _vader_sentiment(text)
+    if pol != "neutral":
+        return pol
+    if call_sentiment == "negative" and compound <= -0.08:
+        return "negative"
+    if call_sentiment == "positive" and compound >= 0.08:
+        return "positive"
+    return "neutral"
+
+
+def _candidate_score(
+    base_weight: float,
+    text: str,
+    polarity: str,
+    category: str,
+    freq: int,
+    call_sentiment: str,
+    primary_issue: str,
+) -> float:
+    _, compound = _vader_sentiment(text)
+    score = base_weight + freq * 2.5 + abs(compound) * 4.0
+    if polarity == call_sentiment:
+        score += 5.0
+    if category and category == primary_issue:
+        score += 6.0
+    if call_sentiment == "negative" and category in _NEG_KW_CATEGORIES | {"technical", "account", "financial"}:
+        score += 3.0
+    if call_sentiment == "positive" and category in _POS_KW_CATEGORIES:
+        score += 3.0
+    return score
+
+
+def _display_polarity(polarity: str, call_sentiment: str, category: str, primary_issue: str) -> str:
+    if call_sentiment == "negative" and category and category == primary_issue:
+        return "negative"
+    if call_sentiment == "positive" and category in _POS_KW_CATEGORIES:
+        return "positive"
+    return polarity
+
+
+def _build_display_keywords(
+    ranked: List[Tuple[float, str, str, str]],
+    call_sentiment: str,
+    primary_issue: str,
+    max_display: int = DISPLAY_KEYWORDS_MAX,
+) -> List[Dict[str, str]]:
+    """
+    Top 3–4 keywords for UI: score-ranked within role priority
+    (problem → intent → negative/positive). Low-value phrases omitted
+    unless needed to reach DISPLAY_KEYWORDS_MIN.
+    """
+    role_pick_order = ("problem", "intent", "negative", "positive")
+    candidates: List[Tuple[float, float, str, str, str, str]] = []
+
+    for raw_score, text, pol, cat in ranked:
+        if _is_reference_phrase(text):
+            continue
+        role = _keyword_role(text, cat, pol, primary_issue)
+        if not role:
+            continue
+        if call_sentiment == "negative" and role == "positive":
+            continue
+        if call_sentiment == "positive" and role in ("problem", "negative"):
+            continue
+        tl = text.lower()
+        low_value = tl in _LOW_VALUE_DISPLAY_PHRASES
+        effective = raw_score + _ROLE_DISPLAY_BONUS.get(role, 0.0)
+        if low_value:
+            effective -= 80.0
+        candidates.append((effective, raw_score, text, pol, cat, role))
+
+    if not candidates:
+        return []
+
+    by_role: Dict[str, List[Tuple]] = {r: [] for r in role_pick_order}
+    for item in sorted(candidates, key=lambda x: x[0], reverse=True):
+        by_role.setdefault(item[5], []).append(item)
+
+    display: List[Dict[str, str]] = []
+    seen: Set[str] = set()
+    role_counts: Dict[str, int] = {r: 0 for r in role_pick_order}
+
+    def _add(item: Tuple[float, float, str, str, str, str]) -> None:
+        _eff, raw_score, text, pol, cat, role = item
+        key = text.lower()
+        if key in seen or len(display) >= max_display:
+            return
+        seen.add(key)
+        cat_label = cat or primary_issue or ""
+        display.append({
+            "text": text,
+            "polarity": _display_polarity(pol, call_sentiment, cat_label, primary_issue),
+            "category": cat_label,
+            "keyword_role": role,
+            "score": round(raw_score, 1),
+        })
+        role_counts[role] = role_counts.get(role, 0) + 1
+
+    # Pass 1 — role quotas (problem first, then intent, …)
+    for role in role_pick_order:
+        quota = _ROLE_DISPLAY_QUOTAS.get(role, 1)
+        for item in by_role.get(role, []):
+            if role_counts.get(role, 0) >= quota:
+                break
+            if item[2].lower() in _LOW_VALUE_DISPLAY_PHRASES:
+                continue
+            _add(item)
+
+    # Pass 2 — fill to MIN with best remaining scores (skip low-value)
+    if len(display) < DISPLAY_KEYWORDS_MIN:
+        for item in sorted(candidates, key=lambda x: x[0], reverse=True):
+            if len(display) >= DISPLAY_KEYWORDS_MIN:
+                break
+            if item[2].lower() in _LOW_VALUE_DISPLAY_PHRASES:
+                continue
+            _add(item)
+
+    # Pass 3 — fill to MAX if strong candidates remain
+    for item in sorted(candidates, key=lambda x: x[0], reverse=True):
+        if len(display) >= max_display:
+            break
+        if item[2].lower() in _LOW_VALUE_DISPLAY_PHRASES:
+            continue
+        _add(item)
+
+    texts = [d["text"] for d in display]
+    kept = _drop_subsumed(texts)
+    display = [d for d in display if d["text"] in kept]
+
+    # Re-sort final list by effective score (problem/intent first)
+    score_map = {c[2].lower(): c[0] for c in candidates}
+    display.sort(key=lambda d: score_map.get(d["text"].lower(), 0), reverse=True)
+    return display[:max_display]
+
+
+def _finalize_keyword_buckets(
+    pool: List[Tuple[float, str, str]],
+    phrase_categories: Dict[str, str],
+    transcript: str,
+    categories: Dict[str, List[str]],
+    domain_keys: Set[str],
+    call_sentiment: str,
+    issue_types: List[str],
+    max_kw: int,
+) -> Dict:
+    t_lower = transcript.lower()
+    primary_issue = issue_types[0] if issue_types else "general"
+    ranked: List[Tuple[float, str, str, str]] = []
+
+    for base_weight, text, domain_pol in pool:
+        if _is_reference_phrase(text):
+            continue
+        cat = phrase_categories.get(text.lower()) or _lookup_phrase_category(text, categories)
+        pol = _resolve_phrase_polarity(text, domain_pol, call_sentiment)
+        freq = _phrase_frequency(text, t_lower)
+        score = _candidate_score(base_weight, text, pol, cat, freq, call_sentiment, primary_issue)
+        ranked.append((score, text, pol, cat))
+
+    ranked.sort(key=lambda x: x[0], reverse=True)
+
+    for phrase, category, _, weight, needs_ctx in sorted(
+        DOMAIN_REGISTRY, key=lambda x: x[3], reverse=True
+    ):
+        if phrase.lower() not in domain_keys:
+            continue
+        if _is_reference_phrase(phrase):
+            continue
+        if needs_ctx and _is_nullified(phrase, t_lower):
+            continue
+        pol = _category_polarity(category)
+        entry = (float(weight + 25), phrase, pol, category)
+        ranked = [entry] + [r for r in ranked if r[1].lower() != phrase.lower()]
+
+    neg, pos, neu = [], [], []
+    for _, text, pol, _cat in ranked:
+        if _is_reference_phrase(text):
+            continue
+        if pol == "negative" and len(neg) < max_kw:
+            neg.append(text)
+        elif pol == "positive" and len(pos) < max_kw:
+            pos.append(text)
+        elif pol == "neutral" and len(neu) < max_kw:
+            neu.append(text)
+
+    neg = _drop_subsumed(neg)
+    pos = _drop_subsumed(pos)
+    neu = _drop_subsumed(neu)
+
+    display = _build_display_keywords(ranked, call_sentiment, primary_issue)
+    top_neg, top_issue = _find_top_phrases(transcript)
+
+    return {
+        "negative":            neg,
+        "positive":            pos,
+        "neutral":             neu,
+        "categories":          {k: v for k, v in categories.items() if v},
+        "primary_polarity":    call_sentiment,
+        "primary_issue_type":  primary_issue,
+        "display":             display,
+        "top_negative_phrase": top_neg,
+        "top_issue_phrase":    top_issue,
+    }
 
 
 # ───────────────────────────────────────────────────────────────
@@ -589,11 +1047,11 @@ def _is_nullified(phrase: str, text_lower: str) -> bool:
     info = _AMBIGUOUS_WORDS.get(phrase)
     if not info:
         return False
-    idx = text_lower.find(phrase)
-    if idx == -1:
+    start, end = _phrase_span(phrase, text_lower)
+    if start == -1:
         return False
-    window_start = max(0, idx - 80)
-    window_end   = min(len(text_lower), idx + len(phrase) + 80)
+    window_start = max(0, start - 80)
+    window_end   = min(len(text_lower), end + 80)
     window = text_lower[window_start:window_end]
     return any(n in window for n in info["nullifiers"])
 
@@ -665,7 +1123,7 @@ def _detect_domains(text: str) -> Dict[str, List[str]]:
     for phrase, category, _, _, needs_ctx in sorted(
         DOMAIN_REGISTRY, key=lambda x: len(x[0]), reverse=True
     ):
-        if phrase not in t:
+        if not _phrase_in_text(phrase, t):
             continue
         # Context check for ambiguous words
         if needs_ctx and _is_nullified(phrase, t):
@@ -1068,69 +1526,77 @@ def _mmr_select(
     return [candidates[i] for i in selected_idx]
 
 
-def extract_keywords(transcript: str, domains: Dict[str, List[str]], max_kw: int = MAX_KEYWORDS) -> Dict:
+def extract_keywords(
+    transcript: str,
+    domains: Dict[str, List[str]],
+    max_kw: int = MAX_KEYWORDS,
+    sentiment: str = "neutral",
+    issue_types: Optional[List[str]] = None,
+) -> Dict:
     empty: Dict = {
         "negative": [], "positive": [], "neutral": [],
         "categories": {}, "top_negative_phrase": "", "top_issue_phrase": "",
+        "primary_polarity": sentiment,
+        "primary_issue_type": (issue_types[0] if issue_types else "general"),
+        "display": [],
     }
     if not transcript:
         return empty
 
+    issue_types = issue_types or []
     t_lower = transcript.lower()
     seen: Set[str] = set()
     pool: List[Tuple[float, str, str]] = []
+    domain_keys: Set[str] = set()
+    phrase_categories: Dict[str, str] = {}
 
     categories: Dict[str, List[str]] = {}
     for phrase, category, _, _, needs_ctx in DOMAIN_REGISTRY:
-        if phrase in t_lower and not (needs_ctx and _is_nullified(phrase, t_lower)):
+        if _phrase_in_text(phrase, t_lower) and not (needs_ctx and _is_nullified(phrase, t_lower)):
             categories.setdefault(category, []).append(phrase)
     for cat in categories:
         categories[cat] = list(dict.fromkeys(categories[cat]))
 
-    # Layer 1 — Domain phrases (verified — not nullified)
+    # Layer 1 — Domain phrases (word-boundary matched, context verified)
     for phrase, category, _, weight, needs_ctx in sorted(
         DOMAIN_REGISTRY, key=lambda x: x[3], reverse=True
     ):
-        if phrase not in t_lower:
+        if not _phrase_in_text(phrase, t_lower):
             continue
         if needs_ctx and _is_nullified(phrase, t_lower):
             continue
         key = phrase.lower()
-        if key not in seen and _valid_kw(phrase):
+        if key not in seen and _valid_kw(phrase) and not _is_reference_phrase(phrase):
             seen.add(key)
-            polarity = (
-                "negative" if category in {"scam","fraud","legal","anger","escalation"}
-                else "positive" if category in {"satisfaction", "positive_feedback"}
-                else "neutral"
-            )
-            pool.append((weight, phrase, polarity))
+            domain_keys.add(key)
+            phrase_categories[key] = category
+            w = _domain_weight(weight, category, sentiment)
+            pool.append((float(w + 20), phrase, _category_polarity(category)))
 
-    # Layer 2-4 — spaCy
+    # Layer 2 — Merged adjacent phrases (bigrams/trigrams)
+    for phrase in _extract_merged_phrases(transcript):
+        key = phrase.lower()
+        if key not in seen and _is_analytical_candidate(phrase):
+            seen.add(key)
+            pool.append((8.0, phrase, "neutral"))
+
+    # Layer 3 — spaCy noun chunks only (no raw entities / single tokens)
     if _nlp:
         try:
             doc = _nlp(transcript)
-            for ent in doc.ents:
-                text = ent.text.strip()
-                key  = text.lower()
-                if key not in seen and _valid_kw(text) and not _is_time_phrase(text):
-                    seen.add(key)
-                    pool.append((9, text, "neutral"))
             for chunk in doc.noun_chunks:
-                text = chunk.text.strip()
+                text = _clean_keyphrase(chunk.text.strip())
                 key  = text.lower()
-                if key not in seen and len(text.split()) >= 2 and _valid_kw(text) and not _is_time_phrase(text):
+                if (
+                    key not in seen
+                    and len(text.split()) >= 2
+                    and _valid_keyphrase(text)
+                    and not _is_time_phrase(text)
+                    and not _is_reference_phrase(text)
+                    and _is_analytical_candidate(text)
+                ):
                     seen.add(key)
-                    pool.append((7, text, "neutral"))
-            for token in doc:
-                if token.is_stop or token.is_punct or token.is_space:
-                    continue
-                if token.pos_ not in {"NOUN", "PROPN", "VERB"}:
-                    continue
-                lemma = token.lemma_.strip()
-                key   = lemma.lower()
-                if key not in seen and _valid_kw(lemma) and not _is_time_phrase(lemma):
-                    seen.add(key)
-                    pool.append((5 if token.ent_type_ else 4, lemma, "neutral"))
+                    pool.append((6.0, text, "neutral"))
         except Exception as exc:
             log.warning("spaCy keyword pass failed: %s", exc)
 
@@ -1140,46 +1606,48 @@ def extract_keywords(transcript: str, domains: Dict[str, List[str]], max_kw: int
             for text in items:
                 if _valid_kw(text) and len(neu) < max_kw:
                     neu.append(text)
-        top_neg, top_issue = _find_top_phrases(transcript)
-        return {
-            "negative": [],
-            "positive": [],
-            "neutral": neu,
-            "categories": {k: v for k, v in categories.items() if v},
-            "top_negative_phrase": top_neg,
-            "top_issue_phrase": top_issue,
-        }
+        result = _finalize_keyword_buckets(
+            [(10.0, t, "neutral") for t in neu],
+            phrase_categories,
+            transcript,
+            categories,
+            domain_keys,
+            sentiment,
+            issue_types,
+            max_kw,
+        )
+        return result
 
-    # Layer 5 — MMR
-    if _embedder and len(pool) > max_kw:
+    # Layer 6 — MMR diversity selection
+    mmr_limit = max_kw * 3
+    if _embedder and len(pool) > mmr_limit:
         try:
             candidates = [text for _, text, _ in pool]
             pol_map    = {text: pol for _, text, pol in pool}
+            weight_map = {text: w for w, text, _ in pool}
             doc_emb    = _embedder.encode(transcript, convert_to_numpy=True)
             cand_embs  = _embedder.encode(candidates, convert_to_numpy=True)
-            selected   = _mmr_select(doc_emb, cand_embs, candidates, max_kw * 2)
-            pool = [(10, text, pol_map.get(text, "neutral")) for text in selected]
+            selected   = _mmr_select(doc_emb, cand_embs, candidates, mmr_limit)
+            pool = [
+                (weight_map.get(text, 5.0), text, pol_map.get(text, "neutral"))
+                for text in selected
+            ]
         except Exception as exc:
             log.warning("MMR failed: %s", exc)
             pool.sort(key=lambda x: x[0], reverse=True)
     else:
         pool.sort(key=lambda x: x[0], reverse=True)
 
-    neg, pos, neu = [], [], []
-    for _, text, polarity in pool:
-        if polarity == "negative" and len(neg) < max_kw:    neg.append(text)
-        elif polarity == "positive" and len(pos) < max_kw:  pos.append(text)
-        elif polarity == "neutral" and len(neu) < max_kw:   neu.append(text)
-
-    top_neg, top_issue = _find_top_phrases(transcript)
-    return {
-        "negative":            neg,
-        "positive":            pos,
-        "neutral":             neu,
-        "categories":          {k: v for k, v in categories.items() if v},
-        "top_negative_phrase": top_neg,
-        "top_issue_phrase":    top_issue,
-    }
+    return _finalize_keyword_buckets(
+        pool,
+        phrase_categories,
+        transcript,
+        categories,
+        domain_keys,
+        sentiment,
+        issue_types,
+        max_kw,
+    )
 
 def _find_top_phrases(transcript: str) -> Tuple[str, str]:
     if not _nlp or not transcript:
@@ -1412,7 +1880,10 @@ def analyze_call_nlp(data: dict) -> dict:
 
     issue_types = get_issue_types(domains, zs_results, sentiment)
     main_issue  = build_main_issue(transcript, customer_text, domains, issue_types, sentiment)
-    keywords    = extract_keywords(transcript, domains)
+    kw_source   = customer_text or transcript
+    keywords    = extract_keywords(
+        kw_source, domains, sentiment=sentiment, issue_types=issue_types,
+    )
     priority    = infer_priority(sentiment, transcript, domains, issue_types)
     needs_fu    = infer_followup(sentiment, priority, transcript, domains, issue_types)
     confidence  = compute_confidence(roberta_prob, domains, transcript, issue_types, zs_results)
@@ -1433,5 +1904,5 @@ def analyze_call_nlp(data: dict) -> dict:
         "customer_text":     customer_text,
         "confidence_score":  confidence,
         "detected_language": language,
-        "model_used":        "hybrid_optimized_v8.0",
+        "model_used":        "hybrid_optimized_v8.4",
     }

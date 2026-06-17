@@ -32,7 +32,9 @@ class CallAnalysisSerializer(serializers.ModelSerializer):
         model = CallAnalysis
         fields = [
             'id', 'call_id', 'main_issue', 'sentiment', 'sentiment_score',
-            'keywords', 'priority', 'needs_followup', 'is_reviewed',
+            'keywords', 'priority', 'needs_followup', 'followup_reason',
+            'summary', 'meta_intent', 'meta_intents', 'llm_refined',
+            'is_reviewed',
             'transcript', 'confidence_score', 'detected_language',
             'created_at', 'updated_at',
         ]

@@ -149,6 +149,8 @@ def analyze_call(self, call_id: str, force: bool = False):
 
     except Exception as exc:
 
+        logger.exception("analyze_call failed for call %s: %s", call_id, exc)
+
         Call.objects.filter(id=call_id).update(
             status='failed',
             updated_at=timezone.now()

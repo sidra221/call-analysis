@@ -11,8 +11,7 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# React port
+# Vite dev server port
 EXPOSE 3000
 
-# Start React app
 CMD ["npm", "start"]

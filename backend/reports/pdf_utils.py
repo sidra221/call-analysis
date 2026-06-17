@@ -320,12 +320,12 @@ def _generate_with_stdlib(report_data: dict) -> bytes:
         )
     builder.draw_meta_card(meta_rows)
 
+    if (report_data.get('manager_notes') or '').strip():
+        builder.draw_section('Manager Notes', report_data.get('manager_notes'))
+
     builder.draw_section('Summary (Issues and Solutions)', report_data.get('summary'))
     builder.draw_section('Positives', report_data.get('positives'))
     builder.draw_section('Recommendations', report_data.get('recommendations'))
-
-    if (report_data.get('manager_notes') or '').strip():
-        builder.draw_section('Manager Notes', report_data.get('manager_notes'))
 
     sentiment_stats = report_data.get('sentiment_stats') or {}
     if sentiment_stats:
@@ -463,12 +463,12 @@ def _generate_with_reportlab(report_data: dict) -> bytes:
     story.append(meta_table)
     story.append(Spacer(1, 0.2 * inch))
 
+    if (report_data.get('manager_notes') or '').strip():
+        section(story, 'Manager Notes', report_data.get('manager_notes'))
+
     section(story, 'Summary (Issues and Solutions)', report_data.get('summary'))
     section(story, 'Positives', report_data.get('positives'))
     section(story, 'Recommendations', report_data.get('recommendations'))
-
-    if (report_data.get('manager_notes') or '').strip():
-        section(story, 'Manager Notes', report_data.get('manager_notes'))
 
     sentiment_stats = report_data.get('sentiment_stats') or {}
     if sentiment_stats:

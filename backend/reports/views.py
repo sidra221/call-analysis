@@ -1,6 +1,4 @@
 import logging
-import httpx
-from datetime import date
 from io import BytesIO
 
 from rest_framework import viewsets
@@ -17,36 +15,13 @@ from accounts.models import UserProfile
 from .models import Report
 from .serializers import ReportSerializer, ReportGenerateSerializer, ReportAddNotesSerializer
 from .pdf_utils import generate_report_pdf
+from .tasks import generate_report_task
 from calls.pagination import LargeDataPagination
 from config.responses import success_response, error_response
 from logs.utils import create_log
 
 logger = logging.getLogger(__name__)
 
-def _call_ai_for_report(analyses_data: list) -> dict:
-    url = settings.AI_SERVICE_URL.replace('/analyze-call', '') + '/generate-report'
-    timeout = settings.AI_SERVICE_TIMEOUT
-
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-    if settings.AI_SERVICE_API_KEY:
-        headers['Authorization'] = f'Bearer {settings.AI_SERVICE_API_KEY}'
-
-    try:
-        with httpx.Client(timeout=timeout) as client:
-            response = client.post(url, headers=headers, json={"analyses": analyses_data})
-    except httpx.RequestError as e:
-        logger.error(f"[REPORT AI NETWORK ERROR] {str(e)}")
-        raise RuntimeError("AI service network error")
-
-    if response.status_code != 200:
-        logger.error(f"[REPORT AI ERROR] {response.text}")
-        raise RuntimeError(f"AI service error: {response.status_code}")
-
-    try:
-        return response.json()
-    except Exception as e:
-        logger.error(f"[REPORT AI PARSE ERROR] {str(e)}")
-        raise ValueError("Could not parse AI response for report")
 
 class ReportViewSet(viewsets.ModelViewSet):
     """
@@ -178,35 +153,13 @@ class ReportViewSet(viewsets.ModelViewSet):
         date_from = input_serializer.validated_data['date_from']
         date_to = input_serializer.validated_data['date_to']
 
-        # Fetch analyses with all fields needed by AI
-        analyses_data = list(
-            CallAnalysis.objects.filter(
-                call__created_at__date__gte=date_from,
-                call__created_at__date__lte=date_to,
-            ).values('main_issue', 'sentiment', 'keywords', 'needs_followup', 'priority', 'transcript')
-        )
-
-        # Compute statistics
-        top_issues = list(
-            CallAnalysis.objects.filter(
-                call__created_at__date__gte=date_from,
-                call__created_at__date__lte=date_to,
-            ).values('main_issue').annotate(count=Count('id')).order_by('-count')[:5]
-        )
-
-        sentiment_stats = {
-            item['sentiment']: item['count']
-            for item in CallAnalysis.objects.filter(
-                call__created_at__date__gte=date_from,
-                call__created_at__date__lte=date_to,
-            ).values('sentiment').annotate(count=Count('id'))
-        }
-
-        # Call AI Service
         try:
-            ai_content = _call_ai_for_report(analyses_data)
-            repeated_issues = ai_content.get('repeated_issues', [])
-            logger.info(f"[REPORT AI] Got {len(repeated_issues)} repeated issues")
+            report_id = generate_report_task.delay(
+                request.user.id,
+                period,
+                str(date_from),
+                str(date_to),
+            ).get(timeout=settings.AI_SERVICE_TIMEOUT)
         except Exception as e:
             logger.error(f"[REPORT GENERATION ERROR] {str(e)}")
             return error_response(
@@ -215,29 +168,7 @@ class ReportViewSet(viewsets.ModelViewSet):
                 status_code=503
             )
 
-        # Build summary from AI issues
-        summary_lines = [
-            f"• {i.get('issue', '')} (x{i.get('count', 0)}): {i.get('suggested_solution', '')}"
-            for i in repeated_issues
-        ]
-        summary = "\n".join(summary_lines) if summary_lines else "No recurring issues detected."
-
-        # Save as draft
-        report = Report.objects.create(
-            created_by=request.user,
-            period=period,
-            status='draft',
-            date_from=date_from,
-            date_to=date_to,
-            summary=summary,
-            recommendations="",
-            positives="",
-            top_issues=repeated_issues,
-            sentiment_stats=sentiment_stats,
-        )
-
-        create_log(request.user, 'generate_report', f'Generated report #{report.id} for period {period}')
-
+        report = Report.objects.get(id=report_id)
         return success_response(ReportSerializer(report).data, status_code=201)
 
     @action(detail=True, methods=['post'], url_path='publish')

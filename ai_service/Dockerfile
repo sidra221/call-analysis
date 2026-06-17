@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --timeout=120 --retries=5 -r requirements.txt \
-    && pip install --no-cache-dir --force-reinstall thinc spacy blis \
     && python -c "import nltk; nltk.download('vader_lexicon')"
 
 COPY . .

@@ -5,6 +5,8 @@ from typing import Any, Dict
 import httpx
 from django.conf import settings
 
+from config.ai_urls import analyze_call_url
+
 logger = logging.getLogger(__name__)
 
 MOCK_MODE = False
@@ -42,7 +44,7 @@ def analyze_audio_file(audio_path: str) -> Dict[str, Any]:
         logger.info(f"[MOCK MODE] {audio_path}")
         return MOCK_RESPONSE.copy()
 
-    url = settings.AI_SERVICE_URL
+    url = analyze_call_url()
     timeout = settings.AI_SERVICE_TIMEOUT
 
     if not os.path.exists(audio_path):

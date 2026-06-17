@@ -21,10 +21,10 @@ import {
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
   Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Alert, Checkbox
+  DialogActions, Alert, Checkbox, Tooltip
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
-import { formatKeywords, parseKeywords, getKeywordChipColor } from 'utils/keywords';
+import { formatKeywords, parseKeywords, getKeywordChipColor, getKeywordsMeta, formatIssueType } from 'utils/keywords';
 import { callsApi } from 'api/api';
 import {
   TABLE_LAYOUT_SX,
@@ -76,24 +76,42 @@ const CALLS_ACTIONS_CELL_SX = {
 
 function buildNormalizedCall(call) {
   if (!call) return null;
+  const analysis = call.analysis || {};
+
+  const keywordsRaw = analysis.keywords ?? call.keywords;
+  const keywordsMeta = getKeywordsMeta(keywordsRaw);
+  const keywordItems = call.keywordItems?.length
+    ? call.keywordItems
+    : parseKeywords(keywordsRaw);
+
   return {
     ...call,
-    sentiment: call.analysis?.sentiment || 'neutral',
-    priority: call.analysis?.priority || 'low',
-    is_reviewed: call.analysis?.is_reviewed || false,
-    issue: call.analysis?.main_issue || '',
-    transcript: call.analysis?.transcript || '',
-    keywordItems: parseKeywords(call.analysis?.keywords),
-    keywords: formatKeywords(call.analysis?.keywords),
-    uploadedBy: call.uploaded_by_username || '',
-    uploadedByRole: call.uploaded_by_role,
-    uploadedByAvatar: call.uploaded_by_avatar || null,
-    uploadedByAvatarStyle: call.uploaded_by_avatar_style || 'initial',
-    needs_followup: Boolean(call.analysis?.needs_followup),
-    createdAt: call.created_at ? call.created_at.split('T')[0] : '',
+    sentiment: analysis.sentiment || call.sentiment || 'neutral',
+    priority: analysis.priority || call.priority || 'low',
+    is_reviewed: analysis.is_reviewed ?? call.is_reviewed ?? false,
+    issue: analysis.main_issue || call.issue || '',
+    transcript: analysis.transcript || call.transcript || '',
+    keywordItems,
+    keywordsMeta,
+    keywords: call.keywords || formatKeywords(keywordsRaw),
+    uploadedBy: call.uploaded_by_username || call.uploadedBy || '',
+    uploadedByRole: call.uploaded_by_role ?? call.uploadedByRole,
+    uploadedByAvatar: call.uploaded_by_avatar ?? call.uploadedByAvatar ?? null,
+    uploadedByAvatarStyle: call.uploaded_by_avatar_style || call.uploadedByAvatarStyle || 'initial',
+    needs_followup: Boolean(analysis.needs_followup ?? call.needs_followup),
+    followup_reason: analysis.followup_reason || call.followup_reason || '',
+    summary: analysis.summary || call.summary || '',
+    meta_intent: analysis.meta_intent || call.meta_intent || '',
+    meta_intents: Array.isArray(analysis.meta_intents)
+      ? analysis.meta_intents
+      : (Array.isArray(call.meta_intents) ? call.meta_intents : []),
+    llm_refined: Boolean(analysis.llm_refined ?? call.llm_refined),
+    createdAt: call.created_at
+      ? call.created_at.split('T')[0]
+      : (call.createdAt || ''),
     duration: call.duration
       ? `${Math.floor(call.duration / 60)}:${String(Math.round(call.duration % 60)).padStart(2, '0')}`
-      : '00:00',
+      : (call.duration || '00:00'),
   };
 }
 
@@ -147,16 +165,14 @@ export default function Calls() {
       await fetchCalls();
       try {
         const res = await callsApi.get(callId);
-        const fresh = buildNormalizedCall(res?.data || res);
+        const payload = res?.data?.id ? res.data : (res?.data ?? res);
+        const fresh = buildNormalizedCall(payload);
         if (fresh) {
-          if (openViewDrawer && viewingCall?.id === callId) {
-            setViewingCall(fresh);
-            setEditableKeywords(fresh.keywords || '');
-            setEditableIssue(fresh.issue || '');
-            setEditableTranscript(fresh.transcript || '');
-            setEditableSentiment(fresh.sentiment || 'neutral');
-            setEditablePriority(fresh.priority || 'low');
-          }
+          setViewingCall((prev) => {
+            if (String(prev?.id) !== String(callId)) return prev;
+            queueMicrotask(() => initEditableFields(fresh));
+            return fresh;
+          });
         }
       } catch { /* ignore */ }
     }, 1200);
@@ -299,8 +315,9 @@ export default function Calls() {
       state: {
         openCreateFollowup: true,
         callId: call.id,
+        creatorNotes: call.followup_reason || '',
         assignedToUsername: call.uploadedByRole === 'qa' ? call.uploadedBy : undefined,
-      }
+      },
     });
   };
 
@@ -314,29 +331,29 @@ export default function Calls() {
     return (
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle1" sx={{ mb: 1 }}>Follow-up</Typography>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={1}>
-          <Chip label={followUpChip.label} color={followUpChip.color} variant={followUpChip.variant} size="small" />
-          {call.needs_followup && call.status === 'completed' && canCreateFollowup && (
-            <Button
-              variant="contained"
-              size="small"
-              color="warning"
-              startIcon={<IconClipboardText size={16} />}
-              onClick={() => handleAssignFollowup(call)}
-            >
-              Create Follow-up
-            </Button>
-          )}
-        </Stack>
+        <Chip label={followUpChip.label} color={followUpChip.color} variant={followUpChip.variant} size="small" />
+        {call.needs_followup && call.followup_reason ? (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <strong>Reason:</strong> {call.followup_reason}
+          </Typography>
+        ) : call.llm_refined && !call.needs_followup ? (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            LLM: no follow-up needed for this call.
+          </Typography>
+        ) : null}
       </Box>
     );
   };
+
+  const canReanalyze = (call) => (
+    call?.status === 'completed' || call?.status === 'failed'
+  );
 
   const renderDrawerActions = (call) => (
     <>
       <Typography variant="subtitle1" gutterBottom>Actions</Typography>
       <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-        {call.status === 'completed' && !call.keywordItems?.length && (
+        {canReanalyze(call) && (
           <Button
             variant="outlined"
             size="small"
@@ -349,14 +366,39 @@ export default function Calls() {
         )}
         <Button
           variant={call.is_reviewed ? 'contained' : 'outlined'}
-          size="small"
           color={call.is_reviewed ? 'success' : 'primary'}
-          disabled={call.is_reviewed}
-          startIcon={<IconCheck size={16} />}
-          onClick={() => handleMarkReviewed(call.id)}
+          startIcon={<IconCheck size={18} />}
+          onClick={call.is_reviewed ? undefined : () => handleMarkReviewed(call.id)}
+          sx={{
+            ...(call.is_reviewed && {
+              cursor: 'default',
+              pointerEvents: 'none',
+            }),
+            '&:active:not(:disabled)': {
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              borderColor: 'primary.main',
+            },
+          }}
         >
           {call.is_reviewed ? 'Reviewed' : 'Mark Reviewed'}
         </Button>
+        {call.needs_followup && call.status === 'completed' && canCreateFollowup && (
+          <Button
+            variant="outlined"
+            startIcon={<IconClipboardText size={18} />}
+            onClick={() => handleAssignFollowup(call)}
+            sx={{
+              '&:active': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderColor: 'primary.main',
+              },
+            }}
+          >
+            Create Follow-up
+          </Button>
+        )}
       </Stack>
     </>
   );
@@ -389,23 +431,27 @@ export default function Calls() {
   }, [statusFilter, sentimentFilter, priorityFilter, reviewedFilter, needsFollowupFilter, startDate, endDate, userFilter]);
 
   const initEditableFields = (call) => {
-    setEditableTranscript(call.transcript || '');
-    setEditableSentiment(call.sentiment || 'neutral');
-    setEditablePriority(call.priority || 'low');
-    setEditableIssue(call.issue || '');
-    setEditableKeywords(call.keywords || '');
+    const normalized = buildNormalizedCall(call);
+    if (!normalized) return;
+    setEditableTranscript(normalized.transcript || '');
+    setEditableSentiment(normalized.sentiment || 'neutral');
+    setEditablePriority(normalized.priority || 'low');
+    setEditableIssue(normalized.issue || '');
+    setEditableKeywords(normalized.keywords || '');
     setIsDirty(false);
   };
 
   const openCallDrawer = async (call, edit = false) => {
+    const normalized = buildNormalizedCall(call);
     setOpenViewDrawer(true);
-    setViewingCall(buildNormalizedCall(call));
-    initEditableFields(call);
+    setViewingCall(normalized);
+    initEditableFields(normalized);
     setIsEditMode(edit);
     setDrawerLoading(true);
     try {
       const res = await callsApi.get(call.id);
-      const fresh = buildNormalizedCall(res?.data || res);
+      const payload = res?.data?.id ? res.data : (res?.data ?? res);
+      const fresh = buildNormalizedCall(payload);
       if (fresh) {
         setViewingCall(fresh);
         initEditableFields(fresh);
@@ -946,6 +992,22 @@ export default function Calls() {
                   >
                     {isEditMode ? <IconDeviceFloppy size={22} /> : <IconEdit size={18} />}
                   </IconButton>
+                  {canReanalyze(viewingCall) && (
+                    <Tooltip title={reanalyzingId === viewingCall.id ? 'Analyzing…' : 'Re-analyze with AI'}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={reanalyzingId === viewingCall.id || drawerLoading}
+                          onClick={() => handleReanalyze(viewingCall.id)}
+                          sx={{ color: 'primary.main' }}
+                        >
+                          {reanalyzingId === viewingCall.id
+                            ? <CircularProgress size={18} />
+                            : <IconRefresh size={18} />}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  )}
                 </Box>
                 <IconButton onClick={closeCallDrawer} size="small"><IconX size={18} /></IconButton>
               </Box>
@@ -962,6 +1024,12 @@ export default function Calls() {
 
               <Divider sx={{ my: 2 }} />
 
+              {reanalyzingId === viewingCall.id && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Re-analyzing call — this may take 1–2 minutes…
+                </Alert>
+              )}
+
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Main Issue</Typography>
               {isEditMode ? (
                 <TextField
@@ -973,6 +1041,49 @@ export default function Calls() {
                 />
               ) : (
                 <Typography variant="body2" sx={{ mb: 2 }}>{editableIssue || '—'}</Typography>
+              )}
+
+              {(viewingCall.llm_refined || viewingCall.summary || viewingCall.meta_intent) && !isEditMode && (
+                <Box sx={{
+                  mb: 2, p: 1.5, borderRadius: 1,
+                  bgcolor: viewingCall.sentiment === 'negative' ? 'rgba(211, 47, 47, 0.08)' : 'action.hover',
+                  border: '1px solid',
+                  borderColor: viewingCall.sentiment === 'negative' ? 'error.light' : 'divider',
+                }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1, gap: 0.5 }}>
+                    <Typography variant="subtitle1">AI Insights</Typography>
+                    {viewingCall.llm_refined && (
+                      <Chip label="LLM enhanced" size="small" color="info" variant="outlined" />
+                    )}
+                    {viewingCall.meta_intent && (
+                      <Chip
+                        label={viewingCall.meta_intent.replace(/_/g, ' ')}
+                        size="small"
+                        color={viewingCall.sentiment === 'negative' ? 'error' : 'primary'}
+                        sx={{ textTransform: 'capitalize' }}
+                      />
+                    )}
+                  </Stack>
+                  {viewingCall.summary ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {viewingCall.summary}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.disabled" sx={{ mb: 1 }}>
+                      No summary — try Re-analyze (↻).
+                    </Typography>
+                  )}
+                  {viewingCall.followup_reason && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      <strong>Follow-up:</strong> {viewingCall.followup_reason}
+                    </Typography>
+                  )}
+                  {viewingCall.meta_intents?.length > 1 && (
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                      Intents: {viewingCall.meta_intents.join(', ')}
+                    </Typography>
+                  )}
+                </Box>
               )}
 
               <Divider sx={{ my: 2 }} />
@@ -1005,7 +1116,17 @@ export default function Calls() {
 
               <Divider sx={{ my: 2 }} />
 
-              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>Keywords</Typography>
+              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" sx={{ mb: 1.5, gap: 0.5 }}>
+                <Typography variant="subtitle1">Keywords</Typography>
+                {!isEditMode && viewingCall.keywordsMeta?.primary_issue_type && (
+                  <Chip
+                    label={formatIssueType(viewingCall.keywordsMeta.primary_issue_type)}
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
               {isEditMode ? (
                 <TextField
                   fullWidth
@@ -1036,6 +1157,11 @@ export default function Calls() {
               <Divider sx={{ my: 2 }} />
 
               <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
+              {viewingCall.issue === 'Analysis failed' && !editableTranscript && !drawerLoading && (
+                <Alert severity="warning" sx={{ mb: 1.5 }}>
+                  AI analysis failed. Use <strong>Re-analyze</strong> below after the AI service is running.
+                </Alert>
+              )}
               <TextField
                 fullWidth
                 multiline

@@ -164,6 +164,9 @@ export default function Followups() {
     if (location.state?.openCreateFollowup) {
       setOpenCreateDialog(true);
       setCallIdInput(location.state.callId ? String(location.state.callId) : '');
+      if (location.state.creatorNotes) {
+        setCreatorNotes(location.state.creatorNotes);
+      }
       if (location.state.assignedToUsername && users.length) {
         const match = users.find(
           (u) => (u.username || '').toLowerCase() === location.state.assignedToUsername.toLowerCase()

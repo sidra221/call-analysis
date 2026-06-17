@@ -6,6 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 from calls.models import Call, CallAnalysis, FollowUp
+from calls.services import top_keywords_counts
 from accounts.permissions import IsManagerOrQA
 from config.responses import success_response, error_response
 
@@ -31,21 +32,7 @@ class DashboardOverviewView(APIView):
                 avg_score=Avg('sentiment_score')
             )['avg_score'] or 0
 
-            # Use raw PostgreSQL to unnest the keywords JSONB array and count occurrences
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT LOWER(elem) AS keyword, COUNT(*) AS cnt
-                    FROM (
-                        SELECT jsonb_array_elements_text(keywords) AS elem
-                        FROM calls_callanalysis
-                        WHERE keywords IS NOT NULL
-                    ) t
-                    GROUP BY LOWER(elem)
-                    ORDER BY cnt DESC
-                    LIMIT 10
-                """)
-                rows = cursor.fetchall()
-                top_keywords = [{'keyword': r[0], 'count': r[1]} for r in rows]
+            top_keywords = top_keywords_counts(10)
 
             data = {
                 'total_calls': total_calls,
@@ -189,21 +176,8 @@ class DashboardTopicsView(APIView):
             for topic in topics
         ]
 
-        # Top 10 keywords extracted from JSONB using raw PostgreSQL
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT LOWER(elem) AS keyword, COUNT(*) AS cnt
-                FROM (
-                    SELECT jsonb_array_elements_text(keywords) AS elem
-                    FROM calls_callanalysis
-                    WHERE keywords IS NOT NULL
-                ) t
-                GROUP BY LOWER(elem)
-                ORDER BY cnt DESC
-                LIMIT 10
-            """)
-            rows = cursor.fetchall()
-            keywords_list = [{'keyword': r[0], 'count': r[1]} for r in rows]
+        # Top 10 keywords (structured dict + legacy flat list)
+        keywords_list = top_keywords_counts(10)
 
         # Top 5 most frequent negative issues
         negative_issues = (

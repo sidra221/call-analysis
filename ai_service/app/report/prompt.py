@@ -71,6 +71,14 @@ Examples of correct grouping:
    - Ignore weak, isolated, or low-confidence issues
    - If no significant repeated issues exist, return an empty repeated_issues array
 
+7. **Identify positives**
+   - Highlight successful resolutions, positive customer sentiment, good agent practices
+   - Mention specific strengths worth recognizing (not generic praise)
+
+8. **Write general recommendations**
+   - Provide strategic, actionable recommendations beyond per-issue fixes
+   - Cover training, process improvements, and customer experience enhancements
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 STRICT RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -105,7 +113,9 @@ REQUIRED OUTPUT FORMAT
       "suggested_solution": "Practical, realistic, actionable fix",
       "related_keywords": ["keyword1", "keyword2"]
     }}
-  ]
+  ],
+  "positives": "Bullet-point text of positive highlights and strengths observed across calls (use • prefix per line)",
+  "recommendations": "Bullet-point text of general strategic recommendations for QA and operations (use • prefix per line)"
 }}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -75,7 +75,14 @@ def normalize_analyses(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         sentiment = _clean_text(item.get("sentiment", "neutral")).lower()
         priority = _clean_text(item.get("priority", "low")).lower()
         transcript = _truncate(_clean_text(item.get("transcript", "")), MAX_TRANSCRIPT_LENGTH)
-        keywords = _dedupe_keywords(_safe_list(item.get("keywords", []))[:MAX_KEYWORDS])
+        raw_kw = item.get("keywords", [])
+        if isinstance(raw_kw, dict):
+            kw_list = []
+            for bucket in ("negative", "positive", "neutral"):
+                kw_list.extend(_safe_list(raw_kw.get(bucket)))
+            keywords = _dedupe_keywords(kw_list[:MAX_KEYWORDS * 3])[:MAX_KEYWORDS]
+        else:
+            keywords = _dedupe_keywords(_safe_list(raw_kw)[:MAX_KEYWORDS])
 
         # Validation fallbacks
         if not main_issue:

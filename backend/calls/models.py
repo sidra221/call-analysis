@@ -70,6 +70,16 @@ class CallAnalysis(models.Model):
 
     needs_followup = models.BooleanField(default=False)
 
+    followup_reason = models.TextField(blank=True, default="")
+
+    summary = models.TextField(blank=True, null=True)
+
+    meta_intent = models.CharField(max_length=50, blank=True, default="")
+
+    meta_intents = models.JSONField(default=list, blank=True)
+
+    llm_refined = models.BooleanField(default=False)
+
     transcript = models.TextField(blank=True, null=True)
 
     is_reviewed = models.BooleanField(default=False)
