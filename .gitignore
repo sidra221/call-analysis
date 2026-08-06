@@ -139,3 +139,9 @@ token.txt
 secrets.json
 
 /app/
+# Flutter
+mobile/.dart_tool/
+mobile/.idea/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
