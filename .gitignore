@@ -10,7 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib
+/lib/
 lib64/
 parts/
 sdist/
@@ -139,3 +140,9 @@ token.txt
 secrets.json
 
 /app/
+# Flutter
+mobile/.dart_tool/
+mobile/.idea/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
