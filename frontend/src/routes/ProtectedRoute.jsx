@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { Navigate, useLocation } from 'react-router-dom';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 
 export default function ProtectedRoute({
   children,
@@ -13,6 +14,7 @@ export default function ProtectedRoute({
     user,
     loading
   } = useAuth();
+  const { t } = useTranslation();
 
   // Show loading while checking authentication
   if (loading) {
@@ -23,7 +25,7 @@ export default function ProtectedRoute({
         alignItems: 'center', 
         height: '100vh' 
       }}>
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }

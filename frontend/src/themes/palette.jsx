@@ -91,6 +91,10 @@ export function buildPalette(presetColor) {
     background: {
       paper: colors.paper,
       default: colors.paper
+    },
+    notification: {
+      followup: colors.notificationFollowup ?? colors.warningMain,
+      report: colors.notificationReport ?? colors.secondaryMain
     }
   };
 
@@ -162,6 +166,10 @@ export function buildPalette(presetColor) {
     background: {
       paper: colors.darkPaper,
       default: colors.darkBackground
+    },
+    notification: {
+      followup: colors.notificationFollowup ?? colors.warningMain,
+      report: colors.notificationReport ?? colors.secondaryMain
     }
   };
 

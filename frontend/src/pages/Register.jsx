@@ -19,11 +19,13 @@ import {
 } from '@mui/icons-material';
 
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 import AuthCard from 'ui-component/AuthCard';
 
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { t } = useTranslation();
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -40,12 +42,12 @@ export default function Register() {
     setError('');
 
     if (!username || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setError(t('auth.fillAllFields'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordsMismatch'));
       return;
     }
 
@@ -59,7 +61,7 @@ export default function Register() {
       });
       navigate('/login');
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      setError(err.message || t('auth.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ export default function Register() {
               textAlign: 'center'
             }}
           >
-            Register
+            {t('auth.register')}
           </Typography>
 
           <Typography
@@ -97,7 +99,7 @@ export default function Register() {
               textAlign: 'center'
             }}
           >
-            Create your account for Call Analysis
+            {t('auth.registerSubtitle')}
           </Typography>
 
           {error && (
@@ -108,7 +110,7 @@ export default function Register() {
 
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
-              label="Username"
+              label={t('auth.username')}
               type="text"
               fullWidth
               size="medium"
@@ -121,7 +123,7 @@ export default function Register() {
             />
 
             <TextField
-              label="Email"
+              label={t('auth.email')}
               type="email"
               fullWidth
               size="medium"
@@ -132,7 +134,7 @@ export default function Register() {
             />
 
             <TextField
-              label="Password"
+              label={t('auth.password')}
               type={showPassword ? 'text' : 'password'}
               fullWidth
               size="medium"
@@ -155,7 +157,7 @@ export default function Register() {
             />
 
             <TextField
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               type={showConfirmPassword ? 'text' : 'password'}
               fullWidth
               size="medium"
@@ -186,7 +188,7 @@ export default function Register() {
             >
               {loading
                 ? <CircularProgress size={24} color="inherit" />
-                : 'Register'}
+                : t('auth.register')}
             </Button>
 
             <Typography
@@ -196,9 +198,9 @@ export default function Register() {
                 textAlign: 'center'
               }}
             >
-              Already have an account?{' '}
+              {t('auth.hasAccount')}{' '}
               <Link component={RouterLink} to="/login" underline="hover">
-                Login
+                {t('auth.login')}
               </Link>
             </Typography>
           </Box>

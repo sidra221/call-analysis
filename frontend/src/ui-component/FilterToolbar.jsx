@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { Badge, Button, Grid } from '@mui/material';
 import { IconAdjustmentsHorizontal, IconRefresh } from '@tabler/icons-react';
 import SearchField from './SearchField';
+import useTranslation from 'hooks/useTranslation';
 
 export default function FilterToolbar({
   search,
@@ -16,6 +17,7 @@ export default function FilterToolbar({
   actions,
   searchGridSize = { xs: 12, md: 4 }
 }) {
+  const { t } = useTranslation();
   const shouldShowReset = showReset ?? activeFilterCount > 0;
   return (
     <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
@@ -23,7 +25,7 @@ export default function FilterToolbar({
         <SearchField
           value={search}
           onChange={onSearchChange}
-          placeholder={searchPlaceholder}
+          placeholder={searchPlaceholder || t('common.search')}
           loading={searchLoading}
           onClear={onSearchClear}
         />
@@ -40,7 +42,7 @@ export default function FilterToolbar({
               bgcolor: activeFilterCount > 0 ? 'primary.light' : 'transparent'
             }}
           >
-            Filters
+            {t('common.filters')}
           </Button>
         </Badge>
       </Grid>
@@ -53,7 +55,7 @@ export default function FilterToolbar({
             startIcon={<IconRefresh size={18} />}
             onClick={onResetFilters}
           >
-            Reset All
+            {t('common.resetAll')}
           </Button>
         </Grid>
       )}

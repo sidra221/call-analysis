@@ -14,11 +14,12 @@ import {
   IconAlertTriangle
 } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
+import useTranslation from 'hooks/useTranslation';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from "chart.js";
 import { useState, useMemo, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { dashboardApi } from 'api/api';
-import { getSentimentChipColor } from 'constants/status';
+import { getSentimentChipColor, getPriorityChipSx, getPriorityCardStyle, getSentimentChipSx } from 'constants/status';
 import { formatKeywords } from 'utils/keywords';
 import StatusChip from 'ui-component/StatusChip';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
@@ -32,60 +33,8 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const PRIORITY_HIGH_ORANGE = '#ff9800';
-
-const getPriorityCardStyle = (theme, level) => {
-  const accent = {
-    critical: {
-      main: theme.palette.error.main,
-      hover: theme.palette.error.main
-    },
-    high: {
-      main: PRIORITY_HIGH_ORANGE,
-      hover: '#e65100'
-    },
-    medium: {
-      main: theme.palette.warning.dark,
-      hover: theme.palette.warning.dark
-    },
-    low: {
-      main: theme.palette.success.dark,
-      hover: theme.palette.success.dark
-    }
-  }[level] || {
-    main: theme.palette.text.secondary,
-    hover: theme.palette.text.secondary
-  };
-
-  return {
-    avatarBg: alpha(accent.main, 0.14),
-    iconColor: accent.main,
-    hoverColor: accent.hover
-  };
-};
-
-const getPriorityChipSx = (theme, level) => {
-  const { iconColor } = getPriorityCardStyle(theme, level);
-  return {
-    bgcolor: alpha(iconColor, 0.12),
-    color: iconColor,
-    borderColor: alpha(iconColor, 0.35),
-    fontWeight: 600,
-  };
-};
-
-const getSentimentChipSx = (theme, sentiment) => {
-  const color = getSentimentChipColor(theme, sentiment);
-  return {
-    bgcolor: alpha(color, 0.12),
-    color,
-    borderColor: alpha(color, 0.35),
-    fontWeight: 600,
-  };
-};
-
 const getIssueRingColor = (theme, type) => (
-  type === 'negative' ? theme.palette.error.main : theme.palette.success.dark
+  type === 'negative' ? theme.palette.error.main : theme.palette.success.main
 );
 
 function OverviewMetric({ label, value, total, color, progressColor, onClick }) {
@@ -165,7 +114,7 @@ const filterCallsByRange = (calls, range) => {
   }
 };
 
-const buildSentimentChartData = (calls, range, theme) => {
+const buildSentimentChartData = (calls, range, theme, locale, t) => {
   const positiveColor = getSentimentChipColor(theme, 'positive');
   const negativeColor = getSentimentChipColor(theme, 'negative');
   const filtered = filterCallsByRange(calls, range);
@@ -174,8 +123,8 @@ const buildSentimentChartData = (calls, range, theme) => {
   const makeDatasets = (labels, posData, negData) => ({
     labels,
     datasets: [
-      { label: 'Positive', data: posData, backgroundColor: positiveColor, borderRadius: 5 },
-      { label: 'Negative', data: negData, backgroundColor: negativeColor, borderRadius: 5 }
+      { label: t('dashboard.positive'), data: posData, backgroundColor: positiveColor, borderRadius: 5 },
+      { label: t('dashboard.negative'), data: negData, backgroundColor: negativeColor, borderRadius: 5 }
     ]
   });
 
@@ -201,7 +150,7 @@ const buildSentimentChartData = (calls, range, theme) => {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       dayStarts.push(d.getTime());
-      labels.push(d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }));
+      labels.push(d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' }));
     }
 
     const posData = new Array(7).fill(0);
@@ -226,7 +175,7 @@ const buildSentimentChartData = (calls, range, theme) => {
       ws.setDate(ws.getDate() + w * 7);
       const we = new Date(ws);
       we.setDate(we.getDate() + 6);
-      return `${ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${we.toLocaleDateString('en-US', { day: 'numeric' })}`;
+      return `${ws.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} – ${we.toLocaleDateString(locale, { day: 'numeric' })}`;
     });
 
     const posData = new Array(4).fill(0);
@@ -252,7 +201,7 @@ const buildSentimentChartData = (calls, range, theme) => {
     d.setDate(1);
     d.setMonth(d.getMonth() - i);
     monthKeys.push(`${d.getFullYear()}-${d.getMonth()}`);
-    labels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+    labels.push(d.toLocaleDateString(locale, { month: 'short' }));
   }
 
   const posData = new Array(12).fill(0);
@@ -274,6 +223,7 @@ const getCircularColor = (percent, theme, type) => getIssueRingColor(theme, type
 export default function Dashboard() {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { t, locale, priorityLabel, sentimentLabel } = useTranslation();
   const { calls, fetchCalls, loading } = useCallsStore();
   const [dashboardData, setDashboardData] = useState(null);
   const [topicsData, setTopicsData] = useState(null);
@@ -296,33 +246,33 @@ export default function Dashboard() {
 
   const overviewMetrics = useMemo(() => [
     {
-      label: 'Neutral Calls',
+      label: t('dashboard.neutralCalls'),
       value: dashboardData?.sentiment?.neutral || 0,
       color: getSentimentChipColor(theme, 'neutral'),
       filter: { type: 'sentiment', value: 'neutral' }
     },
     {
-      label: 'Positive Calls',
+      label: t('dashboard.positiveCalls'),
       value: dashboardData?.sentiment?.positive || 0,
       color: getSentimentChipColor(theme, 'positive'),
       progressColor: 'success',
       filter: { type: 'sentiment', value: 'positive' }
     },
     {
-      label: 'Negative Calls',
+      label: t('dashboard.negativeCalls'),
       value: dashboardData?.sentiment?.negative || 0,
       color: getSentimentChipColor(theme, 'negative'),
       progressColor: 'error',
       filter: { type: 'sentiment', value: 'negative' }
     },
     {
-      label: 'Needs Follow-up',
+      label: t('dashboard.needsFollowup'),
       value: dashboardData?.follow_ups?.needs_followup || 0,
       color: theme.palette.warning.dark,
       progressColor: 'warning',
       filter: { type: 'needs_followup', value: 'true' }
     }
-  ], [dashboardData, theme]);
+  ], [dashboardData, theme, t]);
 
   useEffect(() => {
     fetchCalls();
@@ -430,8 +380,8 @@ export default function Dashboard() {
   }, [topicsData]);
 
   const sentimentChartData = useMemo(
-    () => buildSentimentChartData(calls, chartTimeRange, theme),
-    [calls, chartTimeRange, theme]
+    () => buildSentimentChartData(calls, chartTimeRange, theme, locale, t),
+    [calls, chartTimeRange, theme, locale, t]
   );
 
   const sentimentChartOptions = useMemo(() => ({
@@ -482,28 +432,28 @@ export default function Dashboard() {
         {[
           {
             level: 'critical',
-            label: 'Critical Priority',
+            label: t('dashboard.criticalPriority'),
             value: criticalCount,
             filter: 'critical',
             Icon: IconAlertTriangle
           },
           {
             level: 'high',
-            label: 'High Priority',
+            label: t('dashboard.highPriority'),
             value: dashboardData?.priority?.high || 0,
             filter: 'high',
             Icon: IconArrowUp
           },
           {
             level: 'medium',
-            label: 'Medium Priority',
+            label: t('dashboard.mediumPriority'),
             value: dashboardData?.priority?.medium || 0,
             filter: 'medium',
             Icon: IconMinus
           },
           {
             level: 'low',
-            label: 'Low Priority',
+            label: t('dashboard.lowPriority'),
             value: dashboardData?.priority?.low || 0,
             filter: 'low',
             Icon: IconArrowDown
@@ -554,10 +504,10 @@ export default function Dashboard() {
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, minHeight: 40 }}>
-              <Typography variant="h4" sx={{ fontWeight: 600, lineHeight: 1.2 }}>Overview</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 600, lineHeight: 1.2 }}>{t('dashboard.overview')}</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="h6" fontWeight={600}>
-                  Total Calls:
+                  {t('dashboard.totalCalls')}:
                 </Typography>
                 <Typography variant="h6" fontWeight={700}>
                   {totalCalls}
@@ -603,7 +553,7 @@ export default function Dashboard() {
               }}
             >
               <Stack direction="row" alignItems="center" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                <Typography variant="h4" sx={{ fontWeight: 600, lineHeight: 1.2 }}>Sentiment Analysis</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600, lineHeight: 1.2 }}>{t('dashboard.sentimentAnalysis')}</Typography>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Stack direction="row" alignItems="center" spacing={0.75}>
                     <Box
@@ -615,7 +565,7 @@ export default function Dashboard() {
                       }}
                     />
                     <Typography variant="caption" color="text.secondary">
-                      Positive
+                      {t('dashboard.positive')}
                     </Typography>
                   </Stack>
                   <Stack direction="row" alignItems="center" spacing={0.75}>
@@ -628,7 +578,7 @@ export default function Dashboard() {
                       }}
                     />
                     <Typography variant="caption" color="text.secondary">
-                      Negative
+                      {t('dashboard.negative')}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -639,10 +589,10 @@ export default function Dashboard() {
                   onChange={(e) => setChartTimeRange(e.target.value)}
                   displayEmpty
                 >
-                  <MenuItem value="day">Day</MenuItem>
-                  <MenuItem value="week">Week</MenuItem>
-                  <MenuItem value="month">Month</MenuItem>
-                  <MenuItem value="year">Year</MenuItem>
+                  <MenuItem value="day">{t('dashboard.day')}</MenuItem>
+                  <MenuItem value="week">{t('dashboard.week')}</MenuItem>
+                  <MenuItem value="month">{t('dashboard.month')}</MenuItem>
+                  <MenuItem value="year">{t('dashboard.year')}</MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -660,28 +610,28 @@ export default function Dashboard() {
       {/* Latest Calls Table */}
       <Card sx={{ width: "100%" }}>
         <CardContent>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>Latest Calls</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>{t('dashboard.latestCalls')}</Typography>
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
             <Table size="small" sx={{ ...TABLE_LAYOUT_SX, minWidth: 900 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '8%' }}>ID</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Priority</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>Status</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Sentiment</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '9%', display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '8%' }}>{t('table.id')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>{t('table.priority')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>{t('table.status')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>{t('table.sentiment')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '9%', display: { xs: 'none', md: 'table-cell' } }}>{t('table.duration')}</TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '13%', display: { xs: 'none', lg: 'table-cell' } }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Created At
+                      {t('table.createdAt')}
                       <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '10%' }}>Reviewed</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '10%' }}>{t('table.reviewed')}</TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '15%', display: { xs: 'none', lg: 'table-cell' } }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Uploaded By
+                      {t('table.uploadedBy')}
                       <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByUploader === 'asc' ? <IconArrowUp size={16} /> :
                           sortByUploader === 'desc' ? <IconArrowDown size={16} /> :
@@ -689,7 +639,7 @@ export default function Dashboard() {
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>Actions</TableCell>
+                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>{t('table.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -698,7 +648,7 @@ export default function Dashboard() {
                       <TableCell sx={TABLE_BODY_CELL_SX}>#{call.id}</TableCell>
                       <TableCell>
                         <Chip
-                          label={call.priority}
+                          label={priorityLabel(call.priority)}
                           size="small"
                           variant="outlined"
                           sx={getPriorityChipSx(theme, call.priority)}
@@ -707,7 +657,7 @@ export default function Dashboard() {
                       <TableCell><StatusChip status={call.status} /></TableCell>
                       <TableCell>
                         <Chip
-                          label={call.sentiment}
+                          label={sentimentLabel(call.sentiment)}
                           size="small"
                           variant="outlined"
                           sx={getSentimentChipSx(theme, call.sentiment)}
@@ -715,7 +665,7 @@ export default function Dashboard() {
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.createdAt}</TableCell>
-                      <TableCell><Chip label={call.is_reviewed ? 'Yes' : 'No'} color={call.is_reviewed ? 'success' : 'error'} size="small" /></TableCell>
+                      <TableCell><Chip label={call.is_reviewed ? t('common.yes') : t('common.no')} color={call.is_reviewed ? 'success' : 'error'} size="small" /></TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         <UserAvatarWithName username={call.uploadedBy} role={call.uploadedByRole} />
                       </TableCell>
@@ -734,7 +684,7 @@ export default function Dashboard() {
                 {sortedCalls.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body2" color="text.secondary">No calls yet</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('dashboard.noCallsYet')}</Typography>
                     </TableCell>
                   </TableRow>
                 )}
@@ -750,7 +700,7 @@ export default function Dashboard() {
         <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 600 }}>Top Negative Issues</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>{t('dashboard.topNegativeIssues')}</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
             <Stack spacing={2}>
@@ -786,7 +736,7 @@ export default function Dashboard() {
                       {issue.issue.length > 35 ? issue.issue.substring(0, 35) + '...' : issue.issue}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {issue.count} occurrence{issue.count !== 1 ? 's' : ''}
+                      {issue.count} {issue.count !== 1 ? t('common.occurrences') : t('common.occurrence')}
                     </Typography>
                   </Box>
                   <Chip
@@ -805,7 +755,7 @@ export default function Dashboard() {
             </Stack>
             {topIssues.negative.length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                No negative issues data available
+                {t('dashboard.noNegativeIssues')}
               </Typography>
             )}
           </CardContent>
@@ -814,7 +764,7 @@ export default function Dashboard() {
         <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 600 }}>Positive Highlights</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>{t('dashboard.positiveHighlights')}</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
             <Stack spacing={2}>
@@ -850,7 +800,7 @@ export default function Dashboard() {
                       {issue.issue.length > 35 ? issue.issue.substring(0, 35) + '...' : issue.issue}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {issue.count} occurrence{issue.count !== 1 ? 's' : ''}
+                      {issue.count} {issue.count !== 1 ? t('common.occurrences') : t('common.occurrence')}
                     </Typography>
                   </Box>
                   <Chip
@@ -859,9 +809,9 @@ export default function Dashboard() {
                     variant="outlined"
                     sx={{
                       fontWeight: 600,
-                      color: theme.palette.success.dark,
-                      borderColor: alpha(theme.palette.success.dark, 0.35),
-                      bgcolor: alpha(theme.palette.success.dark, 0.08),
+                      color: theme.palette.success.main,
+                      borderColor: alpha(theme.palette.success.main, 0.25),
+                      bgcolor: alpha(theme.palette.success.main, 0.12),
                     }}
                   />
                 </Box>
@@ -869,7 +819,7 @@ export default function Dashboard() {
             </Stack>
             {topIssues.positive.length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                No positive highlights data available
+                {t('dashboard.noPositiveHighlights')}
               </Typography>
             )}
           </CardContent>

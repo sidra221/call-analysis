@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth.models import User
 
 from .serializers import (
@@ -63,6 +65,37 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 class CustomTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            return error_response(
+                'Refresh token is required',
+                code='validation_error',
+                status_code=400,
+            )
+
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except TokenError as exc:
+            return error_response(
+                str(exc),
+                code='invalid_token',
+                status_code=400,
+            )
+        except Exception:
+            return error_response(
+                'Failed to logout',
+                code='logout_failed',
+                status_code=400,
+            )
+
+        create_log(request.user, 'logout', f'User {request.user.username} logged out')
+        return success_response({'message': 'Logged out successfully'})
 
 
 class AuthenticatedUserView(APIView):
@@ -332,40 +365,6 @@ class UserDetailView(APIView):
         from rest_framework import status
         from rest_framework.response import Response
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class ManagerOnlyView(APIView):
-    permission_classes = [IsAuthenticated, IsManager]
-
-    def get(self, request):
-        return success_response({
-            "message": "This is a Manager-only endpoint",
-            "user": request.user.username,
-            "role": "manager",
-        })
-
-
-class QAOnlyView(APIView):
-    permission_classes = [IsAuthenticated, IsQA]
-
-    def get(self, request):
-        return success_response({
-            "message": "This is a QA-only endpoint",
-            "user": request.user.username,
-            "role": "qa",
-        })
-
-
-class ManagerOrQAView(APIView):
-    permission_classes = [IsAuthenticated, IsManagerOrQA]
-
-    def get(self, request):
-        profile = UserProfile.objects.get(user=request.user)
-        return success_response({
-            "message": "This endpoint is accessible to Managers and QAs",
-            "user": request.user.username,
-            "role": profile.role,
-        })
 
 
 class UsersForFollowupsView(APIView):

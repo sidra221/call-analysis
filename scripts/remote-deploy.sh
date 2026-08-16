@@ -14,14 +14,8 @@ mkdir -p "$LOG_DIR"
 echo "→ Starting Docker services (web, frontend, celery, beat, redis)…"
 "${COMPOSE[@]}" up -d --build web frontend celery_worker celery_beat redis
 
-echo "→ Starting AI service (existing image, no rebuild)…"
-if docker image inspect call-analysis-ai_service >/dev/null 2>&1; then
-  "${COMPOSE[@]}" up -d --no-build ai_service
-else
-  echo "   Image not found locally — trying to start existing container…"
-  docker start call_analysis_ai_service 2>/dev/null || \
-    echo "WARNING: AI service image/container missing — analysis will not work"
-fi
+echo "→ Building & starting AI service…"
+"${COMPOSE[@]}" up -d --build ai_service
 
 echo "→ Running migrations…"
 "${COMPOSE[@]}" exec -T web python manage.py migrate --noinput --skip-checks

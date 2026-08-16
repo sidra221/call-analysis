@@ -31,6 +31,7 @@ import { IconBell } from '@tabler/icons-react';
 // API
 import { callsApi, followupsApi, reportsApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 import { getRoleAvatarBorderSx } from 'utils/avatar';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -39,6 +40,7 @@ export default function NotificationSection() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
   const avatarRoleSx = getRoleAvatarBorderSx(user?.role, 2);
 
   const [open, setOpen] = useState(false);
@@ -49,9 +51,8 @@ export default function NotificationSection() {
   const anchorRef = useRef(null);
   let intervalRef = useRef(null);
 
-  // Helper: time ago formatter
   const timeAgo = (dateString) => {
-    if (!dateString) return 'unknown';
+    if (!dateString) return t('common.unknown');
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
@@ -59,12 +60,20 @@ export default function NotificationSection() {
     const diffMins = Math.floor(diffSecs / 60);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffSecs < 60) return 'just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
+
+    if (diffSecs < 60) return t('notifications.justNow');
+    if (diffMins < 60) return t('notifications.minutesAgo', { count: diffMins });
+    if (diffHours < 24) {
+      return diffHours === 1
+        ? t('notifications.hoursAgo', { count: diffHours })
+        : t('notifications.hoursAgoPlural', { count: diffHours });
+    }
+    if (diffDays < 7) {
+      return diffDays === 1
+        ? t('notifications.daysAgo', { count: diffDays })
+        : t('notifications.daysAgoPlural', { count: diffDays });
+    }
+    return date.toLocaleDateString(locale);
   };
 
   // Check if notification was already read (store in localStorage)
@@ -139,8 +148,8 @@ export default function NotificationSection() {
         recentCalls.forEach(call => {
           newNotifications.push({
             id: `call-${call.id}`,
-            user: call.uploaded_by_username || 'System',
-            text: `uploaded a new call #${call.id}`,
+            user: call.uploaded_by_username || t('notifications.system'),
+            text: t('notifications.callUploadedAction', { callId: call.id }),
             time: timeAgo(call.created_at),
             createdAt: new Date(call.created_at).getTime(),
             unread: isUnread('call', call.id),
@@ -160,8 +169,8 @@ export default function NotificationSection() {
       assignedFollowups.forEach(followup => {
         newNotifications.push({
           id: `followup-${followup.id}`,
-          user: 'System',
-          text: `You have a follow-up assigned for call #${followup.call_id}`,
+          user: t('notifications.system'),
+          text: t('notifications.followupAssigned', { callId: followup.call_id }),
           time: timeAgo(followup.created_at),
           createdAt: new Date(followup.created_at).getTime(),
           unread: isUnread('followup', followup.id),
@@ -181,11 +190,18 @@ export default function NotificationSection() {
       });
 
       recentFollowupChanges.forEach(followup => {
-        const statusText = followup.status === 'done' ? 'completed' : `updated to ${followup.status}`;
+        const isCompleted = followup.status === 'done';
+        const statusText = isCompleted
+          ? t('status.done')
+          : t(`status.${followup.status}`, {}) !== `status.${followup.status}`
+            ? t(`status.${followup.status}`)
+            : followup.status;
         newNotifications.push({
           id: `followup-status-${followup.id}-${followup.updated_at}`,
-          user: followup.updated_by_username || 'Someone',
-          text: `changed status of your follow-up for call #${followup.call_id} to ${statusText}`,
+          user: followup.updated_by_username || t('notifications.someone'),
+          text: isCompleted
+            ? t('notifications.followupStatusCompletedAction', { callId: followup.call_id })
+            : t('notifications.followupStatusUpdatedAction', { callId: followup.call_id, status: statusText }),
           time: timeAgo(followup.updated_at),
           createdAt: new Date(followup.updated_at).getTime(),
           unread: isUnread('followup-status', `${followup.id}-${followup.updated_at}`),
@@ -207,8 +223,10 @@ export default function NotificationSection() {
       recentReports.forEach(report => {
         newNotifications.push({
           id: `report-${report.id}`,
-          user: report.created_by_username || 'QA',
-          text: `published a new report "${report.period || 'Report'}"`,
+          user: report.created_by_username || t('roles.qa'),
+          text: t('notifications.reportPublishedAction', {
+            period: report.period || t('notifications.reportFallback'),
+          }),
           time: timeAgo(report.created_at),
           createdAt: new Date(report.created_at).getTime(),
           unread: isUnread('report', report.id),
@@ -237,13 +255,14 @@ export default function NotificationSection() {
         const notificationKey = hasNotes
           ? `${report.id}-${report.reviewed_at}-notes`
           : `${report.id}-${report.reviewed_at}-approve`;
+        const period = report.period || t('notifications.reportFallback');
 
         newNotifications.push({
           id: `report-review-${notificationKey}`,
-          user: report.reviewed_by_username || 'Manager',
+          user: report.reviewed_by_username || t('roles.manager'),
           text: hasNotes
-            ? `added notes to your ${report.period || 'report'} report`
-            : `reviewed your ${report.period || 'report'} report`,
+            ? t('notifications.reportReviewNotesAction', { period })
+            : t('notifications.reportReviewApprovedAction', { period }),
           time: timeAgo(report.reviewed_at),
           createdAt: new Date(report.reviewed_at).getTime(),
           unread: isUnread('report-review', notificationKey),
@@ -291,7 +310,7 @@ export default function NotificationSection() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user]);
+  }, [user, t, locale]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -380,7 +399,7 @@ export default function NotificationSection() {
                     {/* HEADER */}
                     <Stack direction="row" justifyContent="space-between" p={2}>
                       <Typography variant="h6">
-                        Your notifications
+                        {t('notifications.title')}
                       </Typography>
                       <Typography
                         sx={{
@@ -397,7 +416,7 @@ export default function NotificationSection() {
                         onClick={markAllRead}
                       >
                         <DoneAllIcon sx={{ fontSize: 18 }} />
-                        Mark all as read
+                        {t('notifications.markAllRead')}
                       </Typography>
                     </Stack>
 
@@ -407,8 +426,8 @@ export default function NotificationSection() {
                       onChange={(e, v) => setTab(v)}
                       variant="fullWidth"
                     >
-                      <Tab label={`All (${notifications.length})`} value="all" />
-                      <Tab label={`Unread (${unreadCount})`} value="unread" />
+                      <Tab label={`${t('notifications.all')} (${notifications.length})`} value="all" />
+                      <Tab label={`${t('notifications.unread')} (${unreadCount})`} value="unread" />
                     </Tabs>
 
                     <Divider />

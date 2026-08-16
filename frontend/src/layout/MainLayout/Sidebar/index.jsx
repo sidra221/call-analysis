@@ -66,8 +66,8 @@ function Sidebar() {
 
   const drawer = useMemo(() => {
     const drawerSX = drawerOpen
-      ? { paddingLeft: '16px', paddingRight: '16px', marginTop: '0px' }
-      : { paddingLeft: '0px', paddingRight: '0px', marginTop: '20px' };
+      ? { paddingInline: '16px', marginTop: '0px' }
+      : { paddingInline: '0px', marginTop: '20px' };
 
     const content = <MenuList key={user?.id || user?.role || 'guest'} />;
 
@@ -139,7 +139,7 @@ function Sidebar() {
         </Drawer>
       ) : (
         // Desktop view - always use MiniDrawerStyled
-        <MiniDrawerStyled variant="permanent" open={drawerOpen}>
+        <MiniDrawerStyled variant="permanent" open={drawerOpen} anchor={language === 'ar' ? 'right' : 'left'}>
           {logo}
           {drawer}
         </MiniDrawerStyled>

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../shared/l10n/call_chip_labels.dart';
 import '../../../shared/widgets/ui.dart';
 import '../../../shared/widgets/call_tile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/locale/locale_provider.dart';
 import '../../../features/notifications/application/notifications_provider.dart';
 import '../../../features/auth/application/auth_controller.dart';
 import '../../../features/auth/domain/user_profile.dart';
@@ -27,7 +28,8 @@ class DashboardScreen extends ConsumerWidget {
     final negIssuesAsync = ref.watch(topNegativeIssuesProvider);
     final posIssuesAsync = ref.watch(topPositiveIssuesProvider);
     final followUpCallsAsync = ref.watch(priorityFollowUpCallsProvider);
-     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final liveFeedAsync = ref.watch(liveFeedProvider);
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator.adaptive(
@@ -37,6 +39,7 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(topNegativeIssuesProvider);
             ref.invalidate(topPositiveIssuesProvider);
             ref.invalidate(priorityFollowUpCallsProvider);
+            ref.invalidate(liveFeedProvider);
           },
           child: CustomScrollView(
             slivers: [
@@ -51,9 +54,9 @@ class DashboardScreen extends ConsumerWidget {
     children: [
       Text(
         '${l10n.welcomeBack} ',
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.roboto(
           fontSize: 14,
-          color: AppTheme.textSecondary,
+          color: scheme.onSurfaceVariant,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -61,10 +64,10 @@ class DashboardScreen extends ConsumerWidget {
         child: Text(
           user.name.split(' ').first,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.roboto(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimary,
+            color: scheme.onSurface,
             letterSpacing: -0.5,
           ),
         ),
@@ -90,21 +93,15 @@ class DashboardScreen extends ConsumerWidget {
                                
 IconButton(
   onPressed: () => context.push('/notifications'),
-  icon: FaIcon(
-    FontAwesomeIcons.bell,
+  icon: Icon(
+    Icons.notifications_outlined,
     size: 20,
-    color: isDark
-        ? Colors.white
-        : AppTheme.textSecondary,
+    color: scheme.onSurfaceVariant,
   ),
   style: IconButton.styleFrom(
-    backgroundColor: isDark
-        ? AppTheme.surface
-        : Colors.white,
+    backgroundColor: scheme.surface,
     side: BorderSide(
-      color: isDark
-          ? AppTheme.divider
-          : AppTheme.textSecondary,
+      color: scheme.outline,
     ),
     padding: const EdgeInsets.all(12),
     shape: const CircleBorder(),
@@ -182,8 +179,8 @@ IconButton(
   children: [
     Expanded(
       child: PriorityCard(
-        icon: FontAwesomeIcons.triangleExclamation,
-        title: 'Critical Priority',
+        icon: Icons.warning_amber_outlined,
+        title: l10n.criticalPriority,
         value: summary.criticalPriorityCount.toString(),
         color: AppTheme.danger,
       ),
@@ -191,10 +188,10 @@ IconButton(
     const SizedBox(width: 12),
     Expanded(
       child: PriorityCard(
-        icon: FontAwesomeIcons.arrowUp,
-        title: 'High Priority',
+        icon: Icons.arrow_upward,
+        title: l10n.highPriority,
         value: summary.highPriorityCount.toString(),
-        color: AppTheme.warning,
+        color: AppTheme.orange,
       ),
     ),
   ],
@@ -204,17 +201,17 @@ Row(
   children: [
     Expanded(
       child: PriorityCard(
-        icon: FontAwesomeIcons.minus,
-        title: 'Medium Priority',
+        icon: Icons.remove,
+        title: l10n.mediumPriority,
         value: summary.mediumPriorityCount.toString(),
-        color: const Color(0xFFEAB308),
+        color: AppTheme.warningDark,
       ),
     ),
     const SizedBox(width: 12),
     Expanded(
       child: PriorityCard(
-        icon: FontAwesomeIcons.arrowDown,
-        title: 'Low Priority',
+        icon: Icons.arrow_downward,
+        title: l10n.lowPriority,
         value: summary.lowPriorityCount.toString(),
         color: AppTheme.success,
       ),
@@ -241,16 +238,124 @@ Row(
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 0, 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 sliver: SliverToBoxAdapter(
-                  child: Text(
-                    l10n.topNegativeIssues,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.5,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.liveFeed,
+                        style: GoogleFonts.roboto(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.go('/calls'),
+                        child: Text(
+                          l10n.viewAll,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                sliver: liveFeedAsync.when(
+                  data: (calls) => SliverToBoxAdapter(
+                    child: AppCard(
+                      child: calls.isEmpty
+                          ? Text(
+                              l10n.noRecentCalls,
+                              style: GoogleFonts.roboto(
+                                fontSize: 14,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            )
+                          : Column(
+                              children: calls.map((call) {
+                                final id = call['id']?.toString() ?? '—';
+                                final status = call['status']?.toString() ?? '—';
+                                final sentiment =
+                                    call['sentiment']?.toString() ?? 'neutral';
+                                final createdAt =
+                                    call['created_at']?.toString() ?? '';
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    l10n.callNumber(id),
+                                    style: GoogleFonts.roboto(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${localizeApiCallStatus(l10n, status)} • ${localizeApiSentiment(l10n, sentiment)}',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 13,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    createdAt.length >= 10
+                                        ? createdAt.substring(0, 10)
+                                        : createdAt,
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  onTap: () => context.push('/calls/$id'),
+                                );
+                              }).toList(),
+                            ),
                     ),
+                  ),
+                  error: (e, _) => SliverToBoxAdapter(
+                    child: ErrorView(
+                      message: l10n.failedToLoadLiveFeed,
+                      onRetry: () => ref.invalidate(liveFeedProvider),
+                    ),
+                  ),
+                  loading: () => const SliverToBoxAdapter(
+                    child: Center(child: CircularProgressIndicator.adaptive()),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                sliver: SliverToBoxAdapter(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.topNegativeIssues,
+                        style: GoogleFonts.roboto(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/issues/negative'),
+                        child: Text(
+                          l10n.viewAll,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -285,16 +390,32 @@ Row(
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 0, 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 sliver: SliverToBoxAdapter(
-                  child: Text(
-                    l10n.topPositiveFeedback,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.topPositiveFeedback,
+                        style: GoogleFonts.roboto(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/issues/positive'),
+                        child: Text(
+                          l10n.viewAll,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -336,10 +457,10 @@ Row(
                     children: [
                       Text(
                         l10n.priorityFollowUps,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.roboto(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
+                          color: scheme.onSurface,
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -347,7 +468,7 @@ Row(
                         onPressed: () => context.go('/calls'),
                         child: Text(
                           l10n.viewAll,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.roboto(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.2,
@@ -383,7 +504,7 @@ Row(
   }
 }
 class PriorityCard extends StatelessWidget {
-  final FaIconData icon;
+  final IconData icon;
   final String title;
   final String value;
   final Color color;
@@ -406,21 +527,7 @@ class PriorityCard extends StatelessWidget {
         horizontal: 14,
         vertical: 12,
       ),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:AppTheme.textSecondary,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      decoration: AppTheme.cardDecoration(scheme, radius: 16),
       child: Row(
         children: [
           Container(
@@ -431,7 +538,7 @@ class PriorityCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: FaIcon(
+              child: Icon(
                 icon,
                 size: 19,
                 color: color,
@@ -450,7 +557,7 @@ class PriorityCard extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.roboto(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: scheme.onSurfaceVariant,
@@ -459,7 +566,7 @@ class PriorityCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.roboto(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: scheme.onSurface,
@@ -476,14 +583,21 @@ class PriorityCard extends StatelessWidget {
 
 class HorizontalIssueCard extends StatelessWidget {
   final DashboardIssue issue;
-  const HorizontalIssueCard({super.key, required this.issue});
+  final bool fullWidth;
+
+  const HorizontalIssueCard({
+    super.key,
+    required this.issue,
+    this.fullWidth = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
     final color = issue.isPositive ? AppTheme.success : AppTheme.danger;
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth - 48) / 2;
+    final cardWidth = fullWidth ? double.infinity : (screenWidth - 48) / 2;
 
     return SizedBox(
       width: cardWidth,
@@ -498,15 +612,15 @@ class HorizontalIssueCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
+                    color: color.withValues(alpha: AppTheme.chipBackgroundOpacity),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: color.withValues(alpha: 0.2),
+                      color: color.withValues(alpha: AppTheme.chipBorderOpacity),
                       width: 1,
                     ),
                   ),
-                  child: FaIcon(
-                    issue.isPositive ? FontAwesomeIcons.thumbsUp : FontAwesomeIcons.thumbsDown,
+                  child: Icon(
+                    issue.isPositive ? Icons.thumb_up_outlined : Icons.thumb_down_outlined,
                     size: 18,
                     color: color,
                   ),
@@ -515,17 +629,19 @@ class HorizontalIssueCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _trendColor(issue.trend, issue.isPositive).withValues(alpha: 0.12),
+                    color: _trendColor(issue.trend, issue.isPositive)
+                        .withValues(alpha: AppTheme.chipBackgroundOpacity),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _trendColor(issue.trend, issue.isPositive).withValues(alpha: 0.2),
+                      color: _trendColor(issue.trend, issue.isPositive)
+                          .withValues(alpha: AppTheme.chipBorderOpacity),
                       width: 1,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      FaIcon(
+                      Icon(
                         _trendIcon(issue.trend),
                         size: 12,
                         color: _trendColor(issue.trend, issue.isPositive),
@@ -533,7 +649,7 @@ class HorizontalIssueCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         _trendLabel(context, issue.trend),
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.roboto(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: _trendColor(issue.trend, issue.isPositive),
@@ -547,10 +663,10 @@ class HorizontalIssueCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               issue.title,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.roboto(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: scheme.onSurface,
                 letterSpacing: -0.2,
               ),
               maxLines: 2,
@@ -559,9 +675,9 @@ class HorizontalIssueCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               '${issue.count} ${l10n.mentions}',
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.roboto(
                 fontSize: 12,
-                color: AppTheme.textSecondary,
+                color: scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -579,14 +695,14 @@ class HorizontalIssueCard extends StatelessWidget {
     return AppTheme.warning;
   }
 
-  FaIconData _trendIcon(Trend trend) {
+  IconData _trendIcon(Trend trend) {
     switch (trend) {
       case Trend.up:
-        return FontAwesomeIcons.arrowTrendUp;
+        return Icons.trending_up;
       case Trend.down:
-        return FontAwesomeIcons.arrowTrendDown;
+        return Icons.trending_down;
       case Trend.stable:
-        return FontAwesomeIcons.minus;
+        return Icons.remove;
     }
   }
 
@@ -611,32 +727,27 @@ class _ProfileMenuButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final themeMode = ref.watch(themeProvider);
+    final locale = ref.watch(localeProvider);
     final isDarkMode = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
-final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     return PopupMenuButton<String>(
    
 
 icon: Container(
   padding: const EdgeInsets.all(12),
   decoration: BoxDecoration(
-    color: isDark
-        ? AppTheme.surface
-        : Colors.white,
+    color: scheme.surface,
     shape: BoxShape.circle,
     border: Border.all(
-      color: isDark
-          ? AppTheme.divider
-          : AppTheme.textSecondary,
+      color: scheme.outline,
     ),
   ),
-  child: FaIcon(
-    FontAwesomeIcons.user,
+  child: Icon(
+    Icons.person_outline,
     size: 20,
-    color: isDark
-        ? Colors.white
-        : AppTheme.textSecondary,
+    color: scheme.onSurfaceVariant,
   ),
 ),
       shape: RoundedRectangleBorder(
@@ -646,7 +757,11 @@ icon: Container(
       elevation: 8,
       position: PopupMenuPosition.under,
       onSelected: (value) async {
-        if (value == 'toggle_dark_mode') {
+        if (value == 'language_en') {
+          await ref.read(localeProvider.notifier).setLocale('en');
+        } else if (value == 'language_ar') {
+          await ref.read(localeProvider.notifier).setLocale('ar');
+        } else if (value == 'toggle_dark_mode') {
           await ref.read(themeProvider.notifier).toggleDarkMode(!isDarkMode);
         } else if (value == 'logout') {
           final confirmed = await showDialog<bool>(
@@ -704,8 +819,8 @@ icon: Container(
                       color: AppTheme.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const FaIcon(
-                      FontAwesomeIcons.user,
+                    child: const Icon(
+                      Icons.person_outline,
                       size: 18,
                       color: AppTheme.primary,
                     ),
@@ -716,20 +831,11 @@ icon: Container(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.name ?? 'User',
-                          style: GoogleFonts.plusJakartaSans(
+                          user?.name ?? l10n.user,
+                          style: GoogleFonts.roboto(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          l10n.manager,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.textSecondary,
+                            color: scheme.onSurface,
                           ),
                         ),
                       ],
@@ -738,6 +844,24 @@ icon: Container(
                 ],
               ),
             ],
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        PopupMenuItem<String>(
+          enabled: false,
+          child: DropdownButton<String>(
+            isExpanded: true,
+            value: locale.languageCode,
+            underline: const SizedBox.shrink(),
+            items: [
+              DropdownMenuItem(value: 'en', child: Text(l10n.english)),
+              DropdownMenuItem(value: 'ar', child: Text(l10n.arabic)),
+            ],
+            onChanged: (code) {
+              if (code != null) {
+                Navigator.pop(context, 'language_$code');
+              }
+            },
           ),
         ),
         const PopupMenuDivider(height: 1),
@@ -753,8 +877,8 @@ icon: Container(
                       : AppTheme.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: FaIcon(
-                  isDarkMode ? FontAwesomeIcons.moon : FontAwesomeIcons.sun,
+                child: Icon(
+                  isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
                   size: 18,
                   color: isDarkMode ? AppTheme.primary : AppTheme.warning,
                 ),
@@ -763,10 +887,10 @@ icon: Container(
               Expanded(
                 child: Text(
                   isDarkMode ? l10n.darkMode : l10n.lightMode,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.roboto(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    color: scheme.onSurface,
                   ),
                 ),
               ),
@@ -790,8 +914,8 @@ icon: Container(
                   color: AppTheme.danger.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const FaIcon(
-                  FontAwesomeIcons.rightFromBracket,
+                child: const Icon(
+                  Icons.logout_outlined,
                   size: 18,
                   color: AppTheme.danger,
                 ),
@@ -799,7 +923,7 @@ icon: Container(
               const SizedBox(width: 12),
               Text(
                 l10n.logOut,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.danger,

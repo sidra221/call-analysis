@@ -249,7 +249,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splashSubtitle => 'لوحة تحكم المدير';
 
   @override
-  String get logs => 'سجل النشاط';
+  String get logs => 'سجلات النظام';
 
   @override
   String get noLogsFound => 'لم يتم العثور على سجلات';
@@ -277,6 +277,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get statusPending => 'معلق';
+
+  @override
+  String get statusProcessing => 'قيد المعالجة';
+
+  @override
+  String get statusFailed => 'فشل';
 
   @override
   String get priorityHigh => 'عالي';
@@ -346,4 +352,222 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get confidence => 'الثقة';
+
+  @override
+  String get splashTagline => 'ذكاء صوتي. رؤية حقيقية.';
+
+  @override
+  String get username => 'اسم المستخدم';
+
+  @override
+  String get usernameRequired => 'اسم المستخدم مطلوب';
+
+  @override
+  String get enterCredentials => 'أدخل بيانات الدخول للمتابعة';
+
+  @override
+  String get loginFailed => 'فشل تسجيل الدخول';
+
+  @override
+  String get passwordRequiredField => 'كلمة المرور مطلوبة';
+
+  @override
+  String get passwordMinLength => 'يجب أن تكون كلمة المرور 6 أحرف على الأقل';
+
+  @override
+  String get noAccount => 'ليس لديك حساب؟ ';
+
+  @override
+  String get register => 'تسجيل';
+
+  @override
+  String get home => 'الرئيسية';
+
+  @override
+  String get criticalPriority => 'أولوية حرجة';
+
+  @override
+  String get mediumPriority => 'أولوية متوسطة';
+
+  @override
+  String get lowPriority => 'أولوية منخفضة';
+
+  @override
+  String get liveFeed => 'البث المباشر';
+
+  @override
+  String get noRecentCalls => 'لا توجد مكالمات حديثة';
+
+  @override
+  String callNumber(String id) {
+    return 'مكالمة #$id';
+  }
+
+  @override
+  String get failedToLoadLiveFeed => 'فشل تحميل البث المباشر';
+
+  @override
+  String get noKeywordsAvailable => 'لا توجد كلمات مفتاحية';
+
+  @override
+  String get failedToLoadKeywords => 'فشل تحميل الكلمات المفتاحية';
+
+  @override
+  String get sentimentAnalysis => 'تحليل المشاعر';
+
+  @override
+  String get sentimentDistribution => 'توزيع المكالمات المحللة.';
+
+  @override
+  String get searchCalls => 'البحث في المكالمات...';
+
+  @override
+  String get filterCalls => 'تصفية المكالمات';
+
+  @override
+  String get allCalls => 'كل المكالمات';
+
+  @override
+  String get searchLogs => 'البحث بالمستخدم أو الإجراء أو الوصف...';
+
+  @override
+  String get filterLogs => 'تصفية السجلات';
+
+  @override
+  String get allLogs => 'كل السجلات';
+
+  @override
+  String get tryChangingSearchOrFilters => 'جرب تغيير البحث أو الفلاتر';
+
+  @override
+  String get logTypeActivity => 'نشاط';
+
+  @override
+  String get logTypeSystem => 'نظام';
+
+  @override
+  String get logTypeUserAction => 'إجراء مستخدم';
+
+  @override
+  String get summaryIssuesSolutions => 'الملخص (المشاكل والحلول)';
+
+  @override
+  String get positives => 'الإيجابيات';
+
+  @override
+  String get overallSentiment => 'المشاعر العامة';
+
+  @override
+  String get topIssues => 'أهم المشاكل';
+
+  @override
+  String get managerNotes => 'ملاحظات المدير';
+
+  @override
+  String reportByAuthor(String author, String date) {
+    return 'بواسطة $author • $date';
+  }
+
+  @override
+  String get noDataAvailable => 'لا توجد بيانات';
+
+  @override
+  String get noIssuesData => 'لا توجد بيانات مشاكل';
+
+  @override
+  String get noIssueRecorded => 'لم تُسجّل مشكلة';
+
+  @override
+  String get cancel => 'إلغاء';
+
+  @override
+  String get reviewed => 'تمت المراجعة';
+
+  @override
+  String get addNotes => 'إضافة ملاحظات';
+
+  @override
+  String get downloadPdf => 'تحميل PDF';
+
+  @override
+  String get failedToLoadReportDetails => 'فشل تحميل تفاصيل التقرير';
+
+  @override
+  String get noAudioRecording => 'لا يوجد تسجيل صوتي';
+
+  @override
+  String get failedToMarkReviewed => 'فشل تحديد المكالمة كمراجَعة';
+
+  @override
+  String get user => 'مستخدم';
+
+  @override
+  String get notifActorSystem => 'النظام';
+
+  @override
+  String get notifActorSomeone => 'شخص ما';
+
+  @override
+  String get notifActorQa => 'ضمان الجودة';
+
+  @override
+  String get notifDefaultReportPeriod => 'تقرير';
+
+  @override
+  String notifCallUploaded(String user, String callId) {
+    return '$user رفع مكالمة جديدة #$callId';
+  }
+
+  @override
+  String notifFollowupAssigned(String callId) {
+    return 'لديك متابعة معيّنة للمكالمة #$callId';
+  }
+
+  @override
+  String notifFollowupStatusCompleted(String user, String callId) {
+    return '$user غيّر حالة متابعتك للمكالمة #$callId إلى مكتمل';
+  }
+
+  @override
+  String notifFollowupStatusUpdated(String user, String callId, String status) {
+    return '$user غيّر حالة متابعتك للمكالمة #$callId إلى $status';
+  }
+
+  @override
+  String notifReportPublished(String user, String period) {
+    return '$user نشر تقريراً جديداً \"$period\"';
+  }
+
+  @override
+  String notifReportReviewNotes(String user, String period) {
+    return '$user أضاف ملاحظات على تقرير $period';
+  }
+
+  @override
+  String notifReportReviewApproved(String user, String period) {
+    return '$user راجع تقرير $period';
+  }
+
+  @override
+  String get timeJustNow => 'الآن';
+
+  @override
+  String timeMinutesAgo(int count) {
+    return 'منذ $count د';
+  }
+
+  @override
+  String timeHoursAgo(int count) {
+    return 'منذ $count س';
+  }
+
+  @override
+  String timeDaysAgo(int count) {
+    return 'منذ $count ي';
+  }
+
+  @override
+  String timeOnDate(int year, int month, int day) {
+    return '$day/$month/$year';
+  }
 }

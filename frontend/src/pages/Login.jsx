@@ -23,12 +23,14 @@ import {
 } from '@mui/icons-material';
 
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 import AuthCard from 'ui-component/AuthCard';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { t } = useTranslation();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +43,7 @@ export default function Login() {
     setError('');
 
     if (!username || !password) {
-      setError('Please enter your username and password');
+      setError(t('auth.enterCredentials'));
       return;
     }
 
@@ -53,7 +55,7 @@ export default function Login() {
       const from = location.state?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid username or password');
+      setError(err.message || t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export default function Login() {
               textAlign: 'center'
             }}
           >
-            Login
+            {t('auth.login')}
           </Typography>
 
           <Typography
@@ -91,7 +93,7 @@ export default function Login() {
               textAlign: 'center'
             }}
           >
-            Enter your credentials to continue
+            {t('auth.loginSubtitle')}
           </Typography>
 
           {error && (
@@ -102,7 +104,7 @@ export default function Login() {
 
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
-              label="Username"
+              label={t('auth.username')}
               type="text"
               fullWidth
               size="medium"
@@ -115,7 +117,7 @@ export default function Login() {
             />
 
             <TextField
-              label="Password"
+              label={t('auth.password')}
               type={showPassword ? 'text' : 'password'}
               fullWidth
               size="medium"
@@ -146,7 +148,7 @@ export default function Login() {
             >
               {loading
                 ? <CircularProgress size={24} color="inherit" />
-                : 'Login'}
+                : t('auth.login')}
             </Button>
 
             <Typography
@@ -156,9 +158,9 @@ export default function Login() {
                 textAlign: 'center'
               }}
             >
-              Don&apos;t have an account?{' '}
+              {t('auth.noAccount')}{' '}
               <Link component={RouterLink} to="/register" underline="hover">
-                Register
+                {t('auth.register')}
               </Link>
             </Typography>
           </Box>

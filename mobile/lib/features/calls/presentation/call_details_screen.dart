@@ -1,13 +1,15 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../shared/l10n/call_chip_labels.dart';
 import '../../../shared/widgets/ui.dart';
-import '../../../shared/enums.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../application/calls_controller.dart';
+import '../data/calls_repository.dart';
 import '../domain/call.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -25,7 +27,62 @@ class CallDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
-  bool reviewed = false;
+  bool? _reviewedOverride;
+  bool _markingReviewed = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  bool _isPlaying = false;
+  String? _loadedUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer.onPositionChanged.listen((position) {
+      if (mounted) setState(() => _position = position);
+    });
+    _audioPlayer.onDurationChanged.listen((duration) {
+      if (mounted) setState(() => _duration = duration);
+    });
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() => _isPlaying = state == PlayerState.playing);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  Future<void> _togglePlayback(String? url) async {
+    if (url == null || url.isEmpty) return;
+
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      return;
+    }
+
+    if (_loadedUrl != url) {
+      await _audioPlayer.stop();
+      setState(() {
+        _position = Duration.zero;
+        _duration = Duration.zero;
+      });
+      await _audioPlayer.play(UrlSource(url));
+      _loadedUrl = url;
+    } else {
+      await _audioPlayer.resume();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +94,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
       appBar: AppBar(
         title: Text(
           l10n.callDetails,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.roboto(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: scheme.onSurface,
@@ -46,7 +103,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const FaIcon(FontAwesomeIcons.arrowLeft),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
       ),
@@ -65,7 +122,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               const SizedBox(height: 8),
               Text(
                 details.mainIssue,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 15,
                   color: scheme.onSurface,
                   height: 1.5,
@@ -90,7 +147,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               const SizedBox(height: 16),
 
               // Audio Section
-              _buildAudioSection(context, l10n, scheme),
+              _buildAudioSection(context, details, l10n, scheme),
               const SizedBox(height: 16),
 
               // Follow-up Section
@@ -99,7 +156,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               const SizedBox(height: 16),
 
               // Actions Section
-              _buildActionsSection(context, l10n, scheme),
+              _buildActionsSection(context, details, l10n, scheme),
               const SizedBox(height: 24),
             ],
           ),
@@ -127,7 +184,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: _getStatusColor(details.base.status),
+                color: AppTheme.statusColor(details.base.status),
                 shape: BoxShape.circle,
               ),
             ),
@@ -136,7 +193,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
             Expanded(
               child: Text(
                 'Call #${details.base.id}',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurface,
@@ -145,7 +202,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
             ),
             // Close button
             IconButton(
-              icon: const FaIcon(FontAwesomeIcons.xmark, size: 20),
+              icon: const Icon(Icons.close, size: 20),
               onPressed: () => context.pop(),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -159,7 +216,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
             children: [
               Text(
                 DateFormat.yMd().format(details.base.date),
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 13,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -167,7 +224,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               const SizedBox(width: 8),
               Text(
                 '•',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 13,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -175,7 +232,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               const SizedBox(width: 8),
               Text(
                 '${l10n.uploadedBy} ${details.base.agentName}',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 13,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -191,7 +248,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: GoogleFonts.plusJakartaSans(
+      style: GoogleFonts.roboto(
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: Theme.of(context).colorScheme.onSurface,
@@ -217,7 +274,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
         children: [
           Text(
             l10n.summary,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: scheme.onSurfaceVariant,
@@ -226,7 +283,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
           const SizedBox(height: 8),
           Text(
             details.summary,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 15,
               color: scheme.onSurface,
               height: 1.5,
@@ -249,12 +306,12 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
           runSpacing: 8,
           children: [
             _buildAnalysisChip(
-              details.base.sentiment.label,
-              _sentimentColor(details.base.sentiment),
+              details.base.sentiment.localized(l10n),
+              AppTheme.sentimentColor(details.base.sentiment, scheme),
             ),
             _buildAnalysisChip(
-              '${details.base.priority.label} Priority',
-              _priorityColor(details.base.priority),
+              details.base.priority.localizedFull(l10n),
+              AppTheme.priorityColor(details.base.priority),
             ),
             _buildAnalysisChip(
               '${l10n.confidence} 65%',
@@ -269,17 +326,10 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
   Widget _buildAnalysisChip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
+      decoration: AppTheme.chipDecoration(color),
       child: Text(
         label,
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.roboto(
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: color,
@@ -311,7 +361,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               ),
               child: Text(
                 keyword,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: AppTheme.primary,
@@ -344,7 +394,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
           ),
           child: Text(
             details.transcript,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 14,
               color: scheme.onSurface,
               height: 1.6,
@@ -356,7 +406,23 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
   }
 
   // Audio section
-  Widget _buildAudioSection(BuildContext context, AppLocalizations l10n, ColorScheme scheme) {
+  Widget _buildAudioSection(
+    BuildContext context,
+    CallDetails details,
+    AppLocalizations l10n,
+    ColorScheme scheme,
+  ) {
+    final audioUrl = details.audioUrl;
+    final hasAudio = audioUrl != null && audioUrl.isNotEmpty;
+    final progress = _duration.inMilliseconds > 0
+        ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+    final totalLabel = _duration > Duration.zero
+        ? _formatDuration(_duration)
+        : _formatDuration(
+            Duration(seconds: (details.base.durationMinutes * 60).clamp(0, 86400)),
+          );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -378,15 +444,18 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: () {},
-                    icon: const FaIcon(FontAwesomeIcons.play, size: 20),
+                    onPressed: hasAudio ? () => _togglePlayback(audioUrl) : null,
+                    icon: Icon(
+                      _isPlaying ? Icons.pause : Icons.play_arrow,
+                      size: 20,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '0:00',
-                    style: GoogleFonts.plusJakartaSans(
+                    _formatDuration(_position),
+                    style: GoogleFonts.roboto(
                       fontSize: 13,
                       color: scheme.onSurfaceVariant,
                     ),
@@ -401,7 +470,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
                       ),
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
-                        widthFactor: 0.0,
+                        widthFactor: progress,
                         child: Container(
                           decoration: BoxDecoration(
                             color: scheme.primary,
@@ -413,26 +482,24 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '0:14',
-                    style: GoogleFonts.plusJakartaSans(
+                    totalLabel,
+                    style: GoogleFonts.roboto(
                       fontSize: 13,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const FaIcon(
-                    FontAwesomeIcons.volumeHigh,
-                    size: 16,
-                    color: AppTheme.textSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  const FaIcon(
-                    FontAwesomeIcons.ellipsisVertical,
-                    size: 16,
-                    color: AppTheme.textSecondary,
-                  ),
                 ],
               ),
+              if (!hasAudio) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.noAudioRecording,
+                  style: GoogleFonts.roboto(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -460,7 +527,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
             children: [
               Text(
                 l10n.followUp,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurface,
@@ -475,7 +542,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
                 ),
                 child: Text(
                   l10n.needsFollowUp,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.roboto(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.primary,
@@ -487,7 +554,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
           const SizedBox(height: 12),
           Text(
             l10n.reason,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: scheme.onSurfaceVariant,
@@ -496,7 +563,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
           const SizedBox(height: 4),
           Text(
             'Customer has specific product questions that need addressing.',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 14,
               color: scheme.onSurface,
               height: 1.5,
@@ -507,8 +574,55 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
     );
   }
 
+  Future<void> _markAsReviewed(CallDetails details) async {
+    if (_markingReviewed) return;
+
+    final previous = _reviewedOverride ?? details.isReviewed;
+    setState(() {
+      _markingReviewed = true;
+      _reviewedOverride = true;
+    });
+
+    try {
+      await ref.read(callsRepositoryProvider).markReviewed(widget.callId);
+      if (mounted) {
+        ref.invalidate(callDetailsProvider(widget.callId));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _reviewedOverride = previous;
+        });
+        final l10n = AppLocalizations.of(context)!;
+        final message = e is ApiException
+            ? e.message
+            : l10n.failedToMarkReviewed;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _markingReviewed = false;
+        });
+      }
+    }
+  }
+
   // Actions section
-  Widget _buildActionsSection(BuildContext context, AppLocalizations l10n, ColorScheme scheme) {
+  Widget _buildActionsSection(
+    BuildContext context,
+    CallDetails details,
+    AppLocalizations l10n,
+    ColorScheme scheme,
+  ) {
+    final reviewed = _reviewedOverride ?? details.isReviewed;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -518,18 +632,14 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-          _buildActionButton(
-  label: l10n.markReviewed,
-  icon: FontAwesomeIcons.check,
-  reviewed: reviewed,
-  onPressed: reviewed
-      ? null
-      : () {
-          setState(() {
-            reviewed = true;
-          });
-        },
-),
+            _buildActionButton(
+              label: l10n.markReviewed,
+              icon: Icons.check,
+              reviewed: reviewed,
+              onPressed: reviewed || _markingReviewed
+                  ? null
+                  : () => _markAsReviewed(details),
+            ),
           ],
         ),
       ],
@@ -538,13 +648,13 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
 
 Widget _buildActionButton({
   required String label,
-  required FaIconData icon,
+  required IconData icon,
   required VoidCallback? onPressed,
   required bool reviewed,
 }) {
   return ElevatedButton.icon(
     onPressed: onPressed,
-    icon: FaIcon(icon, size: 16),
+    icon: Icon(icon, size: 16),
     label: Text(label),
     style: ElevatedButton.styleFrom(
       backgroundColor:
@@ -561,41 +671,4 @@ Widget _buildActionButton({
   );
 }
 
-  // Dynamic status color for the status dot
-  Color _getStatusColor(CallStatus status) {
-    switch (status) {
-      case CallStatus.completed:
-        return AppTheme.success;
-      case CallStatus.inProgress:
-        return AppTheme.info;
-      case CallStatus.queued:
-        return AppTheme.warning;
-      case CallStatus.failed:
-        return AppTheme.danger;
-    }
-  }
-
-  // Sentiment color helper
-  Color _sentimentColor(Sentiment sentiment) {
-    switch (sentiment) {
-      case Sentiment.positive:
-        return AppTheme.success;
-      case Sentiment.neutral:
-        return AppTheme.warning;
-      case Sentiment.negative:
-        return AppTheme.danger;
-    }
-  }
-
-  // Priority color helper
-  Color _priorityColor(PriorityLevel priority) {
-    switch (priority) {
-      case PriorityLevel.high:
-        return AppTheme.danger;
-      case PriorityLevel.medium:
-        return AppTheme.warning;
-      case PriorityLevel.low:
-        return AppTheme.info;
-    }
-  }
 }

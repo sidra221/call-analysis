@@ -7,7 +7,7 @@ import {
   TableCell, TableHead, TableRow, Divider, IconButton,
   DialogContentText, Grid,
   CircularProgress, Alert, TablePagination,
-  FormControl, InputLabel, Select, Checkbox
+  FormControl, InputLabel, Select, Checkbox, useTheme
 } from '@mui/material';
 import {
   IconPlus, IconTrash, IconTrashX, IconClipboardText, IconChecks,
@@ -16,6 +16,8 @@ import {
 } from '@tabler/icons-react';
 import { reportsApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
+import usePaginationLabels from 'hooks/usePaginationLabels';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import PageCard from 'ui-component/PageCard';
 import PageTitle from 'ui-component/PageTitle';
@@ -24,6 +26,7 @@ import FilterPopover from 'ui-component/FilterPopover';
 import StatSummaryCard from 'ui-component/StatSummaryCard';
 import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
+import { getSentimentChipSx } from 'constants/status';
 import {
   TABLE_LAYOUT_SX,
   TABLE_CHECKBOX_CELL_SX,
@@ -36,9 +39,18 @@ import {
 const rowsPerPage = 6;
 
 export default function Reports() {
+  const theme = useTheme();
   const location = useLocation();
   const { user } = useAuth();
+  const { t, sentimentLabel } = useTranslation();
+  const paginationLabels = usePaginationLabels();
   const role = (user?.role || '').toLowerCase();
+
+  const periodLabel = (period) => {
+    const key = `reports.${period}`;
+    const label = t(key);
+    return label === key ? period : label;
+  };
 
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +103,7 @@ export default function Reports() {
       setReports(reportsData);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to load reports');
+      setError(err.message || t('reports.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -230,7 +242,7 @@ export default function Reports() {
 
   const handleGenerate = async () => {
     if (!form.from || !form.to) {
-      setError('Please select date range');
+      setError(t('reports.selectDateRange'));
       return;
     }
     try {
@@ -247,7 +259,7 @@ export default function Reports() {
       setOpenForm(false);
       setForm({ type: 'daily', from: '', to: '' });
     } catch (err) {
-      setError(err.message || 'Generation failed. You can try again.');
+      setError(err.message || t('reports.generationFailed'));
     } finally {
       setGenerating(false);
     }
@@ -262,7 +274,7 @@ export default function Reports() {
       setSelectedReport(updated);
       setOpenView(false);
     } catch (err) {
-      setError(err.message || 'Publish failed');
+      setError(err.message || t('reports.publishFailed'));
     }
   };
 
@@ -279,7 +291,7 @@ export default function Reports() {
       setReports((prev) => prev.map((r) => r.id === selectedReport.id ? updated : r));
       setOpenView(false);
     } catch (err) {
-      setError(err.message || 'Save failed');
+      setError(err.message || t('reports.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -295,7 +307,7 @@ export default function Reports() {
       setDeleteDialog(false);
       setReportToDelete(null);
     } catch (err) {
-      setError(err.message || 'Delete failed');
+      setError(err.message || t('reports.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -312,7 +324,7 @@ export default function Reports() {
       setSelected((prev) => prev.filter((id) => !selectedDeletable.includes(id)));
       setBulkDeleteDialog(false);
     } catch (err) {
-      setError(err.message || 'Bulk delete failed');
+      setError(err.message || t('reports.bulkDeleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -332,7 +344,7 @@ export default function Reports() {
           errData?.error?.message ||
           errData?.message ||
           errData?.detail ||
-          `Download failed (${response.status})`
+          t('reports.downloadFailed')
         );
       }
 
@@ -342,7 +354,7 @@ export default function Reports() {
         : new Blob([blob], { type: 'application/pdf' });
 
       if (pdfBlob.size < 100) {
-        throw new Error('Received an empty or invalid PDF file');
+        throw new Error(t('reports.emptyPdf'));
       }
 
       const url = window.URL.createObjectURL(pdfBlob);
@@ -354,7 +366,7 @@ export default function Reports() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err.message || 'Download failed');
+      setError(err.message || t('reports.downloadFailed'));
     } finally {
       setDownloadingId(null);
     }
@@ -373,7 +385,7 @@ export default function Reports() {
         setManagerNotesInput(freshReport.manager_notes || '');
       }
     } catch (err) {
-      setError(err.message || 'Failed to load report details');
+      setError(err.message || t('reports.loadDetailsFailed'));
     } finally {
       setLoadingReport(false);
     }
@@ -388,7 +400,7 @@ export default function Reports() {
       setReports((prev) => prev.map((r) => r.id === selectedReport.id ? updated : r));
       setSelectedReport(updated);
     } catch (err) {
-      setError(err.message || 'Review failed');
+      setError(err.message || t('reports.reviewFailed'));
     } finally {
       setReviewing(false);
     }
@@ -396,7 +408,7 @@ export default function Reports() {
 
   const handleSubmitNotes = async () => {
     if (!selectedReport || !managerNotesInput.trim()) {
-      setError('Please enter notes before sending');
+      setError(t('reports.enterNotesBeforeSend'));
       return;
     }
     try {
@@ -407,7 +419,7 @@ export default function Reports() {
       setSelectedReport(updated);
       setOpenNotesDialog(false);
     } catch (err) {
-      setError(err.message || 'Failed to send notes');
+      setError(err.message || t('reports.sendNotesFailed'));
     } finally {
       setSubmittingNotes(false);
     }
@@ -421,10 +433,10 @@ export default function Reports() {
 
   const getSentimentConfig = (sentiment) => {
     switch (sentiment) {
-      case 'positive': return { color: 'success', icon: <IconMoodSmile size={16} /> };
-      case 'neutral': return { color: 'default', icon: <IconMoodNeutral size={16} /> };
-      case 'negative': return { color: 'error', icon: <IconMoodSad size={16} /> };
-      default: return { color: 'default', icon: null };
+      case 'positive': return { icon: <IconMoodSmile size={16} /> };
+      case 'neutral': return { icon: <IconMoodNeutral size={16} /> };
+      case 'negative': return { icon: <IconMoodSad size={16} /> };
+      default: return { icon: null };
     }
   };
 
@@ -451,31 +463,31 @@ export default function Reports() {
 
       {creatorFilter && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Showing reports created by <strong>{creatorFilter}</strong>
+          {t('reports.showingCreatedBy', { name: creatorFilter })}
         </Alert>
       )}
 
       <PageCard bordered>
           <PageTitle
-            title="Reports"
+            title={t('reports.title')}
             action={role === 'qa' ? (
               <Button variant="contained" startIcon={<IconPlus />} onClick={() => setOpenForm(true)}>
-                Generate
+                {t('common.generate')}
               </Button>
             ) : null}
           />
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatSummaryCard icon={<IconClipboardText size={20} />} label="Total Reports" value={reports.length} />
+              <StatSummaryCard icon={<IconClipboardText size={20} />} label={t('reports.totalReports')} value={reports.length} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatSummaryCard icon={<IconChecks size={20} />} label="Published" value={publishedCount} color="success" />
+              <StatSummaryCard icon={<IconChecks size={20} />} label={t('reports.published')} value={publishedCount} color="success" />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <StatSummaryCard
                 icon={<IconClockHour4 size={20} />}
-                label={role === 'manager' ? 'Reviewed' : 'Drafts'}
+                label={role === 'manager' ? t('common.reviewed') : t('reports.drafts')}
                 value={role === 'manager' ? reviewedCount : draftCount}
                 color="warning"
               />
@@ -486,7 +498,7 @@ export default function Reports() {
             search={searchQuery}
             onSearchChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
             onSearchClear={() => { setSearchQuery(''); setPage(0); }}
-            searchPlaceholder="Search summary, dates, status..."
+            searchPlaceholder={t('reports.searchPlaceholder')}
             activeFilterCount={activeFilterCount}
             onOpenFilters={openFilters}
             onResetFilters={handleResetFilters}
@@ -498,7 +510,7 @@ export default function Reports() {
                 startIcon={<IconTrashX size={18} />}
                 onClick={() => setBulkDeleteDialog(true)}
               >
-                Delete Selected ({selectedDeletable.length})
+                {t('reports.deleteSelected', { count: selectedDeletable.length })}
               </Button>
             ) : null}
           />
@@ -507,32 +519,32 @@ export default function Reports() {
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
-            title="Filter Reports"
+            title={t('reports.filterTitle')}
           >
             <FormControl fullWidth size="small">
-              <InputLabel>Status</InputLabel>
+              <InputLabel>{t('common.status')}</InputLabel>
               <Select
                 value={statusFilter}
-                label="Status"
+                label={t('common.status')}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
               >
-                <MenuItem value="all">All</MenuItem>
-                {role === 'qa' && <MenuItem value="draft">Draft</MenuItem>}
-                <MenuItem value="published">Published</MenuItem>
-                <MenuItem value="reviewed">Reviewed</MenuItem>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
+                {role === 'qa' && <MenuItem value="draft">{t('status.draft')}</MenuItem>}
+                <MenuItem value="published">{t('status.published')}</MenuItem>
+                <MenuItem value="reviewed">{t('status.reviewed')}</MenuItem>
               </Select>
             </FormControl>
 
             <FormControl fullWidth size="small">
-              <InputLabel>Type</InputLabel>
+              <InputLabel>{t('common.type')}</InputLabel>
               <Select
                 value={typeFilter}
-                label="Type"
+                label={t('common.type')}
                 onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
               >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="daily">Daily</MenuItem>
-                <MenuItem value="weekly">Weekly</MenuItem>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
+                <MenuItem value="daily">{t('reports.daily')}</MenuItem>
+                <MenuItem value="weekly">{t('reports.weekly')}</MenuItem>
               </Select>
             </FormControl>
           </FilterPopover>
@@ -552,23 +564,23 @@ export default function Reports() {
                   </TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '24%' : '30%' }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Period
+                      {t('reports.period')}
                       <IconButton size="small" onClick={() => handleSort('period_dates')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('period_dates')}
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '14%' : '18%' }}>Type</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '14%' : '18%' }}>{t('common.type')}</TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: isManager ? '14%' : '18%', display: { xs: 'none', sm: 'table-cell' } }}>
-                    Status
+                    {t('common.status')}
                   </TableCell>
                   {isManager && (
                     <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '22%', display: { xs: 'none', md: 'table-cell' } }}>
-                      Created By
+                      {t('followups.createdBy')}
                     </TableCell>
                   )}
                   <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>
-                    Actions
+                    {t('common.actions')}
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -589,11 +601,11 @@ export default function Reports() {
                         disabled={!canSelectReport(r)}
                       />
                     </TableCell>
-                    <TableCell sx={TABLE_BODY_CELL_SX}>
-                      {r.date_from} → {r.date_to}
+                    <TableCell sx={{ ...TABLE_BODY_CELL_SX, direction: 'ltr', unicodeBidi: 'plaintext' }}>
+                      {r.date_from} {t('common.dateRangeTo')} {r.date_to}
                     </TableCell>
                     <TableCell>
-                      <Chip label={r.period} size="small" color="primary" variant="outlined" />
+                      <Chip label={periodLabel(r.period)} size="small" color="primary" variant="outlined" />
                     </TableCell>
                     <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                       <StatusChip status={r.status} />
@@ -612,7 +624,7 @@ export default function Reports() {
                           size="small"
                           sx={{ color: 'info.main' }}
                           onClick={() => openReportView(r)}
-                          title="View Report"
+                          title={t('reports.viewReport')}
                         >
                           <IconEye size={18} />
                         </IconButton>
@@ -625,7 +637,7 @@ export default function Reports() {
                               setReportToDelete(r);
                               setDeleteDialog(true);
                             }}
-                            title={r.status === 'draft' ? 'Delete Draft Report' : 'Only draft reports can be deleted'}
+                            title={r.status === 'draft' ? t('reports.deleteDraft') : t('reports.onlyDraftDelete')}
                           >
                             <IconTrash size={18} />
                           </IconButton>
@@ -636,7 +648,7 @@ export default function Reports() {
                             color="success"
                             onClick={() => handleDownload(r)}
                             disabled={downloadingId === r.id}
-                            title="Download PDF Report"
+                            title={t('reports.downloadPdf')}
                           >
                             {downloadingId === r.id
                               ? <CircularProgress size={16} color="inherit" />
@@ -651,11 +663,11 @@ export default function Reports() {
                   <TableRow>
                     <TableCell colSpan={tableColSpan}>
                       <Box sx={{ py: 5, textAlign: 'center' }}>
-                        <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>No reports found</Typography>
+                        <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>{t('reports.noReportsFound')}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           {searchQuery || activeFilterCount > 0
-                            ? 'No reports match the selected filters.'
-                            : 'No reports have been generated yet.'}
+                            ? t('reports.noMatchFilters')
+                            : t('reports.noReportsYet')}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -673,23 +685,24 @@ export default function Reports() {
               onPageChange={(event, newPage) => setPage(newPage)}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={[]}
+              {...paginationLabels}
             />
           </Box>
       </PageCard>
 
       <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Generate New Report</DialogTitle>
+        <DialogTitle>{t('reports.generateNewReport')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={2}>
-            <TextField select label="Report Type" value={form.type}
+            <TextField select label={t('reports.reportType')} value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })} fullWidth>
-              <MenuItem value="daily">Daily</MenuItem>
-              <MenuItem value="weekly">Weekly</MenuItem>
+              <MenuItem value="daily">{t('reports.daily')}</MenuItem>
+              <MenuItem value="weekly">{t('reports.weekly')}</MenuItem>
             </TextField>
             <Stack direction="row" spacing={2}>
-              <TextField type="date" label="From" InputLabelProps={{ shrink: true }} fullWidth
+              <TextField type="date" label={t('common.from')} InputLabelProps={{ shrink: true }} fullWidth
                 value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
-              <TextField type="date" label="To" InputLabelProps={{ shrink: true }} fullWidth
+              <TextField type="date" label={t('common.to')} InputLabelProps={{ shrink: true }} fullWidth
                 value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
             </Stack>
           </Stack>
@@ -697,42 +710,41 @@ export default function Reports() {
         <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1 }}>
           <DialogCancelButton onClick={() => setOpenForm(false)} />
           <Button variant="contained" onClick={handleGenerate} disabled={generating}>
-            {generating ? <CircularProgress size={18} color="inherit" /> : 'Generate'}
+            {generating ? <CircularProgress size={18} color="inherit" /> : t('common.generate')}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>{t('calls.confirmDelete')}</DialogTitle>
         <DialogContent>
-          <DialogContentText>Are you sure you want to delete this report?</DialogContentText>
+          <DialogContentText>{t('reports.confirmDeleteBody')}</DialogContentText>
         </DialogContent>
         <DialogActions>
           <DialogCancelButton onClick={() => setDeleteDialog(false)} />
           <Button color="error" variant="contained" onClick={confirmDelete} disabled={deleting}>
-            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete'}
+            {deleting ? <CircularProgress size={18} color="inherit" /> : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Delete Selected Reports</DialogTitle>
+        <DialogTitle>{t('reports.deleteSelectedTitle')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete <strong>{selectedDeletable.length}</strong> selected report(s)?
-            Only draft reports can be deleted.
+            {t('reports.bulkDeleteBody', { count: selectedDeletable.length })}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <DialogCancelButton onClick={() => setBulkDeleteDialog(false)} />
           <Button color="error" variant="contained" onClick={handleBulkDelete} disabled={deleting}>
-            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete'}
+            {deleting ? <CircularProgress size={18} color="inherit" /> : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={openView} onClose={() => setOpenView(false)} fullWidth maxWidth="md">
-        <DialogTitle>Report Details</DialogTitle>
+        <DialogTitle>{t('reports.reportDetails')}</DialogTitle>
         {selectedReport && (
           <DialogContent>
             {loadingReport && (
@@ -744,36 +756,39 @@ export default function Reports() {
               {(selectedReport.manager_notes || '').trim() && (
                 <Alert severity="info">
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
-                    Manager Notes
+                    {t('reports.managerNotes')}
                   </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                     {(selectedReport.manager_notes || '').trim()}
                   </Typography>
                   {selectedReport.reviewed_by_username && selectedReport.reviewed_at && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                      By {selectedReport.reviewed_by_username} · {selectedReport.reviewed_at.split('T')[0]}
+                      {t('reports.reviewedBy', {
+                        username: selectedReport.reviewed_by_username,
+                        date: selectedReport.reviewed_at.split('T')[0],
+                      })}
                     </Typography>
                   )}
                 </Alert>
               )}
 
               <TextField
-                label="Summary (Issues & Solutions)" multiline minRows={3}
+                label={t('reports.summaryIssues')} multiline minRows={3}
                 value={selectedReport.summary || ''}
                 onChange={(e) => handleFieldChange('summary', e.target.value)}
                 disabled={!isEditable} fullWidth
               />
               <TextField
-                label="Positives"
-                placeholder="Positive highlights and strengths observed in calls (e.g. good resolutions, satisfied customers)"
+                label={t('reports.positives')}
+                placeholder={t('reports.positivesPlaceholder')}
                 multiline minRows={2}
                 value={selectedReport.positives || ''}
                 onChange={(e) => handleFieldChange('positives', e.target.value)}
                 disabled={!isEditable} fullWidth
               />
               <TextField
-                label="Recommendations"
-                placeholder="General improvement recommendations for QA, training, and operations"
+                label={t('reports.recommendations')}
+                placeholder={t('reports.recommendationsPlaceholder')}
                 multiline minRows={2}
                 value={selectedReport.recommendations || ''}
                 onChange={(e) => handleFieldChange('recommendations', e.target.value)}
@@ -784,12 +799,20 @@ export default function Reports() {
 
               <Box>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                  Overall Sentiment
+                  {t('reports.overallSentiment')}
                 </Typography>
                 {(() => {
                   const s = getOverallSentiment(selectedReport);
                   const config = getSentimentConfig(s);
-                  return <Chip label={s} color={config.color} icon={config.icon} size="small" />;
+                  return (
+                    <Chip
+                      label={sentimentLabel(s)}
+                      icon={config.icon}
+                      size="small"
+                      variant="outlined"
+                      sx={getSentimentChipSx(theme, s)}
+                    />
+                  );
                 })()}
               </Box>
 
@@ -798,8 +821,8 @@ export default function Reports() {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell><Typography fontWeight={700}>Top Issues</Typography></TableCell>
-                        <TableCell align="right"><Typography fontWeight={700}>Count</Typography></TableCell>
+                        <TableCell><Typography fontWeight={700}>{t('reports.topIssues')}</Typography></TableCell>
+                        <TableCell align="right"><Typography fontWeight={700}>{t('reports.count')}</Typography></TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -809,7 +832,7 @@ export default function Reports() {
                             <Stack direction="row" spacing={1} alignItems="center">
                               <Chip label={`#${index + 1}`} size="small" color="primary" variant="outlined" />
                               <Typography fontWeight={500}>
-                                {item.issue || item.main_issue || 'Unknown'}
+                                {item.issue || item.main_issue || t('common.unknown')}
                               </Typography>
                             </Stack>
                           </TableCell>
@@ -822,7 +845,7 @@ export default function Reports() {
                         <TableRow>
                           <TableCell colSpan={2} align="center">
                             <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                              No issues data
+                              {t('reports.noIssuesData')}
                             </Typography>
                           </TableCell>
                         </TableRow>
@@ -839,9 +862,9 @@ export default function Reports() {
           {role === 'qa' && selectedReport?.status === 'draft' && (
             <>
               <Button variant="outlined" onClick={handleSaveDraft} disabled={saving}>
-                {saving ? <CircularProgress size={16} /> : 'Save Draft'}
+                {saving ? <CircularProgress size={16} /> : t('common.saveDraft')}
               </Button>
-              <Button variant="contained" onClick={handlePublish}>Publish</Button>
+              <Button variant="contained" onClick={handlePublish}>{t('reports.publish')}</Button>
             </>
           )}
           {role === 'manager' && selectedReport && (
@@ -854,14 +877,14 @@ export default function Reports() {
               >
                 {reviewing
                   ? <CircularProgress size={16} />
-                  : isReviewed(selectedReport) ? 'Reviewed ✓' : 'Review'}
+                  : isReviewed(selectedReport) ? t('common.reviewedCheck') : t('common.review')}
               </Button>
               <Button
                 variant="outlined"
                 color="secondary"
                 onClick={() => setOpenNotesDialog(true)}
               >
-                Add Notes
+                {t('reports.addNotes')}
               </Button>
               <Button
                 variant="contained"
@@ -872,7 +895,7 @@ export default function Reports() {
                 disabled={downloadingId === selectedReport.id}
                 onClick={() => handleDownload(selectedReport)}
               >
-                Download PDF
+                {t('reports.downloadPdfShort')}
               </Button>
             </>
           )}
@@ -880,19 +903,19 @@ export default function Reports() {
       </Dialog>
 
       <Dialog open={openNotesDialog} onClose={() => setOpenNotesDialog(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Add Notes for QA</DialogTitle>
+        <DialogTitle>{t('reports.addNotesForQa')}</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            Write feedback for the QA team. They will see these notes when they open the report.
+            {t('reports.notesFeedback')}
           </DialogContentText>
           <TextField
-            label="Manager Notes"
+            label={t('reports.managerNotes')}
             multiline
             minRows={4}
             fullWidth
             value={managerNotesInput}
             onChange={(e) => setManagerNotesInput(e.target.value)}
-            placeholder="Enter your notes here..."
+            placeholder={t('reports.notesPlaceholder')}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
@@ -902,7 +925,7 @@ export default function Reports() {
             onClick={handleSubmitNotes}
             disabled={!managerNotesInput.trim() || submittingNotes}
           >
-            {submittingNotes ? <CircularProgress size={16} color="inherit" /> : 'Send to QA'}
+            {submittingNotes ? <CircularProgress size={16} color="inherit" /> : t('common.sendToQa')}
           </Button>
         </DialogActions>
       </Dialog>

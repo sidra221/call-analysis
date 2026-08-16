@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Avatar, Box, IconButton, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { IconTrash, IconUpload } from '@tabler/icons-react';
-import useConfig from 'hooks/useConfig';
+import useTranslation from 'hooks/useTranslation';
 import {
   getAvatarInitial,
   getRoleAvatarBorderSx,
@@ -22,8 +22,7 @@ export default function ProfileAvatarUpload({
   error = ''
 }) {
   const theme = useTheme();
-  const { state: { language } } = useConfig();
-  const isAr = language === 'ar';
+  const { t } = useTranslation();
   const inputRef = useRef(null);
   const [hovered, setHovered] = useState(false);
 
@@ -52,7 +51,7 @@ export default function ProfileAvatarUpload({
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      onChange({ ...value, fileError: isAr ? 'الحد الأقصى 2 ميجابايت' : 'Max file size is 2 MB' });
+      onChange({ ...value, fileError: t('profile.maxFileSize') });
       return;
     }
 
@@ -148,7 +147,7 @@ export default function ProfileAvatarUpload({
               fontWeight={700}
               sx={{ fontSize: '0.7rem', color: '#fff', letterSpacing: 0.2 }}
             >
-              {isAr ? 'رفع صورة' : 'Upload'}
+              {t('common.upload')}
             </Typography>
           </Box>
         )}

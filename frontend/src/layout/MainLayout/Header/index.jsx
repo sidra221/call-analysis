@@ -8,8 +8,6 @@ import Box from '@mui/material/Box';
 import LogoSection from '../LogoSection';
 import ProfileSection from './ProfileSection';
 import NotificationSection from './NotificationSection';
-import useConfig from 'hooks/useConfig';
-
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
 
 // assets
@@ -18,7 +16,6 @@ import { IconMenu2 } from '@tabler/icons-react';
 export default function Header() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
-  const { state: { language } } = useConfig();
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
@@ -26,7 +23,7 @@ export default function Header() {
   return (
     <>
       {/* logo & toggler button */}
-      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex', alignItems: 'center', mr: language === 'ar' ? 0 : 2, ml: language === 'ar' ? 2 : 0 }}>
+      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex', alignItems: 'center', me: 2 }}>
         <Avatar
           variant="rounded"
           sx={{
@@ -45,7 +42,7 @@ export default function Header() {
         >
           <IconMenu2 stroke={1.5} size="20px" />
         </Avatar>
-        <Box component="span" sx={{ ml: 2, display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
+        <Box component="span" sx={{ ms: 2, display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
           <LogoSection />
         </Box>
       </Box>

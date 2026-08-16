@@ -30,6 +30,8 @@ import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
+import usePaginationLabels from 'hooks/usePaginationLabels';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const rowsPerPage = 6;
@@ -61,6 +63,8 @@ const assigneeNotesBoxSx = {
 export default function Followups() {
   const location = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const paginationLabels = usePaginationLabels();
   const role = (user?.role || '').toLowerCase();
   const isManager = role === 'manager';
   const isQA = role === 'qa';
@@ -187,7 +191,7 @@ export default function Followups() {
   const handleMarkDone = async () => {
     if (!selectedFollowup || !isFollowupAssignee(selectedFollowup)) return;
     if (!editableAssigneeNotes.trim()) {
-      setError('Follow-up notes are required before marking as done');
+      setError(t('followups.notesRequired'));
       return;
     }
     try {
@@ -208,7 +212,7 @@ export default function Followups() {
       setEditableStatus('done');
       setIsEditMode(false);
     } catch (err) {
-      setError(err.message || 'Update failed');
+      setError(err.message || t('followups.updateFailed'));
     } finally {
       setSavingFollowup(false);
     }
@@ -220,7 +224,7 @@ export default function Followups() {
       const res = await followupsApi.list();
       setFollowups(res?.data || []);
     } catch (err) {
-      setError(err.message || 'Failed to load follow-ups');
+      setError(err.message || t('followups.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -324,7 +328,7 @@ export default function Followups() {
       setCreatorNotes('');
       setCallIdInput('');
     } catch (err) {
-      setError(err.message || 'Failed to create follow-up');
+      setError(err.message || t('followups.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -351,7 +355,7 @@ export default function Followups() {
       setSelectedFollowup(updated);
       setIsEditMode(false);
     } catch (err) {
-      setError(err.message || 'Save failed');
+      setError(err.message || t('followups.saveFailed'));
     } finally {
       setSavingFollowup(false);
     }
@@ -369,7 +373,7 @@ export default function Followups() {
       setOpenDeleteDialog(false);
       setFollowupToDelete(null);
     } catch (err) {
-      setError(err.message || 'Delete failed');
+      setError(err.message || t('followups.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -405,29 +409,29 @@ export default function Followups() {
 
       {createdByFilter !== 'all' && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Showing follow-ups created by <strong>{createdByFilter}</strong>
+          {t('followups.showingCreatedBy', { name: createdByFilter })}
         </Alert>
       )}
 
       <PageCard bordered>
-          <PageTitle title="Follow-ups Management" />
+          <PageTitle title={t('followups.title')} />
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatSummaryCard icon={<IconClipboardText size={20} />} label="Total Follow-ups" value={visibleFollowups.length} />
+              <StatSummaryCard icon={<IconClipboardText size={20} />} label={t('followups.total')} value={visibleFollowups.length} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatSummaryCard icon={<IconClockHour4 size={20} />} label="Pending" value={pendingCount} color="warning" />
+              <StatSummaryCard icon={<IconClockHour4 size={20} />} label={t('followups.pending')} value={pendingCount} color="warning" />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatSummaryCard icon={<IconChecks size={20} />} label="Completed" value={doneCount} color="success" />
+              <StatSummaryCard icon={<IconChecks size={20} />} label={t('followups.completed')} value={doneCount} color="success" />
             </Grid>
           </Grid>
 
           <FilterToolbar
             search={dateFilter}
             onSearchChange={(e) => setDateFilter(e.target.value)}
-            searchPlaceholder="Search by date..."
+            searchPlaceholder={t('followups.searchPlaceholder')}
             activeFilterCount={activeFilterCount}
             onOpenFilters={openFilters}
             onResetFilters={handleReset}
@@ -436,7 +440,7 @@ export default function Followups() {
                 if (isQA && currentUserId) setAssignedTo(currentUserId);
                 setOpenCreateDialog(true);
               }}>
-                Create
+                {t('common.create')}
               </Button>
             ) : null}
           />
@@ -445,22 +449,22 @@ export default function Followups() {
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
-            title="Filter Follow-ups"
+            title={t('followups.filterTitle')}
           >
             <FormControl fullWidth size="small">
-              <InputLabel>Status</InputLabel>
-              <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="in_progress">In Progress</MenuItem>
-                <MenuItem value="done">Done</MenuItem>
+              <InputLabel>{t('common.status')}</InputLabel>
+              <Select value={statusFilter} label={t('common.status')} onChange={(e) => setStatusFilter(e.target.value)}>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
+                <MenuItem value="pending">{t('status.pending')}</MenuItem>
+                <MenuItem value="in_progress">{t('status.in_progress')}</MenuItem>
+                <MenuItem value="done">{t('status.done')}</MenuItem>
               </Select>
             </FormControl>
 
             <FormControl fullWidth size="small">
-              <InputLabel>Created By</InputLabel>
-              <Select value={createdByFilter} label="Created By" onChange={(e) => setCreatedByFilter(e.target.value)}>
-                <MenuItem value="all">All</MenuItem>
+              <InputLabel>{t('followups.createdBy')}</InputLabel>
+              <Select value={createdByFilter} label={t('followups.createdBy')} onChange={(e) => setCreatedByFilter(e.target.value)}>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
                 {uniqueCreators.map((name) => (
                   <MenuItem key={name} value={name}>{name}</MenuItem>
                 ))}
@@ -468,7 +472,7 @@ export default function Followups() {
             </FormControl>
 
             <TextField
-              fullWidth size="small" type="date" label="Date"
+              fullWidth size="small" type="date" label={t('common.date')}
               value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
               InputLabelProps={{ shrink: true }}
             />
@@ -481,7 +485,7 @@ export default function Followups() {
                 <TableRow>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%' }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Call ID
+                      {t('followups.callId')}
                       <IconButton size="small" onClick={() => handleSort('call_id')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('call_id')}
                       </IconButton>
@@ -489,24 +493,24 @@ export default function Followups() {
                   </TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Created By
+                      {t('followups.createdBy')}
                       <IconButton size="small" onClick={() => handleSort('created_by')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('created_by')}
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>Status</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>Creator Notes</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>Follow-up Notes</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>{t('common.status')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>{t('followups.creatorNotes')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '18%' }}>{t('followups.followUpNotes')}</TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Created At
+                      {t('table.createdAt')}
                       <IconButton size="small" onClick={() => handleSort('created_at')} sx={{ p: 0, flexShrink: 0 }}>
                         {getSortIcon('created_at')}
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>Actions</TableCell>
+                  <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>{t('common.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -559,7 +563,7 @@ export default function Followups() {
                           size="small"
                           sx={{ color: 'info.main' }}
                           onClick={() => openFollowupDrawer(item, false)}
-                          title="View Follow-up"
+                          title={t('followups.viewFollowup')}
                         >
                           <IconEye size={18} />
                         </IconButton>
@@ -568,7 +572,7 @@ export default function Followups() {
                             size="small"
                             color="primary"
                             onClick={() => openFollowupDrawer(item, true)}
-                            title="Edit Follow-up"
+                            title={t('followups.editFollowup')}
                           >
                             <IconEdit size={18} />
                           </IconButton>
@@ -578,7 +582,7 @@ export default function Followups() {
                             size="small"
                             color="error"
                             onClick={() => openDeleteConfirm(item)}
-                            title="Delete Follow-up"
+                            title={t('followups.deleteFollowup')}
                           >
                             <IconTrash size={18} />
                           </IconButton>
@@ -591,8 +595,8 @@ export default function Followups() {
                   <TableRow>
                     <TableCell colSpan={7}>
                       <Box sx={{ py: 5, textAlign: 'center' }}>
-                        <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>No follow-ups found</Typography>
-                        <Typography variant="body2" color="text.secondary">No follow-ups match the selected filters.</Typography>
+                        <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>{t('followups.noFollowupsFound')}</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('followups.noMatchFilters')}</Typography>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -610,17 +614,18 @@ export default function Followups() {
               onPageChange={(event, newPage) => setPage(newPage)}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={[]}
+              {...paginationLabels}
             />
           </Box>
       </PageCard>
 
       <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 700 }}>Create Follow-up</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('followups.createFollowup')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
-                label="Call ID" size="small" value={callIdInput} type="number"
+                label={t('followups.callId')} size="small" value={callIdInput} type="number"
                 onChange={(e) => setCallIdInput(e.target.value)}
                 fullWidth
               />
@@ -636,9 +641,9 @@ export default function Followups() {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Assigned To"
+                    label={t('followups.assignedTo')}
                     size="small"
-                    placeholder="Type to search..."
+                    placeholder={t('followups.searchUserPlaceholder')}
                     fullWidth
                   />
                 )}
@@ -659,10 +664,10 @@ export default function Followups() {
             </Grid>
             <Grid size={{ xs: 12 }}>
               <TextField
-                label="Creator notes (optional)" multiline minRows={3} value={creatorNotes}
+                label={t('followups.creatorNotes')} multiline minRows={3} value={creatorNotes}
                 onChange={(e) => setCreatorNotes(e.target.value)}
                 fullWidth
-                placeholder="Describe what needs follow-up..."
+                placeholder={t('followups.creatorNotesPlaceholder')}
               />
             </Grid>
           </Grid>
@@ -672,7 +677,7 @@ export default function Followups() {
           <Button variant="contained" onClick={handleCreateFollowup}
             disabled={!assignedTo || !callIdInput || creating}
             sx={{ px: 2.5 }}>
-            {creating ? <CircularProgress size={18} color="inherit" /> : 'Create'}
+            {creating ? <CircularProgress size={18} color="inherit" /> : t('common.create')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -688,15 +693,15 @@ export default function Followups() {
                     width: 10,
                     height: 10,
                     borderRadius: '50%',
-                    backgroundColor: (t) => t.palette[followupStatusColor[selectedFollowup.status] || 'grey']?.main || '#999',
+                    backgroundColor: (theme) => theme.palette[followupStatusColor[selectedFollowup.status] || 'grey']?.main || '#999',
                   }} />
                   <Typography variant="h5">
-                    Follow-up #{selectedFollowup.id}
+                    {t('followups.followUpTitle', { id: selectedFollowup.id })}
                   </Typography>
                   {canEditFollowup(selectedFollowup) && (
                     <IconButton
                       size="small"
-                      title={isEditMode ? 'Save' : 'Edit Follow-up'}
+                      title={isEditMode ? t('common.save') : t('followups.editFollowup')}
                       onClick={() => { if (isEditMode) { handleSaveFollowup(); } else { setIsEditMode(true); } }}
                       sx={{ color: 'text.primary' }}
                     >
@@ -712,13 +717,13 @@ export default function Followups() {
                   {selectedFollowup.created_at ? selectedFollowup.created_at.split('T')[0] : '—'}
                 </Typography>
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Typography variant="body2" color="text.secondary">Created by</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('followups.createdByLower')}</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {selectedFollowup.created_by_username || '—'}
                   </Typography>
                 </Stack>
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Typography variant="body2" color="text.secondary">Assigned to</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('followups.assignedToLower')}</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {selectedFollowup.assigned_to_username || '—'}
                   </Typography>
@@ -729,7 +734,7 @@ export default function Followups() {
 
               {!isManager && isEditMode && isFollowupAssignee(selectedFollowup) && selectedFollowup.status !== 'done' ? (
                 <>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Status</Typography>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('common.status')}</Typography>
                   <Select
                     fullWidth
                     size="small"
@@ -737,14 +742,14 @@ export default function Followups() {
                     onChange={(e) => setEditableStatus(e.target.value)}
                     sx={{ mb: 2 }}
                   >
-                    <MenuItem value="pending">Pending</MenuItem>
-                    <MenuItem value="in_progress">In Progress</MenuItem>
+                    <MenuItem value="pending">{t('status.pending')}</MenuItem>
+                    <MenuItem value="in_progress">{t('status.in_progress')}</MenuItem>
                   </Select>
                   <Divider sx={{ my: 2 }} />
                 </>
               ) : (
                 <>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Status</Typography>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('common.status')}</Typography>
                   <Box sx={{ mb: 2 }}>
                     <StatusChip status={selectedFollowup.status} />
                   </Box>
@@ -756,7 +761,7 @@ export default function Followups() {
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, color: 'warning.dark' }}>
                   <IconMessage size={18} />
                   <Typography variant="subtitle2" color="warning.dark" fontWeight={700}>
-                    Creator Notes
+                    {t('followups.creatorNotes')}
                   </Typography>
                 </Stack>
                 {isEditMode && isFollowupCreator(selectedFollowup) && selectedFollowup.status !== 'done' ? (
@@ -766,7 +771,7 @@ export default function Followups() {
                     minRows={3}
                     value={editableCreatorNotes}
                     onChange={(e) => setEditableCreatorNotes(e.target.value)}
-                    placeholder="Describe what needs follow-up..."
+                    placeholder={t('followups.creatorNotesPlaceholder')}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         bgcolor: 'background.paper',
@@ -784,7 +789,7 @@ export default function Followups() {
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, color: 'info.dark' }}>
                   <IconWriting size={18} />
                   <Typography variant="subtitle2" color="info.dark" fontWeight={700}>
-                    Follow-up Notes
+                    {t('followups.followUpNotes')}
                   </Typography>
                 </Stack>
                 {!isManager && isEditMode && isFollowupAssignee(selectedFollowup) && selectedFollowup.status !== 'done' ? (
@@ -794,7 +799,7 @@ export default function Followups() {
                     minRows={4}
                     value={editableAssigneeNotes}
                     onChange={(e) => setEditableAssigneeNotes(e.target.value)}
-                    placeholder="Describe what you did when completing this follow-up..."
+                    placeholder={t('followups.assigneeNotesPlaceholder')}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         bgcolor: 'background.paper',
@@ -818,7 +823,7 @@ export default function Followups() {
                   fullWidth
                   sx={{ mt: 1 }}
                 >
-                  Mark as Done
+                  {t('followups.markAsDone')}
                 </Button>
               )}
 
@@ -831,7 +836,7 @@ export default function Followups() {
                   fullWidth
                   sx={{ mt: 1 }}
                 >
-                  Delete Follow-up
+                  {t('followups.deleteFollowup')}
                 </Button>
               )}
             </>
@@ -840,10 +845,13 @@ export default function Followups() {
       </Drawer>
 
       <Dialog open={openDeleteDialog} onClose={() => { setOpenDeleteDialog(false); setFollowupToDelete(null); }} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Delete Follow-up</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('followups.deleteFollowup')}</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
-            Delete follow-up #{followupToDelete?.id} for call #{followupToDelete?.call_id || followupToDelete?.call}?
+            {t('followups.deleteConfirmBody', {
+              id: followupToDelete?.id,
+              callId: followupToDelete?.call_id || followupToDelete?.call,
+            })}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
@@ -854,7 +862,7 @@ export default function Followups() {
             onClick={handleDeleteFollowup}
             disabled={deleting}
           >
-            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Delete'}
+            {deleting ? <CircularProgress size={18} color="inherit" /> : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>

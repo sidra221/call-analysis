@@ -45,7 +45,7 @@ export default function MainLayout() {
   if (menuMasterLoading) return <Loader />;
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', flexDirection: theme.direction === 'rtl' ? 'row-reverse' : 'row' }}>
       {/* header */}
       <AppBar enableColorOnDark position="fixed" color="inherit" elevation={0} sx={{ bgcolor: 'background.default' }}>
         <Toolbar sx={{ p: 2 }}>

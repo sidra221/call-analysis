@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../../l10n/app_localizations.dart';
 import '../application/auth_controller.dart';
 
 // ألوان اللايت مود بس (نفس الديزاين يلي حبيته)
@@ -25,7 +26,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
@@ -38,7 +39,7 @@ Future<void> login() async {
   final success = await ref
       .read(authControllerProvider.notifier)
       .login(
-        emailController.text.trim(),
+        usernameController.text.trim(),
         passwordController.text,
       );
 
@@ -46,31 +47,35 @@ Future<void> login() async {
 
   if (success && mounted) {
     context.goNamed('home');
-  } else {
+  } else if (mounted) {
+    final l10n = AppLocalizations.of(context)!;
+    final errorMessage =
+        ref.read(authControllerProvider).error ?? l10n.loginFailed;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login failed'),
+      SnackBar(
+        content: Text(errorMessage),
       ),
     );
   }
 }
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
 
     // اختيار الألوان حسب الوضع
-    final backgroundColor = isDark ? AppTheme.backgroundPrimary : _LightColors.background;
-    final cardColor = isDark ? AppTheme.surface : _LightColors.card;
-    final borderColor = isDark ? AppTheme.divider : _LightColors.border;
+    final backgroundColor = isDark ? AppTheme.darkBackground : _LightColors.background;
+    final cardColor = isDark ? AppTheme.darkPaper : _LightColors.card;
+    final borderColor = isDark ? AppTheme.darkLevel1 : _LightColors.border;
     final primaryColor = isDark ? AppTheme.primary : _LightColors.primary;
-    final titleColor = isDark ? AppTheme.textPrimary : _LightColors.primary;
-    final textPrimaryColor = isDark ? AppTheme.textPrimary : _LightColors.textPrimary;
-    final textSecondaryColor = isDark ? AppTheme.textSecondary : _LightColors.textSecondary;
+    final titleColor = isDark ? AppTheme.darkTextTitle : _LightColors.primary;
+    final textPrimaryColor = isDark ? AppTheme.darkTextPrimary : _LightColors.textPrimary;
+    final textSecondaryColor = isDark ? AppTheme.darkTextSecondary : _LightColors.textSecondary;
     final shadowColor = isDark ? Colors.black.withValues(alpha: 0.4) : primaryColor.withValues(alpha: 0.15);
-    final fieldFillColor = isDark ? AppTheme.backgroundSecondary : Colors.white;
+    final fieldFillColor = isDark ? AppTheme.darkLevel2 : Colors.white;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -98,7 +103,7 @@ Future<void> login() async {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    "Login",
+                    l10n.login,
                     style: TextStyle(
                       fontSize: 26,
                       color: primaryColor,
@@ -109,7 +114,7 @@ Future<void> login() async {
                   const SizedBox(height: 8),
 
                   Text(
-                    "Enter your credentials to continue",
+                    l10n.enterCredentials,
                     style: TextStyle(
                       fontSize: 14,
                       color: textSecondaryColor,
@@ -118,15 +123,15 @@ Future<void> login() async {
 
                   const SizedBox(height: 28),
 
-                  // Email
+                  // Username
                   TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: usernameController,
+                    keyboardType: TextInputType.text,
                     style: TextStyle(color: textPrimaryColor),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: fieldFillColor,
-                      hintText: "Email",
+                      hintText: l10n.username,
                       hintStyle: TextStyle(color: textSecondaryColor.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -143,11 +148,8 @@ Future<void> login() async {
                       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Email is required";
-                      }
-                      if (!value.contains("@")) {
-                        return "Enter valid email";
+                      if (value == null || value.trim().isEmpty) {
+                        return l10n.usernameRequired;
                       }
                       return null;
                     },
@@ -163,7 +165,7 @@ Future<void> login() async {
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: fieldFillColor,
-                      hintText: "Password",
+                      hintText: l10n.password,
                       hintStyle: TextStyle(color: textSecondaryColor.withValues(alpha: 0.7)),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -194,10 +196,10 @@ Future<void> login() async {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return "Password is required";
+                        return l10n.passwordRequiredField;
                       }
                       if (value.length < 6) {
-                        return "Password must be 6+ chars";
+                        return l10n.passwordMinLength;
                       }
                       return null;
                     },
@@ -231,9 +233,9 @@ Future<void> login() async {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                "Login",
-                                key: ValueKey('label'),
+                            : Text(
+                                l10n.login,
+                                key: const ValueKey('label'),
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -250,7 +252,7 @@ Future<void> login() async {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Don't have an account? ",
+                        l10n.noAccount,
                         style: TextStyle(
                           fontSize: 14,
                           color: textPrimaryColor,
@@ -261,7 +263,7 @@ Future<void> login() async {
                           // Navigator.pushNamed(context, '/register');
                         },
                         child: Text(
-                          "Register",
+                          l10n.register,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

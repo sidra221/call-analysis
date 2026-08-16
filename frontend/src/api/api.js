@@ -326,13 +326,7 @@ export const accountsApi = {
     request('/api/accounts/me/avatar/', {
       method: 'PUT',
       body: JSON.stringify({ avatar_style: avatarStyle })
-    }),
-
-  managerOnly: () =>
-    request('/api/accounts/manager-only/'),
-
-  qaOnly: () =>
-    request('/api/accounts/qa-only/')
+    })
 };
 
 // ─────────────────────────────────────────────

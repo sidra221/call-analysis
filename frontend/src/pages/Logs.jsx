@@ -37,6 +37,8 @@ import {
 } from '@tabler/icons-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import useTranslation from 'hooks/useTranslation';
+import usePaginationLabels from 'hooks/usePaginationLabels';
 import { logsApi } from 'api/api';
 import PageCard from 'ui-component/PageCard';
 import PageTitle from 'ui-component/PageTitle';
@@ -46,22 +48,22 @@ import { getActionColor, resolveThemeColor } from 'constants/colors';
 
 const rowsPerPage = 6;
 
-const ACTION_OPTIONS = [
-  { value: 'all', label: 'All Actions' },
-  { value: 'upload_call', label: 'Upload Call' },
-  { value: 'delete_call', label: 'Delete Call' },
-  { value: 'call_processing', label: 'Call Processing' },
-  { value: 'call_status_change', label: 'Call Status Change' },
-  { value: 'review_call', label: 'Review Call' },
-  { value: 'generate_report', label: 'Generate Report' },
-  { value: 'publish_report', label: 'Publish Report' },
-  { value: 'delete_report', label: 'Delete Report' },
-  { value: 'user_created', label: 'User Created' },
-  { value: 'user_updated', label: 'User Updated' },
-  { value: 'user_deleted', label: 'User Deleted' },
-  { value: 'create_followup', label: 'Create Followup' },
-  { value: 'delete_followup', label: 'Delete Followup' },
-  { value: 'update_followup', label: 'Update Followup' },
+const LOG_ACTION_VALUES = [
+  'all',
+  'upload_call',
+  'delete_call',
+  'call_processing',
+  'call_status_change',
+  'review_call',
+  'generate_report',
+  'publish_report',
+  'delete_report',
+  'user_created',
+  'user_updated',
+  'user_deleted',
+  'create_followup',
+  'delete_followup',
+  'update_followup',
 ];
 
 const parseLogsResponse = (res) => {
@@ -89,6 +91,16 @@ const fetchAllLogs = async () => {
 
 export default function Logs() {
   const theme = useTheme();
+  const { t, locale } = useTranslation();
+  const paginationLabels = usePaginationLabels();
+
+  const actionOptions = useMemo(
+    () => LOG_ACTION_VALUES.map((value) => ({
+      value,
+      label: t(`logActions.${value}`),
+    })),
+    [t]
+  );
 
   const [allLogs, setAllLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -135,12 +147,12 @@ export default function Logs() {
       setAllLogs(logs);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to load logs');
+      setError(err.message || t('logs.loadFailed'));
       setAllLogs([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadLogs();
@@ -222,33 +234,19 @@ export default function Logs() {
   };
 
   const getActionLabel = (action) => {
-    const labels = {
-      upload_call: 'Uploaded a call',
-      delete_call: 'Deleted a call',
-      call_processing: 'Started processing call',
-      call_status_change: 'Call status changed',
-      review_call: 'Reviewed a call',
-      publish_report: 'Published a report',
-      generate_report: 'Generated a report',
-      delete_report: 'Deleted a report',
-      user_created: 'User was created',
-      user_updated: 'User was updated',
-      user_deleted: 'User was deleted',
-      create_followup: 'Created a followup',
-      delete_followup: 'Deleted a followup',
-      update_followup: 'Updated a followup'
-    };
-    return labels[action] || action.replace(/_/g, ' ');
+    const key = `activity.${action}`;
+    const translated = t(key);
+    return translated === key ? action.replace(/_/g, ' ') : translated;
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleString();
+    return date.toLocaleString(locale);
   };
 
   return (
     <PageCard>
-      <PageTitle title="System Logs" />
+      <PageTitle title={t('logs.title')} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -262,7 +260,7 @@ export default function Logs() {
           setSearchQuery(e.target.value);
           setPage(0);
         }}
-        searchPlaceholder="Search by user, action, or description..."
+        searchPlaceholder={t('logs.searchPlaceholder')}
         activeFilterCount={activeFilterCount}
         onOpenFilters={openFilters}
         onResetFilters={handleResetFilters}
@@ -273,34 +271,34 @@ export default function Logs() {
         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
           {searchQuery && (
             <Chip
-              label={`Search: ${searchQuery}`}
+              label={`${t('logs.searchLabel')}: ${searchQuery}`}
               size="small"
               onDelete={() => { setSearchQuery(''); setPage(0); }}
             />
           )}
           {actionFilter !== 'all' && (
             <Chip
-              label={`Action: ${ACTION_OPTIONS.find((o) => o.value === actionFilter)?.label || actionFilter}`}
+              label={`${t('logs.action')}: ${actionOptions.find((o) => o.value === actionFilter)?.label || actionFilter}`}
               size="small"
               onDelete={() => { setActionFilter('all'); setDraftAction('all'); setPage(0); }}
             />
           )}
           {usernameFilter && (
             <Chip
-              label={`User: ${usernameFilter}`}
+              label={`${t('logs.user')}: ${usernameFilter}`}
               size="small"
               onDelete={() => { setUsernameFilter(''); setDraftUsername(''); setPage(0); }}
             />
           )}
           {dateFilter && (
             <Chip
-              label={`Date: ${dateFilter}`}
+              label={`${t('common.date')}: ${dateFilter}`}
               size="small"
               onDelete={() => { setDateFilter(''); setDraftDate(''); setPage(0); }}
             />
           )}
           <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-            {filteredLogs.length} result{filteredLogs.length !== 1 ? 's' : ''}
+            {t(filteredLogs.length === 1 ? 'logs.resultsCount' : 'logs.resultsCountPlural', { count: filteredLogs.length })}
           </Typography>
         </Stack>
       )}
@@ -310,18 +308,18 @@ export default function Logs() {
         anchorEl={filterAnchorEl}
         onClose={closeFilters}
         onApply={applyDraftFilters}
-        title="Filter Logs"
+        title={t('logs.filterTitle')}
         width={320}
       >
         <FormControl fullWidth size="small">
-          <InputLabel>Action</InputLabel>
+          <InputLabel>{t('logs.action')}</InputLabel>
           <Select
             value={draftAction}
-            label="Action"
+            label={t('logs.action')}
             onChange={(e) => setDraftAction(e.target.value)}
             MenuProps={{ disablePortal: true }}
           >
-            {ACTION_OPTIONS.map((option) => (
+            {actionOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
                 {option.label}
               </MenuItem>
@@ -338,9 +336,9 @@ export default function Logs() {
           renderInput={(params) => (
             <TextField
               {...params}
-              label="Username"
+              label={t('users.username')}
               size="small"
-              placeholder="Type to search users..."
+              placeholder={t('logs.searchUserPlaceholder')}
             />
           )}
           renderOption={(props, option) => {
@@ -367,7 +365,7 @@ export default function Logs() {
         <TextField
           fullWidth
           size="small"
-          label="Date"
+          label={t('common.date')}
           type="date"
           value={draftDate}
           onChange={(e) => setDraftDate(e.target.value)}
@@ -436,7 +434,7 @@ export default function Logs() {
                       />
 
                       <Chip
-                        label={log.action.replace(/_/g, ' ')}
+                        label={t(`logActions.${log.action}`)}
                         size="small"
                         sx={{
                           bgcolor: alpha(actionColor, 0.08),
@@ -454,7 +452,7 @@ export default function Logs() {
 
             {paginatedLogs.length === 0 && (
               <Typography color="text.secondary" textAlign="center" py={4}>
-                {hasFilters ? 'No logs match the selected filters.' : 'No logs yet'}
+                {hasFilters ? t('logs.noMatchFilters') : t('logs.noLogsYet')}
               </Typography>
             )}
           </Stack>
@@ -467,6 +465,7 @@ export default function Logs() {
               onPageChange={(event, newPage) => setPage(newPage)}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={[]}
+              {...paginationLabels}
             />
           </Box>
         </>

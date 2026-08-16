@@ -21,7 +21,6 @@ const icons = {
 const dashboard = (role) => ({
   type: 'group',
   id: 'dashboard-group',
-  // Remove or empty title to hide it
   title: '',
 
   children:
@@ -29,7 +28,7 @@ const dashboard = (role) => ({
       ? [
           {
             id: 'dashboard',
-            title: 'Dashboard',
+            titleKey: 'nav.dashboard',
             type: 'item',
             url: '/dashboard',
             icon: icons.IconDashboard,
@@ -37,7 +36,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'calls',
-            title: 'Calls',
+            titleKey: 'nav.calls',
             type: 'item',
             url: '/calls',
             icon: icons.IconPhone,
@@ -45,7 +44,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'reports',
-            title: 'Reports',
+            titleKey: 'nav.reports',
             type: 'item',
             url: '/reports',
             icon: icons.IconReportAnalytics,
@@ -53,7 +52,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'logs',
-            title: 'Logs',
+            titleKey: 'nav.logs',
             type: 'item',
             url: '/logs',
             icon: icons.IconClipboardList,
@@ -61,7 +60,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'users',
-            title: 'Users',
+            titleKey: 'nav.users',
             type: 'item',
             url: '/users',
             icon: icons.IconUsers,
@@ -69,7 +68,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'profile',
-            title: 'Settings',
+            titleKey: 'nav.settings',
             type: 'item',
             url: '/profile',
             icon: icons.IconSettings2,
@@ -79,7 +78,7 @@ const dashboard = (role) => ({
       : [
           {
             id: 'dashboard',
-            title: 'Dashboard',
+            titleKey: 'nav.dashboard',
             type: 'item',
             url: '/dashboard',
             icon: icons.IconDashboard,
@@ -87,7 +86,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'calls',
-            title: 'Calls',
+            titleKey: 'nav.calls',
             type: 'item',
             url: '/calls',
             icon: icons.IconPhone,
@@ -95,7 +94,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'followups',
-            title: 'Follow-ups',
+            titleKey: 'nav.followups',
             type: 'item',
             url: '/followups',
             icon: icons.IconRefresh,
@@ -103,7 +102,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'reports',
-            title: 'Reports',
+            titleKey: 'nav.reports',
             type: 'item',
             url: '/reports',
             icon: icons.IconReportAnalytics,
@@ -111,7 +110,7 @@ const dashboard = (role) => ({
           },
           {
             id: 'profile',
-            title: 'Settings',
+            titleKey: 'nav.settings',
             type: 'item',
             url: '/profile',
             icon: icons.IconSettings2,

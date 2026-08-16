@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import '../../l10n/app_localizations.dart';
 
 class AppShell extends ConsumerWidget {
   final Widget child;
@@ -18,8 +19,10 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final idx = _indexForLocation(context);
     final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
@@ -42,26 +45,26 @@ class AppShell extends ConsumerWidget {
               break;
           }
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.house),
-            selectedIcon: FaIcon(FontAwesomeIcons.houseChimney),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
+            label: l10n.home,
           ),
           NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.phone),
-            selectedIcon: FaIcon(FontAwesomeIcons.phoneVolume),
-            label: 'Calls',
+            icon: const Icon(Icons.phone_outlined),
+            selectedIcon: const Icon(Icons.phone_in_talk_outlined),
+            label: l10n.calls,
           ),
           NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.chartLine),
-            selectedIcon: FaIcon(FontAwesomeIcons.chartLine),
-            label: 'Reports',
+            icon: const Icon(Icons.analytics_outlined),
+            selectedIcon: const Icon(Icons.analytics),
+            label: l10n.reports,
           ),
           NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.fileLines),
-            selectedIcon: FaIcon(FontAwesomeIcons.fileLines),
-            label: 'Logs',
+            icon: const Icon(Icons.description_outlined),
+            selectedIcon: const Icon(Icons.description),
+            label: l10n.logs,
           ),
         ],
       ),

@@ -249,7 +249,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashSubtitle => 'Manager Dashboard';
 
   @override
-  String get logs => 'Activity Logs';
+  String get logs => 'System Logs';
 
   @override
   String get noLogsFound => 'No logs found';
@@ -277,6 +277,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusPending => 'Pending';
+
+  @override
+  String get statusProcessing => 'Processing';
+
+  @override
+  String get statusFailed => 'Failed';
 
   @override
   String get priorityHigh => 'High';
@@ -346,4 +352,224 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confidence => 'Confidence';
+
+  @override
+  String get splashTagline => 'VOICE INTELLIGENCE. REAL INSIGHT.';
+
+  @override
+  String get username => 'Username';
+
+  @override
+  String get usernameRequired => 'Username is required';
+
+  @override
+  String get enterCredentials => 'Enter your credentials to continue';
+
+  @override
+  String get loginFailed => 'Login failed';
+
+  @override
+  String get passwordRequiredField => 'Password is required';
+
+  @override
+  String get passwordMinLength => 'Password must be at least 6 characters';
+
+  @override
+  String get noAccount => 'Don\'t have an account? ';
+
+  @override
+  String get register => 'Register';
+
+  @override
+  String get home => 'Home';
+
+  @override
+  String get criticalPriority => 'Critical Priority';
+
+  @override
+  String get mediumPriority => 'Medium Priority';
+
+  @override
+  String get lowPriority => 'Low Priority';
+
+  @override
+  String get liveFeed => 'Live Feed';
+
+  @override
+  String get noRecentCalls => 'No recent calls';
+
+  @override
+  String callNumber(String id) {
+    return 'Call #$id';
+  }
+
+  @override
+  String get failedToLoadLiveFeed => 'Failed to load live feed';
+
+  @override
+  String get noKeywordsAvailable => 'No keywords available';
+
+  @override
+  String get failedToLoadKeywords => 'Failed to load keywords';
+
+  @override
+  String get sentimentAnalysis => 'Sentiment Analysis';
+
+  @override
+  String get sentimentDistribution =>
+      'Distribution of analyzed customer calls.';
+
+  @override
+  String get searchCalls => 'Search calls...';
+
+  @override
+  String get filterCalls => 'Filter Calls';
+
+  @override
+  String get allCalls => 'All Calls';
+
+  @override
+  String get searchLogs => 'Search by user, action, or description...';
+
+  @override
+  String get filterLogs => 'Filter Logs';
+
+  @override
+  String get allLogs => 'All Logs';
+
+  @override
+  String get tryChangingSearchOrFilters =>
+      'Try changing your search or filters';
+
+  @override
+  String get logTypeActivity => 'Activity';
+
+  @override
+  String get logTypeSystem => 'System';
+
+  @override
+  String get logTypeUserAction => 'User Action';
+
+  @override
+  String get summaryIssuesSolutions => 'Summary (Issues & Solutions)';
+
+  @override
+  String get positives => 'Positives';
+
+  @override
+  String get overallSentiment => 'Overall Sentiment';
+
+  @override
+  String get topIssues => 'Top Issues';
+
+  @override
+  String get managerNotes => 'Manager Notes';
+
+  @override
+  String reportByAuthor(String author, String date) {
+    return 'By $author • $date';
+  }
+
+  @override
+  String get noDataAvailable => 'No data available';
+
+  @override
+  String get noIssuesData => 'No issues data available';
+
+  @override
+  String get noIssueRecorded => 'No issue recorded';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get reviewed => 'Reviewed';
+
+  @override
+  String get addNotes => 'Add Notes';
+
+  @override
+  String get downloadPdf => 'Download PDF';
+
+  @override
+  String get failedToLoadReportDetails => 'Failed to load report details';
+
+  @override
+  String get noAudioRecording => 'No audio recording available';
+
+  @override
+  String get failedToMarkReviewed => 'Failed to mark call as reviewed';
+
+  @override
+  String get user => 'User';
+
+  @override
+  String get notifActorSystem => 'System';
+
+  @override
+  String get notifActorSomeone => 'Someone';
+
+  @override
+  String get notifActorQa => 'QA';
+
+  @override
+  String get notifDefaultReportPeriod => 'Report';
+
+  @override
+  String notifCallUploaded(String user, String callId) {
+    return '$user uploaded a new call #$callId';
+  }
+
+  @override
+  String notifFollowupAssigned(String callId) {
+    return 'You have a follow-up assigned for call #$callId';
+  }
+
+  @override
+  String notifFollowupStatusCompleted(String user, String callId) {
+    return '$user changed status of your follow-up for call #$callId to completed';
+  }
+
+  @override
+  String notifFollowupStatusUpdated(String user, String callId, String status) {
+    return '$user changed status of your follow-up for call #$callId to $status';
+  }
+
+  @override
+  String notifReportPublished(String user, String period) {
+    return '$user published a new report \"$period\"';
+  }
+
+  @override
+  String notifReportReviewNotes(String user, String period) {
+    return '$user added notes to your $period report';
+  }
+
+  @override
+  String notifReportReviewApproved(String user, String period) {
+    return '$user reviewed your $period report';
+  }
+
+  @override
+  String get timeJustNow => 'just now';
+
+  @override
+  String timeMinutesAgo(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String timeHoursAgo(int count) {
+    return '$count hour ago';
+  }
+
+  @override
+  String timeDaysAgo(int count) {
+    return '$count day ago';
+  }
+
+  @override
+  String timeOnDate(int year, int month, int day) {
+    return '$month/$day/$year';
+  }
 }

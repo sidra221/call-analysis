@@ -50,6 +50,9 @@ db.sqlite3-journal
 # IDE & Editors
 .vscode/
 .idea/
+.cursor/
+.cursorrules
+AGENTS.md
 *.swp
 *.swo
 *~
@@ -146,3 +149,12 @@ mobile/.idea/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/build/
+
+# ngrok (local tunnel state)
+.ngrok-url
+.ngrok.pid
+logs/ngrok.log
+
+# Local dev (not for repo)
+.tools/
+.thesis-venv/

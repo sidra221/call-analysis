@@ -6,7 +6,6 @@ import { Link, matchPath, useLocation } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
-import ButtonBase from '@mui/material/ButtonBase';
 import Chip from '@mui/material/Chip';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -17,6 +16,7 @@ import Typography from '@mui/material/Typography';
 // project imports
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
 import useConfig from 'hooks/useConfig';
+import useTranslation from 'hooks/useTranslation';
 
 // assets
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -30,6 +30,9 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
   const {
     state: { borderRadius }
   } = useConfig();
+  const { t } = useTranslation();
+
+  const itemTitle = item.titleKey ? t(item.titleKey) : item.title;
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
@@ -68,14 +71,14 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
     }
   };
 
-  // Show tooltip when sidebar is closed (mini drawer)
   const showTooltip = !drawerOpen;
+  const tooltipPlacement = theme.direction === 'rtl' ? 'left' : 'right';
 
   return (
     <>
       <Tooltip
-        title={item.title}
-        placement="right"
+        title={itemTitle}
+        placement={tooltipPlacement}
         arrow
         disableHoverListener={!showTooltip}
         PopperProps={{
@@ -103,8 +106,10 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
             zIndex: 1201,
             borderRadius: `${borderRadius}px`,
             mb: 0.5,
-            ...(drawerOpen && level !== 1 && { ml: `${level * 18}px` }),
-            ...(!drawerOpen && { pl: 1.25 }),
+            gap: drawerOpen ? 1.25 : 0,
+            justifyContent: drawerOpen ? 'flex-start' : 'center',
+            ...(drawerOpen && level !== 1 && { ms: `${level * 18}px` }),
+            ...(!drawerOpen && { px: 1.25 }),
             ...((!drawerOpen || level !== 1) && {
               py: level === 1 ? 0 : 1,
               '&:hover': { bgcolor: 'transparent' },
@@ -117,32 +122,35 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
           selected={isSelected}
           onClick={() => itemHandler()}
         >
-          <ButtonBase aria-label="theme-icon" sx={{ borderRadius: `${borderRadius}px` }} disableRipple={drawerOpen}>
-            <ListItemIcon
-              sx={{
-                minWidth: level === 1 ? 36 : 18,
-                color: isSelected ? 'primary.main' : 'text.primary',
-                ...(!drawerOpen &&
-                  level === 1 && {
-                    borderRadius: `${borderRadius}px`,
-                    width: 46,
-                    height: 46,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    '&:hover': { bgcolor: 'primary.light' },
-                    ...(isSelected && {
-                      bgcolor: 'primary.light',
-                      '&:hover': { bgcolor: 'primary.light' }
-                    })
+          <ListItemIcon
+            sx={{
+              minWidth: drawerOpen ? (level === 1 ? 36 : 18) : 0,
+              color: isSelected ? 'primary.main' : 'text.primary',
+              justifyContent: 'center',
+              ...(!drawerOpen &&
+                level === 1 && {
+                  borderRadius: `${borderRadius}px`,
+                  width: 46,
+                  height: 46,
+                  alignItems: 'center',
+                  '&:hover': { bgcolor: 'primary.light' },
+                  ...(isSelected && {
+                    bgcolor: 'primary.light',
+                    '&:hover': { bgcolor: 'primary.light' }
                   })
-              }}
-            >
-              {itemIcon}
-            </ListItemIcon>
-          </ButtonBase>
+                })
+            }}
+          >
+            {itemIcon}
+          </ListItemIcon>
 
           {(drawerOpen || (!drawerOpen && level !== 1)) && (
             <ListItemText
+              sx={{
+                my: 0,
+                flex: drawerOpen ? '1 1 auto' : '0 0 auto',
+                minWidth: 0
+              }}
               primary={
                 <Typography
                   ref={ref}
@@ -151,11 +159,11 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
                   sx={{
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    width: 102,
+                    textAlign: 'start',
                     color: 'inherit'
                   }}
                 >
-                  {item.title}
+                  {itemTitle}
                 </Typography>
               }
               secondary={
@@ -169,7 +177,8 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
                       fontWeight: 500,
                       color: 'text.primary',
                       textTransform: 'capitalize',
-                      lineHeight: 1.66
+                      lineHeight: 1.66,
+                      textAlign: 'start'
                     }}
                   >
                     {item.caption}

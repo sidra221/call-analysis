@@ -12,6 +12,7 @@ import getMenuItems from 'menu-items'; // function import
 
 import { useGetMenuMaster } from 'api/menu';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 
 // ==============================|| SIDEBAR MENU LIST ||============================== //
 
@@ -19,6 +20,7 @@ function MenuList() {
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [selectedID, setSelectedID] = useState('');
 
@@ -76,7 +78,7 @@ function MenuList() {
       default:
         return (
           <Typography key={item.id} variant="h6" align="center" sx={{ color: 'error.main' }}>
-            Menu Items Error
+            {t('common.menuItemsError')}
           </Typography>
         );
     }

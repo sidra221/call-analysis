@@ -29,3 +29,13 @@ final priorityFollowUpCallsProvider = FutureProvider<List<CallItem>>((ref) async
   final repo = ref.watch(dashboardRepositoryProvider);
   return repo.getPriorityFollowUpCalls();
 });
+
+final liveFeedProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final repo = ref.watch(dashboardRepositoryProvider);
+  return repo.getLiveFeed();
+});
+
+final topKeywordsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final repo = ref.watch(dashboardRepositoryProvider);
+  return repo.getTopKeywords();
+});

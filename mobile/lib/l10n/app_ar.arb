@@ -80,7 +80,7 @@
   "unknownError": "خطأ غير معروف",
   "splashTitle": "مركز الاتصالات",
   "splashSubtitle": "لوحة تحكم المدير",
-  "logs": "سجل النشاط",
+  "logs": "سجلات النظام",
   "noLogsFound": "لم يتم العثور على سجلات",
   "checkBackLaterLogs": "تحقق لاحقاً",
   "failedToLoadLogs": "فشل تحميل السجلات",
@@ -90,6 +90,8 @@
   "statusCompleted": "مكتمل",
   "statusInProgress": "قيد التنفيذ",
   "statusPending": "معلق",
+  "statusProcessing": "قيد المعالجة",
+  "statusFailed": "فشل",
   "priorityHigh": "عالي",
   "priorityMedium": "متوسط",
   "priorityLow": "منخفض",
@@ -112,5 +114,150 @@
   "markReviewed": "تحديد كمراجعة",
   "createFollowUp": "إنشاء متابعة",
   "uploadedBy": "تم الرفع بواسطة",
-  "confidence": "الثقة"
+  "confidence": "الثقة",
+  "splashTagline": "ذكاء صوتي. رؤية حقيقية.",
+  "username": "اسم المستخدم",
+  "usernameRequired": "اسم المستخدم مطلوب",
+  "enterCredentials": "أدخل بيانات الدخول للمتابعة",
+  "loginFailed": "فشل تسجيل الدخول",
+  "passwordRequiredField": "كلمة المرور مطلوبة",
+  "passwordMinLength": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+  "noAccount": "ليس لديك حساب؟ ",
+  "register": "تسجيل",
+  "home": "الرئيسية",
+  "criticalPriority": "أولوية حرجة",
+  "mediumPriority": "أولوية متوسطة",
+  "lowPriority": "أولوية منخفضة",
+  "liveFeed": "البث المباشر",
+  "noRecentCalls": "لا توجد مكالمات حديثة",
+  "callNumber": "مكالمة #{id}",
+  "@callNumber": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLoadLiveFeed": "فشل تحميل البث المباشر",
+  "noKeywordsAvailable": "لا توجد كلمات مفتاحية",
+  "failedToLoadKeywords": "فشل تحميل الكلمات المفتاحية",
+  "sentimentAnalysis": "تحليل المشاعر",
+  "sentimentDistribution": "توزيع المكالمات المحللة.",
+  "searchCalls": "البحث في المكالمات...",
+  "filterCalls": "تصفية المكالمات",
+  "allCalls": "كل المكالمات",
+  "searchLogs": "البحث بالمستخدم أو الإجراء أو الوصف...",
+  "filterLogs": "تصفية السجلات",
+  "allLogs": "كل السجلات",
+  "tryChangingSearchOrFilters": "جرب تغيير البحث أو الفلاتر",
+  "logTypeActivity": "نشاط",
+  "logTypeSystem": "نظام",
+  "logTypeUserAction": "إجراء مستخدم",
+  "summaryIssuesSolutions": "الملخص (المشاكل والحلول)",
+  "positives": "الإيجابيات",
+  "overallSentiment": "المشاعر العامة",
+  "topIssues": "أهم المشاكل",
+  "managerNotes": "ملاحظات المدير",
+  "reportByAuthor": "بواسطة {author} • {date}",
+  "@reportByAuthor": {
+    "placeholders": {
+      "author": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noDataAvailable": "لا توجد بيانات",
+  "noIssuesData": "لا توجد بيانات مشاكل",
+  "noIssueRecorded": "لم تُسجّل مشكلة",
+  "cancel": "إلغاء",
+  "reviewed": "تمت المراجعة",
+  "addNotes": "إضافة ملاحظات",
+  "downloadPdf": "تحميل PDF",
+  "failedToLoadReportDetails": "فشل تحميل تفاصيل التقرير",
+  "noAudioRecording": "لا يوجد تسجيل صوتي",
+  "failedToMarkReviewed": "فشل تحديد المكالمة كمراجَعة",
+  "user": "مستخدم",
+  "notifActorSystem": "النظام",
+  "notifActorSomeone": "شخص ما",
+  "notifActorQa": "ضمان الجودة",
+  "notifDefaultReportPeriod": "تقرير",
+  "notifCallUploaded": "{user} رفع مكالمة جديدة #{callId}",
+  "@notifCallUploaded": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "callId": {"type": "String"}
+    }
+  },
+  "notifFollowupAssigned": "لديك متابعة معيّنة للمكالمة #{callId}",
+  "@notifFollowupAssigned": {
+    "placeholders": {
+      "callId": {"type": "String"}
+    }
+  },
+  "notifFollowupStatusCompleted": "{user} غيّر حالة متابعتك للمكالمة #{callId} إلى مكتمل",
+  "@notifFollowupStatusCompleted": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "callId": {"type": "String"}
+    }
+  },
+  "notifFollowupStatusUpdated": "{user} غيّر حالة متابعتك للمكالمة #{callId} إلى {status}",
+  "@notifFollowupStatusUpdated": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "callId": {"type": "String"},
+      "status": {"type": "String"}
+    }
+  },
+  "notifReportPublished": "{user} نشر تقريراً جديداً \"{period}\"",
+  "@notifReportPublished": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "period": {"type": "String"}
+    }
+  },
+  "notifReportReviewNotes": "{user} أضاف ملاحظات على تقرير {period}",
+  "@notifReportReviewNotes": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "period": {"type": "String"}
+    }
+  },
+  "notifReportReviewApproved": "{user} راجع تقرير {period}",
+  "@notifReportReviewApproved": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "period": {"type": "String"}
+    }
+  },
+  "timeJustNow": "الآن",
+  "timeMinutesAgo": "منذ {count} د",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeHoursAgo": "منذ {count} س",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeDaysAgo": "منذ {count} ي",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeOnDate": "{day}/{month}/{year}",
+  "@timeOnDate": {
+    "placeholders": {
+      "year": {"type": "int"},
+      "month": {"type": "int"},
+      "day": {"type": "int"}
+    }
+  }
 }

@@ -1,7 +1,8 @@
 import os
 import logging
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from typing import Annotated
 
 
 def _strip_env_value(value: str) -> str:
@@ -53,6 +54,32 @@ logging.basicConfig(
 logger = logging.getLogger("ai_service")
 
 # ─────────────────────────────────────────
+# API key auth (matches Django: Authorization: Bearer <AI_SERVICE_API_KEY>)
+# ─────────────────────────────────────────
+async def verify_api_key(
+    authorization: Annotated[str | None, Header()] = None,
+) -> None:
+    expected_key = os.getenv("AI_SERVICE_API_KEY", "").strip()
+    if not expected_key:
+        raise HTTPException(
+            status_code=401,
+            detail="AI service API key is not configured on the server",
+        )
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid Authorization header",
+        )
+
+    provided_key = authorization.removeprefix("Bearer ").strip()
+    if provided_key != expected_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key",
+        )
+
+# ─────────────────────────────────────────
 # FastAPI App
 # ─────────────────────────────────────────
 app = FastAPI(
@@ -63,7 +90,7 @@ app = FastAPI(
 # ─────────────────────────────────────────
 # Routers
 # ─────────────────────────────────────────
-app.include_router(report_router)
+app.include_router(report_router, dependencies=[Depends(verify_api_key)])
 
 # ─────────────────────────────────────────
 # Health Check
@@ -78,7 +105,7 @@ def root():
 # ─────────────────────────────────────────
 # Analyze Call Endpoint
 # ─────────────────────────────────────────
-@app.post("/analyze-call")
+@app.post("/analyze-call", dependencies=[Depends(verify_api_key)])
 async def analyze_call(audio_file: UploadFile = File(...)):
 
     temp_path = f"temp_{audio_file.filename}"

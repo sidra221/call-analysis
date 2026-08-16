@@ -18,6 +18,8 @@ import {
 import useUsersStore from 'hooks/useUsersStore';
 import { usersApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
+import usePaginationLabels from 'hooks/usePaginationLabels';
 import PageCard from 'ui-component/PageCard';
 import PageTitle from 'ui-component/PageTitle';
 import FilterToolbar from 'ui-component/FilterToolbar';
@@ -46,8 +48,8 @@ const formatMemberSince = (dateStr) => {
   });
 };
 
-const formatLastLogin = (dateStr) => {
-  if (!dateStr) return 'Never';
+const formatLastLogin = (dateStr, neverLabel) => {
+  if (!dateStr) return neverLabel;
   return new Date(dateStr).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -58,34 +60,10 @@ const formatLastLogin = (dateStr) => {
 };
 
 const STAT_CARDS = [
-  { key: 'calls_uploaded', label: 'Calls Uploaded', Icon: IconPhone },
-  { key: 'followups_created', label: 'Follow-Ups Created', Icon: IconClipboardText },
-  { key: 'reports_created', label: 'Reports Created', Icon: IconFileAnalytics },
+  { key: 'calls_uploaded', labelKey: 'users.callsUploaded', Icon: IconPhone },
+  { key: 'followups_created', labelKey: 'users.followupsCreated', Icon: IconClipboardText },
+  { key: 'reports_created', labelKey: 'users.reportsCreated', Icon: IconFileAnalytics },
 ];
-
-const ROLE_LABELS = {
-  manager: 'Manager',
-  qa: 'QA',
-};
-
-const ACTION_LABELS = {
-  upload_call: 'Uploaded call',
-  delete_call: 'Deleted call',
-  call_processing: 'Call processing',
-  call_status_change: 'Call status changed',
-  review_call: 'Reviewed call',
-  generate_report: 'Generated report',
-  publish_report: 'Published report',
-  delete_report: 'Deleted report',
-  user_created: 'User created',
-  user_updated: 'User updated',
-  user_deleted: 'User deleted',
-  create_followup: 'Created follow-up',
-  delete_followup: 'Deleted follow-up',
-  update_followup: 'Updated follow-up',
-  password_changed: 'Changed password',
-  avatar_updated: 'Updated avatar',
-};
 
 const formatActivityDate = (dateStr) => {
   if (!dateStr) return '';
@@ -112,7 +90,15 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const { users, loading, error, fetchUsers, addUser, updateUser, deleteUser } = useUsersStore();
   const { user: currentUser } = useAuth();
+  const { t, roleLabel } = useTranslation();
+  const paginationLabels = usePaginationLabels();
   const role = (currentUser?.role || '').toLowerCase();
+
+  const getActivityLabel = (action) => {
+    const key = `activity.${action}`;
+    const label = t(key);
+    return label === key ? action : label;
+  };
 
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
@@ -155,16 +141,16 @@ export default function UsersPage() {
 
   const validate = () => {
     const newErrors = {};
-    if (!form.username.trim()) newErrors.username = 'Username is required';
+    if (!form.username.trim()) newErrors.username = t('users.usernameRequired');
     if (!form.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('users.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = t('users.invalidEmail');
     }
     if (!form.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('users.passwordRequired');
     } else if (form.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = t('users.passwordMinLength');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -250,7 +236,7 @@ export default function UsersPage() {
       setBulkDeleteDialog(false);
       setPage(0);
     } catch (err) {
-      setFormError(err.message || 'Bulk delete failed');
+      setFormError(err.message || t('users.bulkDeleteFailed'));
     }
   };
 
@@ -265,7 +251,7 @@ export default function UsersPage() {
       setOpen(false);
       setPage(0);
     } catch (err) {
-      setFormError(err.message || 'Failed to create user');
+      setFormError(err.message || t('users.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -296,7 +282,7 @@ export default function UsersPage() {
         setSelectedUser(null);
       }
     } catch (err) {
-      setFormError(err.message || 'Failed to delete user');
+      setFormError(err.message || t('users.deleteFailed'));
     }
   };
 
@@ -388,18 +374,18 @@ export default function UsersPage() {
     if (!selectedUser || !isDrawerDirty) return;
 
     if (!drawerDraft.email.trim()) {
-      setDrawerError('Email is required');
+      setDrawerError(t('users.emailRequired'));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(drawerDraft.email)) {
-      setDrawerError('Invalid email format');
+      setDrawerError(t('users.invalidEmail'));
       return;
     }
 
     if (
       !drawerDraft.is_active
       && selectedUser.is_active !== false
-      && !window.confirm(`Deactivate ${selectedUser.username}? They will not be able to log in.`)
+      && !window.confirm(t('users.deactivateConfirm', { username: selectedUser.username }))
     ) {
       return;
     }
@@ -419,7 +405,7 @@ export default function UsersPage() {
       setDrawerDraft(buildDrawerDraft(updated));
       setIsDrawerEditMode(false);
     } catch (err) {
-      setDrawerError(err.message || 'Failed to update user');
+      setDrawerError(err.message || t('users.updateFailed'));
     } finally {
       setDrawerSaving(false);
     }
@@ -438,7 +424,7 @@ export default function UsersPage() {
 
   return (
     <PageCard>
-        <PageTitle title="Users Management" />
+        <PageTitle title={t('users.title')} />
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
@@ -447,7 +433,7 @@ export default function UsersPage() {
         <FilterToolbar
           search={search}
           onSearchChange={(e) => setSearch(e.target.value)}
-          searchPlaceholder="Search user..."
+          searchPlaceholder={t('users.searchPlaceholder')}
           activeFilterCount={activeFilterCount}
           onOpenFilters={openFilters}
           onResetFilters={handleReset}
@@ -460,11 +446,11 @@ export default function UsersPage() {
                   startIcon={<IconTrashX size={18} />}
                   onClick={openDeleteConfirmation}
                 >
-                  Delete Selected ({selected.length})
+                  {t('users.deleteSelected', { count: selected.length })}
                 </Button>
               )}
               <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={openAddUserDialog}>
-                Add User
+                {t('users.addUser')}
               </Button>
             </>
           ) : null}
@@ -474,14 +460,14 @@ export default function UsersPage() {
           open={Boolean(filterAnchorEl)}
           anchorEl={filterAnchorEl}
           onClose={closeFilters}
-          title="Filter Users"
+          title={t('users.filterTitle')}
         >
           <FormControl fullWidth size="small">
-            <InputLabel>Role</InputLabel>
-            <Select value={roleFilter} label="Role" onChange={(e) => setRoleFilter(e.target.value)}>
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="manager">Manager</MenuItem>
-              <MenuItem value="qa">QA</MenuItem>
+            <InputLabel>{t('users.role')}</InputLabel>
+            <Select value={roleFilter} label={t('users.role')} onChange={(e) => setRoleFilter(e.target.value)}>
+              <MenuItem value="All">{t('common.all')}</MenuItem>
+              <MenuItem value="manager">{roleLabel('manager')}</MenuItem>
+              <MenuItem value="qa">{roleLabel('qa')}</MenuItem>
             </Select>
           </FormControl>
         </FilterPopover>
@@ -502,23 +488,23 @@ export default function UsersPage() {
                 )}
                 <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: role === 'manager' ? '24%' : '28%' }}>
                   <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                    Username
+                    {t('users.username')}
                     <IconButton size="small" onClick={toggleSortByUsername} sx={{ p: 0, flexShrink: 0 }}>
                       {sortByUsername === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: role === 'manager' ? '26%' : '30%' }}>Email</TableCell>
-                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%', display: { xs: 'none', sm: 'table-cell' } }}>Role</TableCell>
+                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: role === 'manager' ? '26%' : '30%' }}>{t('users.email')}</TableCell>
+                <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '14%', display: { xs: 'none', sm: 'table-cell' } }}>{t('users.role')}</TableCell>
                 <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '16%', display: { xs: 'none', md: 'table-cell' } }}>
                   <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                    Created At
+                    {t('users.createdAt')}
                     <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0, flexShrink: 0 }}>
                       {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>Actions</TableCell>
+                <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, ...TABLE_HEADER_CELL_SX }}>{t('common.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -551,13 +537,13 @@ export default function UsersPage() {
                             avatarStyle={u.avatar_style}
                           />
                           {u.is_active === false && (
-                            <Chip label="Inactive" size="small" color="error" variant="outlined" />
+                            <Chip label={t('users.inactive')} size="small" color="error" variant="outlined" />
                           )}
                         </Stack>
                       </TableCell>
                       <TableCell sx={TABLE_BODY_CELL_SX}>{u.email}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                        <Chip label={u.role} size="small"
+                        <Chip label={roleLabel(u.role)} size="small"
                           sx={{ bgcolor: getRoleColor(u.role).bg, color: getRoleColor(u.role).color }} />
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
@@ -571,7 +557,7 @@ export default function UsersPage() {
                             size="small"
                             sx={{ color: 'info.main' }}
                             onClick={() => openUserDrawer(u, false)}
-                            title="View User"
+                            title={t('users.viewUser')}
                           >
                             <IconEye size={18} />
                           </IconButton>
@@ -580,7 +566,7 @@ export default function UsersPage() {
                               size="small"
                               color="primary"
                               onClick={() => openUserDrawer(u, true)}
-                              title="Edit User"
+                              title={t('users.editUser')}
                             >
                               <IconEdit size={18} />
                             </IconButton>
@@ -593,7 +579,7 @@ export default function UsersPage() {
               {!loading && filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Typography color="text.secondary">No users found</Typography>
+                    <Typography color="text.secondary">{t('users.noUsersFound')}</Typography>
                   </TableCell>
                 </TableRow>
               )}
@@ -609,53 +595,54 @@ export default function UsersPage() {
             onPageChange={(event, newPage) => setPage(newPage)}
             rowsPerPage={rowsPerPage}
             rowsPerPageOptions={[]}
+            {...paginationLabels}
           />
         </Box>
 
         {/* Bulk Delete Dialog */}
         <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth
           >
-          <DialogTitle>Confirm Bulk Delete</DialogTitle>
+          <DialogTitle>{t('calls.confirmBulkDelete')}</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Are you sure you want to delete <strong>{selected.length}</strong> selected user(s)? This action cannot be undone.
+              {t('users.bulkDeleteBody', { count: selected.length })}
             </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <DialogCancelButton onClick={() => setBulkDeleteDialog(false)} />
-            <Button onClick={handleBulkDelete} variant="contained" color="error">Delete All</Button>
+            <Button onClick={handleBulkDelete} variant="contained" color="error">{t('common.deleteAll')}</Button>
           </DialogActions>
         </Dialog>
 
         {/* Add User Dialog */}
         <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} fullWidth maxWidth="sm">
-          <DialogTitle>Add User</DialogTitle>
+          <DialogTitle>{t('users.addUser')}</DialogTitle>
           <DialogContent>
             {formError && <Alert severity="error" sx={{ mb: 2, mt: 1 }}>{formError}</Alert>}
             <Stack component="form" autoComplete="off" spacing={2} mt={1}>
-              <TextField label="Username" fullWidth autoComplete="off"
+              <TextField label={t('users.username')} fullWidth autoComplete="off"
                 error={!!errors.username} helperText={errors.username}
                 value={form.username}
                 onChange={(e) => { setForm({ ...form, username: e.target.value }); if (errors.username) setErrors({ ...errors, username: null }); }} />
-              <TextField label="Email" fullWidth type="email" autoComplete="off" name="new-user-email"
+              <TextField label={t('users.email')} fullWidth type="email" autoComplete="off" name="new-user-email"
                 error={!!errors.email} helperText={errors.email}
                 value={form.email}
                 onChange={(e) => { setForm({ ...form, email: e.target.value }); if (errors.email) setErrors({ ...errors, email: null }); }} />
-              <TextField label="Password" type="password" fullWidth autoComplete="new-password" name="new-user-password"
+              <TextField label={t('users.password')} type="password" fullWidth autoComplete="new-password" name="new-user-password"
                 error={!!errors.password} helperText={errors.password}
                 value={form.password}
                 onChange={(e) => { setForm({ ...form, password: e.target.value }); if (errors.password) setErrors({ ...errors, password: null }); }} />
-              <TextField select label="Role" fullWidth value={form.role}
+              <TextField select label={t('users.role')} fullWidth value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <MenuItem value="manager">Manager</MenuItem>
-                <MenuItem value="qa">QA</MenuItem>
+                <MenuItem value="manager">{roleLabel('manager')}</MenuItem>
+                <MenuItem value="qa">{roleLabel('qa')}</MenuItem>
               </TextField>
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
             <DialogCancelButton onClick={() => { setOpen(false); resetForm(); }} />
             <Button variant="contained" onClick={handleAddUser} disabled={submitting}>
-              {submitting ? <CircularProgress size={18} color="inherit" /> : 'Add'}
+              {submitting ? <CircularProgress size={18} color="inherit" /> : t('users.add')}
             </Button>
           </DialogActions>
         </Dialog>
@@ -663,16 +650,16 @@ export default function UsersPage() {
         {/* Delete Single User Dialog */}
         <Dialog open={openDeleteDialog} onClose={() => { setOpenDeleteDialog(false); setUserToDelete(null); setFormError(''); }} maxWidth="sm" fullWidth
           >
-          <DialogTitle>Confirm Delete</DialogTitle>
+          <DialogTitle>{t('calls.confirmDelete')}</DialogTitle>
           <DialogContent>
             {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
             <DialogContentText>
-              Are you sure you want to delete <strong>{userToDelete?.username}</strong>? This action cannot be undone.
+              {t('users.confirmDeleteBody', { username: userToDelete?.username })}
             </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <DialogCancelButton onClick={() => setOpenDeleteDialog(false)} />
-            <Button onClick={handleDeleteUser} variant="contained" color="error">Delete</Button>
+            <Button onClick={handleDeleteUser} variant="contained" color="error">{t('common.delete')}</Button>
           </DialogActions>
         </Dialog>
 
@@ -727,19 +714,19 @@ export default function UsersPage() {
                 </Box>
 
                 {selectedUser.username === currentUser?.user && (
-                  <Chip label="You" size="small" variant="outlined" color="primary" sx={{ mb: 2 }} />
+                  <Chip label={t('users.you')} size="small" variant="outlined" color="primary" sx={{ mb: 2 }} />
                 )}
 
                 {drawerError && <Alert severity="error" sx={{ mb: 2 }}>{drawerError}</Alert>}
 
                 <Divider sx={{ mb: 2 }} />
 
-                <Typography variant="subtitle1" sx={{ mb: 1 }}>User Information</Typography>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('users.userInformation')}</Typography>
 
                 {isDrawerEditMode ? (
                   <Stack spacing={2} sx={{ mb: 2 }}>
                     <TextField
-                      label="Email"
+                      label={t('users.email')}
                       fullWidth
                       size="small"
                       type="email"
@@ -751,7 +738,7 @@ export default function UsersPage() {
                     />
                     <TextField
                       select
-                      label="Role"
+                      label={t('users.role')}
                       fullWidth
                       size="small"
                       disabled={selectedUser.username === currentUser?.user}
@@ -762,12 +749,12 @@ export default function UsersPage() {
                       }}
                       helperText={
                         selectedUser.username === currentUser?.user
-                          ? 'You cannot change your own role'
+                          ? t('users.cannotChangeOwnRole')
                           : undefined
                       }
                     >
-                      <MenuItem value="manager">Manager</MenuItem>
-                      <MenuItem value="qa">QA</MenuItem>
+                      <MenuItem value="manager">{roleLabel('manager')}</MenuItem>
+                      <MenuItem value="qa">{roleLabel('qa')}</MenuItem>
                     </TextField>
                     {role === 'manager' && selectedUser.username !== currentUser?.user && (
                       <FormControlLabel
@@ -782,18 +769,18 @@ export default function UsersPage() {
                             color="success"
                           />
                         )}
-                        label={drawerDraft.is_active ? 'Account active' : 'Account inactive'}
+                        label={drawerDraft.is_active ? t('users.accountActive') : t('users.accountInactive')}
                       />
                     )}
                   </Stack>
                 ) : (
                   <Box sx={{ mb: 2 }}>
-                    <DrawerInfoRow label="Email">
+                    <DrawerInfoRow label={t('users.email')}>
                       <Typography variant="body2">{selectedUser.email}</Typography>
                     </DrawerInfoRow>
-                    <DrawerInfoRow label="Role">
+                    <DrawerInfoRow label={t('users.role')}>
                       <Chip
-                        label={ROLE_LABELS[selectedUser.role] || selectedUser.role}
+                        label={roleLabel(selectedUser.role)}
                         size="small"
                         sx={{
                           bgcolor: getRoleColor(selectedUser.role).bg,
@@ -802,9 +789,9 @@ export default function UsersPage() {
                         }}
                       />
                     </DrawerInfoRow>
-                    <DrawerInfoRow label="Status">
+                    <DrawerInfoRow label={t('users.status')}>
                       <Typography variant="body2">
-                        {selectedUser.is_active !== false ? 'Active' : 'Inactive'}
+                        {selectedUser.is_active !== false ? t('users.active') : t('users.inactive')}
                       </Typography>
                     </DrawerInfoRow>
                   </Box>
@@ -812,22 +799,22 @@ export default function UsersPage() {
 
                 <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" color="text.secondary">Member Since</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('users.memberSince')}</Typography>
                     <Typography variant="body2" sx={{ mt: 0.25 }}>
                       {formatMemberSince(selectedUser.created_at)}
                     </Typography>
                   </Box>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" color="text.secondary">Last Login</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('users.lastLogin')}</Typography>
                     <Typography variant="body2" sx={{ mt: 0.25 }}>
-                      {formatLastLogin(selectedUser.last_login)}
+                      {formatLastLogin(selectedUser.last_login, t('common.never'))}
                     </Typography>
                   </Box>
                 </Stack>
 
                 <Divider sx={{ mb: 2 }} />
 
-                <Typography variant="subtitle1" sx={{ mb: 1 }}>Statistics</Typography>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('users.statistics')}</Typography>
                 {statsLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 2 }}>
                     <CircularProgress size={24} />
@@ -849,7 +836,7 @@ export default function UsersPage() {
                                   {drawerStats?.[card.key] ?? 0}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
-                                  {card.label}
+                                  {t(card.labelKey)}
                                 </Typography>
                               </Stack>
                             </Grid>
@@ -862,7 +849,7 @@ export default function UsersPage() {
 
                 <Divider sx={{ mb: 2 }} />
 
-                <Typography variant="subtitle1" sx={{ mb: 1 }}>Recent Activity</Typography>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('users.recentActivity')}</Typography>
                 {activityLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 2 }}>
                     <CircularProgress size={22} />
@@ -871,9 +858,9 @@ export default function UsersPage() {
                   <Stack alignItems="center" spacing={0.75} sx={{ py: 2.5, mb: 2 }}>
                     <IconHistory size={28} stroke={1.5} style={{ opacity: 0.3 }} />
                     <Typography variant="body2" color="text.secondary" textAlign="center">
-                      No activity recorded yet.
+                      {t('users.noActivityRecorded')}
                       <br />
-                      User actions will appear here.
+                      {t('users.userActionsAppear')}
                     </Typography>
                   </Stack>
                 ) : (
@@ -885,7 +872,7 @@ export default function UsersPage() {
                         sx={{ py: 0.5, alignItems: 'flex-start' }}
                       >
                         <ListItemText
-                          primary={entry.description || ACTION_LABELS[entry.action] || entry.action}
+                          primary={entry.description || getActivityLabel(entry.action)}
                           secondary={formatActivityDate(entry.created_at)}
                           primaryTypographyProps={{ variant: 'body2' }}
                           secondaryTypographyProps={{ variant: 'caption' }}
@@ -897,7 +884,7 @@ export default function UsersPage() {
 
                 <Divider sx={{ mb: 2 }} />
 
-                <Typography variant="subtitle1" sx={{ mb: 1 }}>Quick Actions</Typography>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('users.quickActions')}</Typography>
                 <Stack spacing={1}>
                   <Button
                     fullWidth
@@ -908,7 +895,7 @@ export default function UsersPage() {
                       state: { filter: 'user', value: selectedUser.username },
                     })}
                   >
-                    View Calls
+                    {t('users.viewCalls')}
                   </Button>
                   <Button
                     fullWidth
@@ -919,7 +906,7 @@ export default function UsersPage() {
                       state: { filter: 'assignee', value: selectedUser.username },
                     })}
                   >
-                    View Follow-Ups
+                    {t('users.viewFollowUps')}
                   </Button>
                   <Button
                     fullWidth
@@ -930,7 +917,7 @@ export default function UsersPage() {
                       state: { filter: 'creator', value: selectedUser.username },
                     })}
                   >
-                    View Reports
+                    {t('users.viewReports')}
                   </Button>
                 </Stack>
               </>

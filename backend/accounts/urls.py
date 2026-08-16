@@ -3,6 +3,7 @@ from .views import (
     RegisterView,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
+    LogoutView,
     AuthenticatedUserView,
     ChangePasswordView,
     AvatarUploadView,
@@ -10,9 +11,6 @@ from .views import (
     UserDetailView,
     UserStatsView,
     UserActivityView,
-    ManagerOnlyView,
-    QAOnlyView,
-    ManagerOrQAView,
     UsersForFollowupsView,
 )
 
@@ -21,6 +19,7 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
     path('token/refresh/', CustomTokenRefreshView.as_view(), name='token-refresh'),
+    path('logout/', LogoutView.as_view(), name='logout'),
 
     # Authenticated user
     path('me/', AuthenticatedUserView.as_view(), name='authenticated-user'),
@@ -35,9 +34,4 @@ urlpatterns = [
 
     # Users for followups (Manager and QA)
     path('users-for-followups/', UsersForFollowupsView.as_view(), name='users-for-followups'),
-
-    # Role-based test endpoints
-    path('manager-only/', ManagerOnlyView.as_view(), name='manager-only'),
-    path('qa-only/', QAOnlyView.as_view(), name='qa-only'),
-    path('manager-or-qa/', ManagerOrQAView.as_view(), name='manager-or-qa'),
 ]

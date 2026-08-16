@@ -55,9 +55,15 @@ class MockApiService {
       return Report(
         id: 'R-$i',
         title: 'Weekly Report #$i',
+        period: 'weekly',
         date: DateTime.now().subtract(Duration(days: i * 7)),
         summary: 'Summary of report $i',
         recommendations: 'Improve performance metrics',
+        positives: '',
+        topIssues: const [],
+        sentimentStats: const {},
+        managerNotes: '',
+        createdByUsername: 'QA User',
       );
     });
   }
@@ -68,9 +74,15 @@ class MockApiService {
     return Report(
       id: id,
       title: 'Report $id',
+      period: 'daily',
       date: DateTime.now(),
       summary: 'Detailed analytics report',
       recommendations: 'Focus on optimization',
+      positives: '',
+      topIssues: const [],
+      sentimentStats: const {},
+      managerNotes: '',
+      createdByUsername: 'QA User',
     );
   }
 
@@ -81,9 +93,9 @@ class MockApiService {
     return [
       LogItem(
         id: 'L-1',
-        type: LogType.activity,
-        title: 'Call Analyzed',
-        description: 'Sentiment: Positive',
+        action: 'review_call',
+        username: 'sedra',
+        description: 'Reviewed call #34',
         timestamp: DateTime.now(),
       ),
     ];
@@ -139,6 +151,7 @@ class MockApiService {
       mainIssue: 'Billing issue',
       keywords: ['billing', 'support'],
       needsFollowUp: false,
+      isReviewed: false,
       summary: 'Call resolved successfully.',
       keyIssues: ['Billing delay'],
       notes: ['Customer satisfied'],

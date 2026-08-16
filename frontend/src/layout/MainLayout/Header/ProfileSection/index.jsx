@@ -24,6 +24,7 @@ import {
 import useAuth from 'hooks/useAuth';
 import useLogout from 'hooks/useLogout';
 import useConfig from 'hooks/useConfig';
+import useTranslation from 'hooks/useTranslation';
 import LogoutConfirmDialog from 'ui-component/LogoutConfirmDialog';
 import { alpha, useColorScheme, useTheme } from '@mui/material/styles';
 import { getAvatarInitial, getAvatarUrl, getRoleAvatarBorderSx } from 'utils/avatar';
@@ -36,6 +37,7 @@ export default function ProfileSection() {
     state: { language },
     setField
   } = useConfig();
+  const { t, roleLabel } = useTranslation();
 
   const { mode, setMode } = useColorScheme();
   const theme = useTheme();
@@ -73,7 +75,7 @@ export default function ProfileSection() {
         clickable
         disableRipple
         sx={{
-          ml: 2,
+          ms: 2,
           height: 40,
           borderRadius: '20px',
           bgcolor: 'transparent !important',
@@ -187,7 +189,7 @@ export default function ProfileSection() {
             {displayName}
           </Typography>
           <Chip
-            label={user?.role?.toUpperCase() || 'Unknown'}
+            label={roleLabel(user?.role) || t('roles.unknown')}
             size="small"
             sx={{
               mt: 1,
@@ -208,7 +210,7 @@ export default function ProfileSection() {
           <ListItemIcon>
             <IconLanguage size={18} />
           </ListItemIcon>
-          <ListItemText primary="Language" />
+          <ListItemText primary={t('header.language')} />
           <IconChevronRight size={16} />
         </MenuItem>
 
@@ -217,7 +219,7 @@ export default function ProfileSection() {
           <ListItemIcon>
             {mode === 'dark' ? <IconMoon size={18} /> : <IconSun size={18} />}
           </ListItemIcon>
-          <ListItemText primary={mode === 'dark' ? 'Dark Mode' : 'Light Mode'} />
+          <ListItemText primary={mode === 'dark' ? t('header.darkMode') : t('header.lightMode')} />
           <Switch
             checked={mode === 'dark'}
             onChange={() => setMode(mode === 'light' ? 'dark' : 'light')}
@@ -238,7 +240,7 @@ export default function ProfileSection() {
           <ListItemIcon>
             <IconLogout size={18} color="currentColor" />
           </ListItemIcon>
-          <ListItemText primary="Logout" />
+          <ListItemText primary={t('header.logout')} />
         </MenuItem>
       </Menu>
 
@@ -270,7 +272,7 @@ export default function ProfileSection() {
           }}
           sx={{ justifyContent: 'space-between', py: 1.5 }}
         >
-          English
+          {t('profile.english')}
           {language === 'en' && (
             <Typography variant="caption" color="primary.main">✓</Typography>
           )}
@@ -283,7 +285,7 @@ export default function ProfileSection() {
           }}
           sx={{ justifyContent: 'space-between', py: 1.5 }}
         >
-          العربية
+          {t('profile.arabic')}
           {language === 'ar' && (
             <Typography variant="caption" color="primary.main">✓</Typography>
           )}
@@ -297,7 +299,6 @@ export default function ProfileSection() {
           setLogoutDialogOpen(false);
           logout();
         }}
-        isAr={language === 'ar'}
       />
     </>
   );

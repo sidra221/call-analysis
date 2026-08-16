@@ -6,6 +6,7 @@ import * as serviceWorker from 'serviceWorker';
 import reportWebVitals from 'reportWebVitals';
 import { ConfigProvider } from 'contexts/ConfigContext';
 import { AuthProvider } from 'contexts/AuthContext';
+import LocaleProvider from 'components/LocaleProvider';
 
 // style + assets
 import 'assets/scss/style.scss';
@@ -32,9 +33,11 @@ const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(
   <ConfigProvider>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <LocaleProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </LocaleProvider>
   </ConfigProvider>
 );
 

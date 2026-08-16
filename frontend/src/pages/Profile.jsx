@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import useConfig from 'hooks/useConfig';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 import PageCard from 'ui-component/PageCard';
 import ProfileAvatarUpload from 'ui-component/ProfileAvatarUpload';
 import {
@@ -96,6 +97,7 @@ export default function ProfilePage() {
     setState: setConfigState
   } = useConfig();
   const { user, updateUser } = useAuth();
+  const { t, roleLabel } = useTranslation();
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -122,8 +124,6 @@ export default function ProfilePage() {
     notificationsEnabled: savedNotifications ?? true,
     avatar: buildSavedAvatarState(),
   });
-
-  const isAr = language === 'ar';
 
   const resetDraft = () => {
     if (draft.avatar?.previewUrl?.startsWith('blob:')) {
@@ -214,13 +214,13 @@ export default function ProfilePage() {
 
       if (hasPasswordInput) {
         if (!currentPassword || !newPassword || !confirmPassword) {
-          throw new Error(isAr ? 'جميع حقول كلمة المرور مطلوبة' : 'All password fields are required');
+          throw new Error(t('profile.allPasswordFieldsRequired'));
         }
         if (newPassword !== confirmPassword) {
-          throw new Error(isAr ? 'كلمتا المرور الجديدتان غير متطابقتين' : 'New passwords do not match');
+          throw new Error(t('profile.passwordsDoNotMatch'));
         }
         if (newPassword.length < 8) {
-          throw new Error(isAr ? 'يجب أن تكون كلمة المرور 8 أحرف على الأقل' : 'Password must be at least 8 characters');
+          throw new Error(t('profile.passwordTooShort'));
         }
 
         const res = await fetch(`${API_URL}/api/accounts/me/change-password/`, {
@@ -237,7 +237,7 @@ export default function ProfilePage() {
 
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data?.error?.message || (isAr ? 'فشل تحديث كلمة المرور' : 'Failed to update password'));
+          throw new Error(data?.error?.message || t('profile.passwordUpdateFailed'));
         }
 
         setCurrentPassword('');
@@ -264,8 +264,8 @@ export default function ProfilePage() {
         open: true,
         type: 'success',
         message: hasPasswordInput
-          ? (isAr ? 'تم حفظ الإعدادات وكلمة المرور بنجاح.' : 'Your settings and password were saved successfully.')
-          : (isAr ? 'تم حفظ التغييرات بنجاح.' : 'Your changes were saved successfully.'),
+          ? t('profile.settingsAndPasswordSaved')
+          : t('profile.changesSavedSuccess'),
       });
 
       setDraft({
@@ -341,7 +341,7 @@ export default function ProfilePage() {
               <Stack direction="row" spacing={1} alignItems="center">
                 <IconBriefcase size={16} color={theme.palette.text.secondary} />
                 <Typography variant="body2" color="text.secondary">
-                  {user?.role?.toUpperCase() || 'Unknown'}
+                  {roleLabel(user?.role) || t('roles.unknown')}
                 </Typography>
               </Stack>
             </Stack>
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                 startIcon={<IconEdit size={18} />}
                 onClick={handleStartEdit}
               >
-                {isAr ? 'تعديل' : 'Edit'}
+                {t('common.edit')}
               </Button>
             ) : (
               <Stack direction="row" spacing={1}>
@@ -369,7 +369,7 @@ export default function ProfilePage() {
                   onClick={handleCancelEdit}
                   disabled={saving}
                 >
-                  {isAr ? 'إلغاء' : 'Cancel'}
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   variant="contained"
@@ -377,9 +377,7 @@ export default function ProfilePage() {
                   onClick={handleSaveProfile}
                   disabled={saving || !isDirty}
                 >
-                  {saving
-                    ? (isAr ? 'جاري الحفظ...' : 'Saving...')
-                    : (isAr ? 'حفظ' : 'Save')}
+                  {saving ? t('common.saving') : t('common.save')}
                 </Button>
               </Stack>
             )}
@@ -392,8 +390,8 @@ export default function ProfilePage() {
           <Grid size={{ xs: 12, sm: 4 }}>
             <SettingTile
               icon={draft.displayMode === 'dark' ? <IconMoon size={20} /> : <IconSun size={20} />}
-              title={isAr ? 'وضع العرض' : 'Display Mode'}
-              description={isAr ? 'اختر المظهر النهاري أو الليلي' : 'Choose light or dark appearance'}
+              title={t('profile.displayMode')}
+              description={t('profile.displayModeDesc')}
               control={
                 <ToggleButtonGroup
                   exclusive
@@ -405,11 +403,11 @@ export default function ProfilePage() {
                 >
                   <ToggleButton value="light" sx={{ textTransform: 'none', gap: 0.75 }}>
                     <IconSun size={16} />
-                    {isAr ? 'نهاري' : 'Light'}
+                    {t('common.light')}
                   </ToggleButton>
                   <ToggleButton value="dark" sx={{ textTransform: 'none', gap: 0.75 }}>
                     <IconMoon size={16} />
-                    {isAr ? 'ليلي' : 'Dark'}
+                    {t('common.dark')}
                   </ToggleButton>
                 </ToggleButtonGroup>
               }
@@ -419,8 +417,8 @@ export default function ProfilePage() {
           <Grid size={{ xs: 12, sm: 4 }}>
             <SettingTile
               icon={<IconBell size={20} />}
-              title={isAr ? 'الإشعارات' : 'Notifications'}
-              description={isAr ? 'تنبيهات النظام والتحديثات' : 'System alerts and updates'}
+              title={t('profile.notifications')}
+              description={t('profile.notificationsDesc')}
               control={
                 <Stack
                   direction="row"
@@ -437,8 +435,8 @@ export default function ProfilePage() {
                 >
                   <Typography variant="body2" color="text.secondary">
                     {draft.notificationsEnabled
-                      ? (isAr ? 'مفعّلة' : 'Enabled')
-                      : (isAr ? 'معطّلة' : 'Disabled')}
+                      ? t('common.enabled')
+                      : t('common.disabled')}
                   </Typography>
                   <Switch
                     checked={draft.notificationsEnabled}
@@ -454,8 +452,8 @@ export default function ProfilePage() {
           <Grid size={{ xs: 12, sm: 4 }}>
             <SettingTile
               icon={<IconLanguage size={20} />}
-              title={isAr ? 'اللغة' : 'Language'}
-              description={isAr ? 'لغة واجهة التطبيق' : 'Application interface language'}
+              title={t('profile.language')}
+              description={t('profile.languageDesc')}
               control={
                 <TextField
                   select
@@ -465,8 +463,8 @@ export default function ProfilePage() {
                   value={draft.language}
                   onChange={(e) => updateDraft('language', e.target.value)}
                 >
-                  <MenuItem value="en">English</MenuItem>
-                  <MenuItem value="ar">العربية</MenuItem>
+                  <MenuItem value="en">{t('profile.english')}</MenuItem>
+                  <MenuItem value="ar">{t('profile.arabic')}</MenuItem>
                 </TextField>
               }
             />
@@ -500,10 +498,10 @@ export default function ProfilePage() {
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight={600}>
-                  {isAr ? 'لون الثيم' : 'Theme Color'}
+                  {t('profile.themeColor')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {isAr ? 'اختر لون واجهة التطبيق' : 'Choose your interface accent color'}
+                  {t('profile.themeColorDesc')}
                 </Typography>
               </Box>
             </Stack>
@@ -511,7 +509,7 @@ export default function ProfilePage() {
             <Grid container spacing={1.5}>
               {THEME_PRESETS.map((preset) => {
                 const selected = draft.presetColor === preset.id;
-                const label = isAr ? preset.label.ar : preset.label.en;
+                const label = language === 'ar' ? preset.label.ar : preset.label.en;
                 return (
                   <Grid key={preset.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
                     <Box
@@ -577,10 +575,10 @@ export default function ProfilePage() {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" fontWeight={600}>
-                    {isAr ? 'تغيير كلمة المرور' : 'Change Password'}
+                    {t('profile.changePassword')}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {isAr ? 'تحديث كلمة المرور الحالية' : 'Update your current password'}
+                    {t('profile.changePasswordDesc')}
                   </Typography>
                 </Box>
               </Stack>
@@ -595,7 +593,7 @@ export default function ProfilePage() {
                 <TextField
                   fullWidth
                   type={showCurrentPassword ? 'text' : 'password'}
-                  label={isAr ? 'كلمة المرور الحالية' : 'Current Password'}
+                  label={t('profile.currentPassword')}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   InputProps={{
@@ -611,13 +609,13 @@ export default function ProfilePage() {
                 <TextField
                   fullWidth
                   type={showNewPassword ? 'text' : 'password'}
-                  label={isAr ? 'كلمة المرور الجديدة' : 'New Password'}
+                  label={t('profile.newPassword')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   error={Boolean(newPassword && newPassword.length < 8)}
                   helperText={
                     newPassword && newPassword.length < 8
-                      ? (isAr ? 'يجب أن تكون 8 أحرف على الأقل' : 'At least 8 characters')
+                      ? t('profile.passwordMinLength')
                       : ''
                   }
                   InputProps={{
@@ -633,7 +631,7 @@ export default function ProfilePage() {
                 <TextField
                   fullWidth
                   type={showConfirmPassword ? 'text' : 'password'}
-                  label={isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+                  label={t('profile.confirmPassword')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   InputProps={{
@@ -662,12 +660,12 @@ export default function ProfilePage() {
           {saveFeedback.type === 'success' ? (
             <>
               <IconCircleCheck size={24} color={theme.palette.success.main} />
-              {isAr ? 'تم حفظ التغييرات' : 'Changes Saved'}
+              {t('common.changesSaved')}
             </>
           ) : (
             <>
               <IconAlertCircle size={24} color={theme.palette.error.main} />
-              {isAr ? 'فشل الحفظ' : 'Save Failed'}
+              {t('common.saveFailed')}
             </>
           )}
         </DialogTitle>
@@ -680,7 +678,7 @@ export default function ProfilePage() {
             color={saveFeedback.type === 'success' ? 'primary' : 'error'}
             onClick={() => setSaveFeedback((prev) => ({ ...prev, open: false }))}
           >
-            {isAr ? 'حسناً' : 'OK'}
+            {t('common.ok')}
           </Button>
         </DialogActions>
       </Dialog>

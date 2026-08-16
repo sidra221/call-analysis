@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../shared/enums.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../shared/widgets/app_pagination.dart';
+import '../../../shared/widgets/app_filters.dart';
 import '../../../shared/widgets/call_tile.dart';
 import '../application/calls_controller.dart';
 import '../domain/call.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 
 class CallsScreen extends ConsumerStatefulWidget {
@@ -34,20 +34,11 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       ref.read(callsControllerProvider.notifier).refresh();
     });
 
-    _scrollCtrl.addListener(_onScroll);
-
     _searchCtrl.addListener(() {
       setState(() {
         _searchQuery = _searchCtrl.text.trim().toLowerCase();
       });
     });
-  }
-
-  void _onScroll() {
-    if (_scrollCtrl.position.pixels >
-        _scrollCtrl.position.maxScrollExtent - 200) {
-      ref.read(callsControllerProvider.notifier).loadMore();
-    }
   }
 
   @override
@@ -77,54 +68,60 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
   }
 
   Widget _buildTopSection(BuildContext context, CallsState state) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
-    final hasActiveFilters =
-        state.filter.priority != null || state.filter.sentiment != null;
+    final activeFilterCount = _activeFilterCount(state);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.trim().toLowerCase();
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search calls...',
-                hintStyle: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
-                ),
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: _clearSearch,
-                      )
-                    : null,
-                filled: true,
-                fillColor: scheme.surfaceContainerHighest.withValues(
-                  alpha: 0.45,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+      child: AppFilterToolbar(
+        activeFilterCount: activeFilterCount,
+        onOpenFilters: () => _showFilters(context, state),
+        showReset: activeFilterCount > 0 || _searchQuery.isNotEmpty,
+        onResetFilters: () {
+          _searchCtrl.clear();
+          ref.read(callsControllerProvider.notifier).applyFilter(const CallsFilter());
+          setState(() => _searchQuery = '');
+        },
+        searchField: TextField(
+          controller: _searchCtrl,
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value.trim().toLowerCase();
+            });
+          },
+          decoration: InputDecoration(
+            hintText: l10n.searchCalls,
+            hintStyle: GoogleFonts.roboto(
+              fontSize: 14,
+              color: scheme.onSurfaceVariant,
+            ),
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear_rounded),
+                    onPressed: _clearSearch,
+                  )
+                : null,
+            filled: true,
+            fillColor: scheme.surfaceContainerHighest.withValues(
+              alpha: 0.45,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
             ),
           ),
-          const SizedBox(width: 10),
-          _FilterButton(
-            isActive: hasActiveFilters,
-            onPressed: () => _showFilters(context, state),
-          ),
-        ],
+        ),
       ),
     );
+  }
+
+  int _activeFilterCount(CallsState state) {
+    var count = 0;
+    if (state.filter.priority != null) count++;
+    if (state.filter.sentiment != null) count++;
+    return count;
   }
 
   void _showFilters(BuildContext context, CallsState state) {
@@ -132,152 +129,12 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Filter Calls',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 18),
-                  _FilterOption(
-                    title: 'All Calls',
-                    icon: FontAwesomeIcons.layerGroup,
-                    selected: state.filter.priority == null &&
-                        state.filter.sentiment == null,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(const CallsFilter());
-                      Navigator.pop(context);
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Priority',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  _FilterOption(
-                    title: 'High Priority',
-                    icon: FontAwesomeIcons.flag,
-                    selected: state.filter.priority == PriorityLevel.high,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(
-                            CallsFilter(
-                              priority: PriorityLevel.high,
-                              sentiment: state.filter.sentiment,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _FilterOption(
-                    title: 'Medium Priority',
-                    icon: FontAwesomeIcons.flag,
-                    selected: state.filter.priority == PriorityLevel.medium,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(
-                            CallsFilter(
-                              priority: PriorityLevel.medium,
-                              sentiment: state.filter.sentiment,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _FilterOption(
-                    title: 'Low Priority',
-                    icon: FontAwesomeIcons.flag,
-                    selected: state.filter.priority == PriorityLevel.low,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(
-                            CallsFilter(
-                              priority: PriorityLevel.low,
-                              sentiment: state.filter.sentiment,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Sentiment',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  _FilterOption(
-                    title: 'Positive',
-                    icon: FontAwesomeIcons.faceSmile,
-                    selected: state.filter.sentiment == Sentiment.positive,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(
-                            CallsFilter(
-                              priority: state.filter.priority,
-                              sentiment: Sentiment.positive,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _FilterOption(
-                    title: 'Neutral',
-                    icon: FontAwesomeIcons.faceMeh,
-                    selected: state.filter.sentiment == Sentiment.neutral,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(
-                            CallsFilter(
-                              priority: state.filter.priority,
-                              sentiment: Sentiment.neutral,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _FilterOption(
-                    title: 'Negative',
-                    icon: FontAwesomeIcons.faceFrown,
-                    selected: state.filter.sentiment == Sentiment.negative,
-                    onTap: () {
-                      ref
-                          .read(callsControllerProvider.notifier)
-                          .applyFilter(
-                            CallsFilter(
-                              priority: state.filter.priority,
-                              sentiment: Sentiment.negative,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+      builder: (sheetContext) {
+        return _CallsFilterSheet(
+          initialFilter: state.filter,
+          onFilterChanged: (filter) {
+            ref.read(callsControllerProvider.notifier).applyFilter(filter);
+          },
         );
       },
     );
@@ -286,27 +143,19 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(callsControllerProvider);
     final filteredItems = _filterItems(state.items);
 
-    final hasActiveFilters =
-        state.filter.priority != null || state.filter.sentiment != null;
+    final hasActiveFilters = _activeFilterCount(state) > 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          l10n.calls,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
+        title: Text(l10n.calls),
         centerTitle: true,
         leading: IconButton(
-          icon: const FaIcon(
-            FontAwesomeIcons.arrowLeft,
+          icon: const Icon(
+            Icons.arrow_back,
             size: 18,
           ),
           onPressed: () {
@@ -330,18 +179,18 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                 child: Row(
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.filter,
+                    Icon(
+                      Icons.filter_list_outlined,
                       size: 12,
-                      color: AppTheme.primary,
+                      color: scheme.primary,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       l10n.filters,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.roboto(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.textSecondary,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                     const Spacer(),
@@ -358,10 +207,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                       ),
                       child: Text(
                         l10n.clear,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.roboto(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.primary,
+                          color: scheme.primary,
                         ),
                       ),
                     ),
@@ -394,24 +243,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                                 20,
                                 8,
                                 20,
-                                24,
+                                16,
                               ),
-                              itemCount:
-                                  filteredItems.length +
-                                  (state.hasMore ? 1 : 0),
+                              itemCount: filteredItems.length,
                               itemBuilder: (context, index) {
-                                if (index >= filteredItems.length) {
-                                  return const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 20,
-                                    ),
-                                    child: Center(
-                                      child:
-                                          CircularProgressIndicator.adaptive(),
-                                    ),
-                                  );
-                                }
-
                                 final call = filteredItems[index];
 
                                 return AnimationConfiguration.staggeredList(
@@ -431,6 +266,16 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                           ),
               ),
             ),
+            AppPaginationBar(
+              currentPage: state.page - 1,
+              totalPages: totalPagesFor(state.totalCount, 20),
+              totalItems: state.totalCount,
+              pageSize: 20,
+              isLoading: state.isLoading,
+              onPageChanged: (page) => ref
+                  .read(callsControllerProvider.notifier)
+                  .goToPage(page + 1),
+            ),
           ],
         ),
       ),
@@ -439,97 +284,121 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// SMALL UI COMPONENTS
+// CALLS FILTER SHEET — dropdowns like React Calls.jsx (apply on change)
 // -----------------------------------------------------------------------------
 
-class _FilterButton extends StatelessWidget {
-  final bool isActive;
-  final VoidCallback onPressed;
+class _CallsFilterSheet extends StatefulWidget {
+  final CallsFilter initialFilter;
+  final ValueChanged<CallsFilter> onFilterChanged;
 
-  const _FilterButton({
-    required this.isActive,
-    required this.onPressed,
+  const _CallsFilterSheet({
+    required this.initialFilter,
+    required this.onFilterChanged,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      width: 56,
-      child: IconButton(
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: isActive
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
-              : Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.45),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        icon: FaIcon(
-          FontAwesomeIcons.sliders,
-          size: 18,
-          color: isActive
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
+  State<_CallsFilterSheet> createState() => _CallsFilterSheetState();
 }
 
-class _FilterOption extends StatelessWidget {
-  final String title;
-  final FaIconData icon;
-  final bool selected;
-  final VoidCallback onTap;
+class _CallsFilterSheetState extends State<_CallsFilterSheet> {
+  late PriorityLevel? _priority;
+  late Sentiment? _sentiment;
 
-  const _FilterOption({
-    required this.title,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
+  @override
+  void initState() {
+    super.initState();
+    _priority = widget.initialFilter.priority;
+    _sentiment = widget.initialFilter.sentiment;
+  }
+
+  void _apply() {
+    widget.onFilterChanged(
+      CallsFilter(priority: _priority, sentiment: _sentiment),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
-    return ListTile(
-      onTap: onTap,
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.14)
-              : scheme.surfaceContainerHighest,
-        ),
-        child: Center(
-          child: FaIcon(
-            icon,
-            size: 16,
-            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.filterCalls,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 18),
+              DropdownButtonFormField<PriorityLevel?>(
+                value: _priority,
+                decoration: InputDecoration(
+                  labelText: l10n.priority,
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  DropdownMenuItem<PriorityLevel?>(
+                    value: null,
+                    child: Text(l10n.allCalls),
+                  ),
+                  DropdownMenuItem(
+                    value: PriorityLevel.high,
+                    child: Text(l10n.highPriority),
+                  ),
+                  DropdownMenuItem(
+                    value: PriorityLevel.medium,
+                    child: Text(l10n.mediumPriority),
+                  ),
+                  DropdownMenuItem(
+                    value: PriorityLevel.low,
+                    child: Text(l10n.lowPriority),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _priority = value);
+                  _apply();
+                },
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<Sentiment?>(
+                value: _sentiment,
+                decoration: InputDecoration(
+                  labelText: l10n.sentiment,
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  DropdownMenuItem<Sentiment?>(
+                    value: null,
+                    child: Text(l10n.allCalls),
+                  ),
+                  DropdownMenuItem(
+                    value: Sentiment.positive,
+                    child: Text(l10n.sentimentPositive),
+                  ),
+                  DropdownMenuItem(
+                    value: Sentiment.neutral,
+                    child: Text(l10n.sentimentNeutral),
+                  ),
+                  DropdownMenuItem(
+                    value: Sentiment.negative,
+                    child: Text(l10n.sentimentNegative),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _sentiment = value);
+                  _apply();
+                },
+              ),
+            ],
           ),
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      trailing: selected
-          ? Icon(
-              Icons.check_circle_rounded,
-              color: scheme.primary,
-            )
-          : null,
     );
   }
 }

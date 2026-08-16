@@ -27,11 +27,18 @@ ALLOWED_HOSTS = os.getenv(
 # CORS SETTINGS
 # -----------------------------
 
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = [o for o in _cors_origins.split(",") if o.strip()]
+_default_cors_origins = (
+    "http://localhost:3001,"
+    "http://127.0.0.1:3001,"
+    "http://localhost:3000,"
+    "http://127.0.0.1:3000,"
+    "http://localhost:3002,"
+    "http://127.0.0.1:3002"
+)
+_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", _default_cors_origins)
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 
 # -----------------------------
 # INSTALLED APPS

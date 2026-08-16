@@ -13,12 +13,14 @@ import NavItem from '../NavItem';
 
 import { useGetMenuMaster } from 'api/menu';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 
 // ==============================|| SIDEBAR MENU LIST GROUP ||============================== //
 
 export default function NavGroup({ item, lastItem, remItems, lastItemId, setSelectedID }) {
   const { pathname } = useLocation();
-  const { user } = useAuth(); // Add this
+  const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
@@ -90,7 +92,7 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, setSele
       default:
         return (
           <Typography key={menu?.id} variant="h6" align="center" sx={{ color: 'error.main' }}>
-            Menu Items Error
+            {t('common.menuItemsError')}
           </Typography>
         );
     }

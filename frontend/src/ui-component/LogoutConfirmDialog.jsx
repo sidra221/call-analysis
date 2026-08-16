@@ -1,27 +1,22 @@
 import PropTypes from 'prop-types';
-import {
-  Button, Dialog, DialogActions, DialogContent,
-  DialogContentText, DialogTitle
-} from '@mui/material';
-import DialogCancelButton from './DialogCancelButton';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
+import useTranslation from 'hooks/useTranslation';
 
-export default function LogoutConfirmDialog({ open, onClose, onConfirm, isAr = false }) {
+export default function LogoutConfirmDialog({ open, onClose, onConfirm }) {
+  const { t } = useTranslation();
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{isAr ? 'تأكيد تسجيل الخروج' : 'Confirm Logout'}</DialogTitle>
+      <DialogTitle>{t('header.logoutConfirmTitle')}</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          {isAr
-            ? 'هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟'
-            : 'Are you sure you want to log out of your account?'}
-        </DialogContentText>
+        {t('header.logoutConfirmBody')}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-        <DialogCancelButton onClick={onClose}>
-          {isAr ? 'إلغاء' : 'Cancel'}
-        </DialogCancelButton>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button variant="outlined" color="inherit" onClick={onClose}>
+          {t('common.cancel')}
+        </Button>
         <Button variant="contained" color="error" onClick={onConfirm}>
-          {isAr ? 'تسجيل الخروج' : 'Logout'}
+          {t('header.logout')}
         </Button>
       </DialogActions>
     </Dialog>
@@ -31,6 +26,5 @@ export default function LogoutConfirmDialog({ open, onClose, onConfirm, isAr = f
 LogoutConfirmDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  onConfirm: PropTypes.func.isRequired,
-  isAr: PropTypes.bool
+  onConfirm: PropTypes.func.isRequired
 };

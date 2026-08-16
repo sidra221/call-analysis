@@ -191,7 +191,25 @@ export function AuthProvider({ children }) {
   // ========================================
   // Logout - Force reload to clear all state
   // ========================================
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const refresh = localStorage.getItem('refresh_token');
+    const access = localStorage.getItem('access_token');
+
+    if (refresh) {
+      try {
+        await fetch(`${API_URL}/api/accounts/logout/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(access ? { Authorization: `Bearer ${access}` } : {}),
+          },
+          body: JSON.stringify({ refresh }),
+        });
+      } catch {
+        // Continue with local logout even if the server is unreachable.
+      }
+    }
+
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('authUser');

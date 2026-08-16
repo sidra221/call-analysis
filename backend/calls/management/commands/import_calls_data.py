@@ -220,7 +220,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('🚀 بدء استيراد البيانات...'))
 
         # الحصول على مستخدمين موجودين أو إنشاء واحد
-        users = list(User.objects.filter(userprofile__isnull=False))
+        users = list(User.objects.filter(profile__isnull=False))
         if not users:
             # إنشاء مستخدم افتراضي
             user = User.objects.create_user(

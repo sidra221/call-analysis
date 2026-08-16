@@ -57,6 +57,8 @@ class CallDetails {
   final String mainIssue;
   final List<String> keywords;
   final bool needsFollowUp;
+  final bool isReviewed;
+  final String? audioUrl;
   final String summary;
   final List<String> keyIssues;
   final List<String> notes;
@@ -67,6 +69,8 @@ class CallDetails {
     required this.mainIssue,
     required this.keywords,
     required this.needsFollowUp,
+    required this.isReviewed,
+    this.audioUrl,
     required this.summary,
     required this.keyIssues,
     required this.notes,
@@ -78,6 +82,8 @@ class CallDetails {
         mainIssue: json['mainIssue'] as String,
         keywords: (json['keywords'] as List).map((e) => e.toString()).toList(),
         needsFollowUp: json['needsFollowUp'] as bool,
+        isReviewed: json['isReviewed'] as bool? ?? false,
+        audioUrl: json['audioUrl'] as String?,
         summary: json['summary'] as String? ?? 'Customer called regarding a billing discrepancy.',
         keyIssues: (json['keyIssues'] as List?)?.map((e) => e.toString()).toList() ?? ['Long wait time', 'Agent knowledge'],
         notes: (json['notes'] as List?)?.map((e) => e.toString()).toList() ?? [],
@@ -89,6 +95,8 @@ class CallDetails {
         'mainIssue': mainIssue,
         'keywords': keywords,
         'needsFollowUp': needsFollowUp,
+        'isReviewed': isReviewed,
+        'audioUrl': audioUrl,
         'summary': summary,
         'keyIssues': keyIssues,
         'notes': notes,

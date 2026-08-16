@@ -80,7 +80,7 @@
   "unknownError": "Unknown error",
   "splashTitle": "Call Center",
   "splashSubtitle": "Manager Dashboard",
-  "logs": "Activity Logs",
+  "logs": "System Logs",
   "noLogsFound": "No logs found",
   "checkBackLaterLogs": "Check back later",
   "failedToLoadLogs": "Failed to load logs",
@@ -90,6 +90,8 @@
   "statusCompleted": "Completed",
   "statusInProgress": "In Progress",
   "statusPending": "Pending",
+  "statusProcessing": "Processing",
+  "statusFailed": "Failed",
   "priorityHigh": "High",
   "priorityMedium": "Medium",
   "priorityLow": "Low",
@@ -112,5 +114,150 @@
   "markReviewed": "Mark Reviewed",
   "createFollowUp": "Create Follow-up",
   "uploadedBy": "Uploaded by",
-  "confidence": "Confidence"
+  "confidence": "Confidence",
+  "splashTagline": "VOICE INTELLIGENCE. REAL INSIGHT.",
+  "username": "Username",
+  "usernameRequired": "Username is required",
+  "enterCredentials": "Enter your credentials to continue",
+  "loginFailed": "Login failed",
+  "passwordRequiredField": "Password is required",
+  "passwordMinLength": "Password must be at least 6 characters",
+  "noAccount": "Don't have an account? ",
+  "register": "Register",
+  "home": "Home",
+  "criticalPriority": "Critical Priority",
+  "mediumPriority": "Medium Priority",
+  "lowPriority": "Low Priority",
+  "liveFeed": "Live Feed",
+  "noRecentCalls": "No recent calls",
+  "callNumber": "Call #{id}",
+  "@callNumber": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLoadLiveFeed": "Failed to load live feed",
+  "noKeywordsAvailable": "No keywords available",
+  "failedToLoadKeywords": "Failed to load keywords",
+  "sentimentAnalysis": "Sentiment Analysis",
+  "sentimentDistribution": "Distribution of analyzed customer calls.",
+  "searchCalls": "Search calls...",
+  "filterCalls": "Filter Calls",
+  "allCalls": "All Calls",
+  "searchLogs": "Search by user, action, or description...",
+  "filterLogs": "Filter Logs",
+  "allLogs": "All Logs",
+  "tryChangingSearchOrFilters": "Try changing your search or filters",
+  "logTypeActivity": "Activity",
+  "logTypeSystem": "System",
+  "logTypeUserAction": "User Action",
+  "summaryIssuesSolutions": "Summary (Issues & Solutions)",
+  "positives": "Positives",
+  "overallSentiment": "Overall Sentiment",
+  "topIssues": "Top Issues",
+  "managerNotes": "Manager Notes",
+  "reportByAuthor": "By {author} • {date}",
+  "@reportByAuthor": {
+    "placeholders": {
+      "author": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noDataAvailable": "No data available",
+  "noIssuesData": "No issues data available",
+  "noIssueRecorded": "No issue recorded",
+  "cancel": "Cancel",
+  "reviewed": "Reviewed",
+  "addNotes": "Add Notes",
+  "downloadPdf": "Download PDF",
+  "failedToLoadReportDetails": "Failed to load report details",
+  "noAudioRecording": "No audio recording available",
+  "failedToMarkReviewed": "Failed to mark call as reviewed",
+  "user": "User",
+  "notifActorSystem": "System",
+  "notifActorSomeone": "Someone",
+  "notifActorQa": "QA",
+  "notifDefaultReportPeriod": "Report",
+  "notifCallUploaded": "{user} uploaded a new call #{callId}",
+  "@notifCallUploaded": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "callId": {"type": "String"}
+    }
+  },
+  "notifFollowupAssigned": "You have a follow-up assigned for call #{callId}",
+  "@notifFollowupAssigned": {
+    "placeholders": {
+      "callId": {"type": "String"}
+    }
+  },
+  "notifFollowupStatusCompleted": "{user} changed status of your follow-up for call #{callId} to completed",
+  "@notifFollowupStatusCompleted": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "callId": {"type": "String"}
+    }
+  },
+  "notifFollowupStatusUpdated": "{user} changed status of your follow-up for call #{callId} to {status}",
+  "@notifFollowupStatusUpdated": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "callId": {"type": "String"},
+      "status": {"type": "String"}
+    }
+  },
+  "notifReportPublished": "{user} published a new report \"{period}\"",
+  "@notifReportPublished": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "period": {"type": "String"}
+    }
+  },
+  "notifReportReviewNotes": "{user} added notes to your {period} report",
+  "@notifReportReviewNotes": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "period": {"type": "String"}
+    }
+  },
+  "notifReportReviewApproved": "{user} reviewed your {period} report",
+  "@notifReportReviewApproved": {
+    "placeholders": {
+      "user": {"type": "String"},
+      "period": {"type": "String"}
+    }
+  },
+  "timeJustNow": "just now",
+  "timeMinutesAgo": "{count} min ago",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeHoursAgo": "{count} hour ago",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeDaysAgo": "{count} day ago",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "timeOnDate": "{month}/{day}/{year}",
+  "@timeOnDate": {
+    "placeholders": {
+      "year": {"type": "int"},
+      "month": {"type": "int"},
+      "day": {"type": "int"}
+    }
+  }
 }

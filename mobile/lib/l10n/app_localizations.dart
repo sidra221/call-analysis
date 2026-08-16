@@ -581,7 +581,7 @@ abstract class AppLocalizations {
   /// No description provided for @logs.
   ///
   /// In en, this message translates to:
-  /// **'Activity Logs'**
+  /// **'System Logs'**
   String get logs;
 
   /// No description provided for @noLogsFound.
@@ -637,6 +637,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pending'**
   String get statusPending;
+
+  /// No description provided for @statusProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get statusProcessing;
+
+  /// No description provided for @statusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get statusFailed;
 
   /// No description provided for @priorityHigh.
   ///
@@ -775,6 +787,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Confidence'**
   String get confidence;
+
+  /// No description provided for @splashTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'VOICE INTELLIGENCE. REAL INSIGHT.'**
+  String get splashTagline;
+
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @usernameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Username is required'**
+  String get usernameRequired;
+
+  /// No description provided for @enterCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your credentials to continue'**
+  String get enterCredentials;
+
+  /// No description provided for @loginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed'**
+  String get loginFailed;
+
+  /// No description provided for @passwordRequiredField.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required'**
+  String get passwordRequiredField;
+
+  /// No description provided for @passwordMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters'**
+  String get passwordMinLength;
+
+  /// No description provided for @noAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? '**
+  String get noAccount;
+
+  /// No description provided for @register.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get register;
+
+  /// No description provided for @home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get home;
+
+  /// No description provided for @criticalPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical Priority'**
+  String get criticalPriority;
+
+  /// No description provided for @mediumPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium Priority'**
+  String get mediumPriority;
+
+  /// No description provided for @lowPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Priority'**
+  String get lowPriority;
+
+  /// No description provided for @liveFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Feed'**
+  String get liveFeed;
+
+  /// No description provided for @noRecentCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent calls'**
+  String get noRecentCalls;
+
+  /// No description provided for @callNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Call #{id}'**
+  String callNumber(String id);
+
+  /// No description provided for @failedToLoadLiveFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load live feed'**
+  String get failedToLoadLiveFeed;
+
+  /// No description provided for @noKeywordsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No keywords available'**
+  String get noKeywordsAvailable;
+
+  /// No description provided for @failedToLoadKeywords.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load keywords'**
+  String get failedToLoadKeywords;
+
+  /// No description provided for @sentimentAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentiment Analysis'**
+  String get sentimentAnalysis;
+
+  /// No description provided for @sentimentDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution of analyzed customer calls.'**
+  String get sentimentDistribution;
+
+  /// No description provided for @searchCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Search calls...'**
+  String get searchCalls;
+
+  /// No description provided for @filterCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Calls'**
+  String get filterCalls;
+
+  /// No description provided for @allCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'All Calls'**
+  String get allCalls;
+
+  /// No description provided for @searchLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by user, action, or description...'**
+  String get searchLogs;
+
+  /// No description provided for @filterLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Logs'**
+  String get filterLogs;
+
+  /// No description provided for @allLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'All Logs'**
+  String get allLogs;
+
+  /// No description provided for @tryChangingSearchOrFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Try changing your search or filters'**
+  String get tryChangingSearchOrFilters;
+
+  /// No description provided for @logTypeActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get logTypeActivity;
+
+  /// No description provided for @logTypeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get logTypeSystem;
+
+  /// No description provided for @logTypeUserAction.
+  ///
+  /// In en, this message translates to:
+  /// **'User Action'**
+  String get logTypeUserAction;
+
+  /// No description provided for @summaryIssuesSolutions.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary (Issues & Solutions)'**
+  String get summaryIssuesSolutions;
+
+  /// No description provided for @positives.
+  ///
+  /// In en, this message translates to:
+  /// **'Positives'**
+  String get positives;
+
+  /// No description provided for @overallSentiment.
+  ///
+  /// In en, this message translates to:
+  /// **'Overall Sentiment'**
+  String get overallSentiment;
+
+  /// No description provided for @topIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Top Issues'**
+  String get topIssues;
+
+  /// No description provided for @managerNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager Notes'**
+  String get managerNotes;
+
+  /// No description provided for @reportByAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'By {author} • {date}'**
+  String reportByAuthor(String author, String date);
+
+  /// No description provided for @noDataAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available'**
+  String get noDataAvailable;
+
+  /// No description provided for @noIssuesData.
+  ///
+  /// In en, this message translates to:
+  /// **'No issues data available'**
+  String get noIssuesData;
+
+  /// No description provided for @noIssueRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No issue recorded'**
+  String get noIssueRecorded;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @reviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed'**
+  String get reviewed;
+
+  /// No description provided for @addNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Notes'**
+  String get addNotes;
+
+  /// No description provided for @downloadPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Download PDF'**
+  String get downloadPdf;
+
+  /// No description provided for @failedToLoadReportDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load report details'**
+  String get failedToLoadReportDetails;
+
+  /// No description provided for @noAudioRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio recording available'**
+  String get noAudioRecording;
+
+  /// No description provided for @failedToMarkReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to mark call as reviewed'**
+  String get failedToMarkReviewed;
+
+  /// No description provided for @user.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get user;
+
+  /// No description provided for @notifActorSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get notifActorSystem;
+
+  /// No description provided for @notifActorSomeone.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone'**
+  String get notifActorSomeone;
+
+  /// No description provided for @notifActorQa.
+  ///
+  /// In en, this message translates to:
+  /// **'QA'**
+  String get notifActorQa;
+
+  /// No description provided for @notifDefaultReportPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get notifDefaultReportPeriod;
+
+  /// No description provided for @notifCallUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} uploaded a new call #{callId}'**
+  String notifCallUploaded(String user, String callId);
+
+  /// No description provided for @notifFollowupAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'You have a follow-up assigned for call #{callId}'**
+  String notifFollowupAssigned(String callId);
+
+  /// No description provided for @notifFollowupStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} changed status of your follow-up for call #{callId} to completed'**
+  String notifFollowupStatusCompleted(String user, String callId);
+
+  /// No description provided for @notifFollowupStatusUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} changed status of your follow-up for call #{callId} to {status}'**
+  String notifFollowupStatusUpdated(String user, String callId, String status);
+
+  /// No description provided for @notifReportPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} published a new report \"{period}\"'**
+  String notifReportPublished(String user, String period);
+
+  /// No description provided for @notifReportReviewNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} added notes to your {period} report'**
+  String notifReportReviewNotes(String user, String period);
+
+  /// No description provided for @notifReportReviewApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} reviewed your {period} report'**
+  String notifReportReviewApproved(String user, String period);
+
+  /// No description provided for @timeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get timeJustNow;
+
+  /// No description provided for @timeMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String timeMinutesAgo(int count);
+
+  /// No description provided for @timeHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} hour ago'**
+  String timeHoursAgo(int count);
+
+  /// No description provided for @timeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} day ago'**
+  String timeDaysAgo(int count);
+
+  /// No description provided for @timeOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'{month}/{day}/{year}'**
+  String timeOnDate(int year, int month, int day);
 }
 
 class _AppLocalizationsDelegate

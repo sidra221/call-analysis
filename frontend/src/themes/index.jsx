@@ -19,7 +19,7 @@ import componentsOverrides from './overrides';
 
 export default function ThemeCustomization({ children }) {
   const {
-    state: { borderRadius, fontFamily, outlinedFilled, presetColor, themeCustomized, themeUserId },
+    state: { borderRadius, fontFamily, outlinedFilled, presetColor, themeCustomized, themeUserId, language },
     setState
   } = useConfig();
   const { user } = useAuth();
@@ -60,7 +60,7 @@ export default function ThemeCustomization({ children }) {
 
   const themeOptions = useMemo(
     () => ({
-      direction: 'ltr',
+      direction: language === 'ar' ? 'rtl' : 'ltr',
       mixins: {
         toolbar: {
           minHeight: '48px',
@@ -78,20 +78,19 @@ export default function ThemeCustomization({ children }) {
         light: {
           palette: palette.light,
           customShadows: CustomShadows(palette.light, 'light')
-        }
-      },
-
+        },
         dark: {
           palette: palette.dark,
           customShadows: CustomShadows(palette.dark, 'dark')
-        },
+        }
+      },
 
       cssVariables: {
         cssVarPrefix: CSS_VAR_PREFIX,
         colorSchemeSelector: 'data-color-scheme'
       }
     }),
-    [themeTypography, palette]
+    [themeTypography, palette, language]
   );
 
   const themes = createTheme(themeOptions);
@@ -100,7 +99,7 @@ export default function ThemeCustomization({ children }) {
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider
-        key={activePreset}
+        key={`${activePreset}-${language}`}
         disableTransitionOnChange
         theme={themes}
         modeStorageKey="theme-mode"

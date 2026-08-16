@@ -13,6 +13,7 @@ class ReportModel {
   final String positives;
   final List<dynamic> topIssues;
   final Map<String, dynamic> sentimentStats;
+  final String managerNotes;
   final String createdAt;
   final String createdByUsername;
 
@@ -27,6 +28,7 @@ class ReportModel {
     required this.positives,
     required this.topIssues,
     required this.sentimentStats,
+    required this.managerNotes,
     required this.createdAt,
     required this.createdByUsername,
   });
@@ -43,6 +45,7 @@ class ReportModel {
       positives: json['positives'] ?? '',
       topIssues: json['top_issues'] ?? [],
       sentimentStats: Map<String, dynamic>.from(json['sentiment_stats'] ?? {}),
+      managerNotes: json['manager_notes'] ?? '',
       createdAt: json['created_at'] ?? '',
       createdByUsername: json['created_by_username'] ?? '',
     );

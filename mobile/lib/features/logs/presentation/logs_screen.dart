@@ -1,15 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../shared/widgets/ui.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_filters.dart';
+import '../../../shared/widgets/app_pagination.dart';
+import '../../../l10n/app_localizations.dart';
 import '../domain/log_item.dart';
-import '../application/logs_providers.dart';
+import '../domain/log_constants.dart';
+import '../application/logs_controller.dart';
 
 class LogsScreen extends ConsumerStatefulWidget {
   const LogsScreen({super.key});
@@ -20,26 +24,79 @@ class LogsScreen extends ConsumerStatefulWidget {
 
 class _LogsScreenState extends ConsumerState<LogsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  Timer? _searchDebounce;
 
-  String _searchQuery = '';
-  LogType? _selectedType;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(logsControllerProvider.notifier).init();
+    });
+  }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  int _activeFilterCount(LogsFilter filter) {
+    var count = 0;
+    if (filter.action != 'all') count++;
+    if (filter.username.isNotEmpty) count++;
+    if (filter.date.isNotEmpty) count++;
+    return count;
+  }
+
+  void _applySearch(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      final filter = ref.read(logsControllerProvider).filter;
+      ref.read(logsControllerProvider.notifier).applyFilter(
+            filter.copyWith(search: value.trim()),
+          );
+    });
+  }
+
+  List<String> _searchSuggestions(List<String> userOptions, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return const [];
+
+    final usernames = <String>{};
+    final others = <String>{};
+
+    for (final username in userOptions) {
+      if (username.toLowerCase().contains(q)) {
+        usernames.add(username);
+      }
+    }
+    for (final option in logActionOptions) {
+      if (option.label.toLowerCase().contains(q)) {
+        others.add(option.label);
+      }
+    }
+
+    return [...usernames, ...others].take(8).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final logsAsync = ref.watch(logsProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final logsState = ref.watch(logsControllerProvider);
+    final logs = logsState.items;
+    final filter = logsState.filter;
+    final hasFilters =
+        filter.search.isNotEmpty || _activeFilterCount(filter) > 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity Logs'),
+        title: Text(l10n.logs),
         centerTitle: true,
         leading: IconButton(
-          icon: const FaIcon(FontAwesomeIcons.arrowLeft),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -50,108 +107,129 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
         ),
       ),
       body: SafeArea(
-        child: logsAsync.when(
-          data: (logs) {
-            final filteredLogs = logs.where((log) {
-              final query = _searchQuery.toLowerCase();
-
-              final matchesSearch = query.isEmpty ||
-                  log.title.toLowerCase().contains(query) ||
-                  log.description.toLowerCase().contains(query) ||
-                  (log.extra?.toLowerCase().contains(query) ?? false);
-
-              final matchesType =
-                  _selectedType == null || log.type == _selectedType;
-
-              return matchesSearch && matchesType;
-            }).toList();
-
-            return Column(
-              children: [
-                _buildTopSection(context),
-
-                Expanded(
-                  child: filteredLogs.isEmpty
-                      ? const EmptyView(
-                          message: 'No logs found',
-                          subtitle: 'Try changing your search or filters',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSearchRow(context, logsState),
+            if (hasFilters) _buildActiveFilters(context, logsState),
+            Expanded(
+              child: logsState.isLoading && logs.isEmpty
+                  ? const Center(child: CircularProgressIndicator.adaptive())
+                  : logsState.error != null && logs.isEmpty
+                      ? ErrorView(
+                          message: l10n.failedToLoadLogs,
+                          onRetry: () => ref
+                              .read(logsControllerProvider.notifier)
+                              .refresh(),
                         )
-                      : AnimationLimiter(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                            child: Column(
-                              children: [
-                                for (int i = 0; i < filteredLogs.length; i++)
-                                  AnimationConfiguration.staggeredList(
-                                    position: i,
-                                    duration: const Duration(milliseconds: 375),
-                                    child: SlideAnimation(
-                                      verticalOffset: 50,
-                                      child: FadeInAnimation(
-                                        child: TimelineLogCard(
-                                          log: filteredLogs[i],
-                                          isLast: i == filteredLogs.length - 1,
+                      : logs.isEmpty
+                          ? EmptyView(
+                              message: l10n.noLogsFound,
+                              subtitle: hasFilters
+                                  ? l10n.tryChangingSearchOrFilters
+                                  : null,
+                            )
+                          : RefreshIndicator.adaptive(
+                              onRefresh: () => ref
+                                  .read(logsControllerProvider.notifier)
+                                  .refresh(),
+                              child: AnimationLimiter(
+                                child: ListView.builder(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                                  itemCount: logs.length,
+                                  itemBuilder: (context, index) {
+                                    return AnimationConfiguration.staggeredList(
+                                      position: index,
+                                      duration:
+                                          const Duration(milliseconds: 375),
+                                      child: SlideAnimation(
+                                        verticalOffset: 40,
+                                        child: FadeInAnimation(
+                                          child: _LogTimelineEntry(
+                                            log: logs[index],
+                                            isLast: index == logs.length - 1,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                              ],
+                                    );
+                                  },
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                ),
-              ],
-            );
-          },
-          error: (e, _) => ErrorView(
-            message: 'Failed to load logs',
-            onRetry: () => ref.invalidate(logsProvider),
-          ),
-          loading: () => const Center(
-            child: CircularProgressIndicator.adaptive(),
-          ),
+            ),
+            if (logs.isNotEmpty)
+              AppPaginationBar(
+                currentPage: logsState.page - 1,
+                totalPages: totalPagesFor(logsState.totalCount, 20),
+                totalItems: logsState.totalCount,
+                pageSize: 20,
+                isLoading: logsState.isLoading,
+                onPageChanged: (page) => ref
+                    .read(logsControllerProvider.notifier)
+                    .goToPage(page + 1),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTopSection(BuildContext context) {
+  Widget _buildSearchRow(BuildContext context, LogsState logsState) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
+    final filter = logsState.filter;
+    final userOptions = logsState.userOptions;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
+      child: AppFilterToolbar(
+        activeFilterCount: _activeFilterCount(filter),
+        onOpenFilters: () => _showFilters(context, logsState),
+        showReset: _activeFilterCount(filter) > 0 || filter.search.isNotEmpty,
+        onResetFilters: () {
+          _searchController.clear();
+          ref
+              .read(logsControllerProvider.notifier)
+              .applyFilter(const LogsFilter());
+        },
+        searchField: RawAutocomplete<String>(
+          textEditingController: _searchController,
+          focusNode: _searchFocusNode,
+          optionsBuilder: (value) {
+            final text = value.text.trim();
+            if (text.isEmpty) return const Iterable<String>.empty();
+            return _searchSuggestions(userOptions, text);
+          },
+          onSelected: (selection) {
+            _searchController.text = selection;
+            _applySearch(selection);
+          },
+          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: _applySearch,
               decoration: InputDecoration(
-                hintText: 'Search logs...',
-                hintStyle: GoogleFonts.plusJakartaSans(
+                hintText: l10n.searchLogs,
+                hintStyle: GoogleFonts.roboto(
                   fontSize: 14,
                   color: scheme.onSurfaceVariant,
                 ),
                 prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchQuery.isNotEmpty
+                suffixIcon: filter.search.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
+                          _applySearch('');
                         },
                       )
                     : null,
                 filled: true,
-                fillColor: scheme.surfaceContainerHighest.withValues(
-                  alpha: 0.45,
-                ),
+                fillColor:
+                    scheme.surfaceContainerHighest.withValues(alpha: 0.45),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
@@ -161,308 +239,379 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
                   vertical: 14,
                 ),
               ),
+            );
+          },
+          optionsViewBuilder: (context, onSelected, options) {
+            if (options.isEmpty) return const SizedBox.shrink();
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      final isUser = userOptions.contains(option);
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(
+                          isUser ? Icons.person_outline : Icons.search,
+                          size: 18,
+                        ),
+                        title: Text(
+                          option,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => onSelected(option),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveFilters(BuildContext context, LogsState logsState) {
+    final scheme = Theme.of(context).colorScheme;
+    final filter = logsState.filter;
+    final resultCount = logsState.totalCount;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (filter.search.isNotEmpty)
+            InputChip(
+              label: Text('Search: ${filter.search}'),
+              onDeleted: () {
+                _searchController.clear();
+                ref.read(logsControllerProvider.notifier).applyFilter(
+                      filter.copyWith(search: ''),
+                    );
+              },
             ),
-          ),
-          const SizedBox(width: 10),
-          _FilterButton(
-            isActive: _selectedType != null,
-            onPressed: () => _showFilters(context),
+          if (filter.action != 'all')
+            InputChip(
+              label: Text(
+                'Action: ${logActionOptions.firstWhere((o) => o.value == filter.action, orElse: () => const LogActionOption(value: '', label: '')).label}',
+              ),
+              onDeleted: () => ref
+                  .read(logsControllerProvider.notifier)
+                  .applyFilter(filter.copyWith(action: 'all')),
+            ),
+          if (filter.username.isNotEmpty)
+            InputChip(
+              label: Text('User: ${filter.username}'),
+              onDeleted: () => ref
+                  .read(logsControllerProvider.notifier)
+                  .applyFilter(filter.copyWith(username: '')),
+            ),
+          if (filter.date.isNotEmpty)
+            InputChip(
+              label: Text('Date: ${filter.date}'),
+              onDeleted: () => ref
+                  .read(logsControllerProvider.notifier)
+                  .applyFilter(filter.copyWith(date: '')),
+            ),
+          Text(
+            '$resultCount result${resultCount == 1 ? '' : 's'}',
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showFilters(BuildContext context) {
+  void _showFilters(BuildContext context, LogsState logsState) {
+    final filter = logsState.filter;
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Filter Logs',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 18),
-              _FilterOption(
-                title: 'All Logs',
-                icon: FontAwesomeIcons.layerGroup,
-                selected: _selectedType == null,
-                onTap: () {
-                  setState(() {
-                    _selectedType = null;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              _FilterOption(
-                title: 'Activity',
-                icon: FontAwesomeIcons.bolt,
-                selected: _selectedType == LogType.activity,
-                onTap: () {
-                  setState(() {
-                    _selectedType = LogType.activity;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              _FilterOption(
-                title: 'System',
-                icon: FontAwesomeIcons.gear,
-                selected: _selectedType == LogType.system,
-                onTap: () {
-                  setState(() {
-                    _selectedType = LogType.system;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              _FilterOption(
-                title: 'User Actions',
-                icon: FontAwesomeIcons.user,
-                selected: _selectedType == LogType.userAction,
-                onTap: () {
-                  setState(() {
-                    _selectedType = LogType.userAction;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return _LogsFilterSheet(
+          initialAction: filter.action,
+          initialUsername: filter.username,
+          initialDate: filter.date,
+          userOptions: logsState.userOptions,
+          onApply: (action, username, date) {
+            ref.read(logsControllerProvider.notifier).applyFilter(
+                  filter.copyWith(
+                    action: action,
+                    username: username,
+                    date: date,
+                  ),
+                );
+          },
         );
       },
     );
   }
 }
 
-class TimelineLogCard extends StatelessWidget {
+/// Owns its controllers — avoids "used after dispose" when sheet closes.
+class _LogsFilterSheet extends StatefulWidget {
+  final String initialAction;
+  final String initialUsername;
+  final String initialDate;
+  final List<String> userOptions;
+  final void Function(String action, String username, String date) onApply;
+
+  const _LogsFilterSheet({
+    required this.initialAction,
+    required this.initialUsername,
+    required this.initialDate,
+    required this.userOptions,
+    required this.onApply,
+  });
+
+  @override
+  State<_LogsFilterSheet> createState() => _LogsFilterSheetState();
+}
+
+class _LogsFilterSheetState extends State<_LogsFilterSheet> {
+  late String _action;
+  late String _username;
+  late final TextEditingController _dateController;
+
+  @override
+  void initState() {
+    super.initState();
+    _action = widget.initialAction;
+    _username = widget.initialUsername;
+    _dateController = TextEditingController(text: widget.initialDate);
+  }
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: AppFilterSheet(
+          title: 'Filter Logs',
+          onApply: () => widget.onApply(
+            _action,
+            _username.trim(),
+            _dateController.text.trim(),
+          ),
+          children: [
+            DropdownButtonFormField<String>(
+              value: _action,
+              decoration: const InputDecoration(
+                labelText: 'Action',
+                border: OutlineInputBorder(),
+              ),
+              items: logActionOptions
+                  .map(
+                    (option) => DropdownMenuItem(
+                      value: option.value,
+                      child: Text(option.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) setState(() => _action = value);
+              },
+            ),
+            const SizedBox(height: 14),
+            AppUsernameAutocomplete(
+              initialValue: widget.initialUsername,
+              options: widget.userOptions,
+              onChanged: (value) => _username = value,
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _dateController,
+              decoration: const InputDecoration(
+                labelText: 'Date',
+                border: OutlineInputBorder(),
+              ),
+              readOnly: true,
+              onTap: () async {
+                final current = _dateController.text;
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: current.isNotEmpty
+                      ? DateTime.tryParse(current) ?? DateTime.now()
+                      : DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _dateController.text =
+                        DateFormat('yyyy-MM-dd').format(picked);
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Timeline row — line connects between circles like React `Logs.jsx`.
+class _LogTimelineEntry extends StatelessWidget {
   final LogItem log;
   final bool isLast;
 
-  const TimelineLogCard({
-    super.key,
+  const _LogTimelineEntry({
     required this.log,
     required this.isLast,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = _logColor(log.type);
-    final icon = _logIcon(log.type);
     final scheme = Theme.of(context).colorScheme;
+    final actionColor = logActionColor(log.action, scheme);
+    final icon = logActionIcon(log.action);
+    const avatarSize = 46.0;
+    const lineLeft = 22.0; // center of 46px avatar minus 1px line width
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Timeline column
-        SizedBox(
-          width: 40,
-          child: Column(
-            children: [
-              // Circular node
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.4),
-                    width: 2,
-                  ),
-                ),
-                child: Center(
-                  child: FaIcon(
-                    icon,
-                    size: 16,
-                    color: color,
-                  ),
-                ),
-              ),
-              // Connecting line
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          color.withValues(alpha: 0.3),
-                          color.withValues(alpha: 0.1),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        const SizedBox(width: 16),
-
-        // Activity card
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 24),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: scheme.shadow.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              border: Border.all(
-                color: scheme.outline.withValues(alpha: 0.08),
-                width: 1,
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 35),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (!isLast)
+            Positioned(
+              left: lineLeft,
+              top: avatarSize + 4,
+              bottom: -35,
+              width: 2,
+              child: ColoredBox(
+                color: scheme.outline.withValues(alpha: 0.35),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with user name and action tag
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: avatarSize,
+                height: avatarSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: actionColor.withValues(alpha: 0.12),
+                ),
+                child: Icon(icon, size: 18, color: actionColor),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        log.title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface,
-                        ),
+                    Text(
+                      log.username,
+                      style: GoogleFonts.roboto(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    _ActionTag(
-                      label: _logTypeLabel(log.type),
-                      color: color,
+                    const SizedBox(height: 4),
+                    Text(
+                      '${logActionLabel(log.action)}: ${log.description}',
+                      style: GoogleFonts.roboto(
+                        fontSize: 14,
+                        color: scheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _LogMetaChip(
+                          icon: Icons.access_time_rounded,
+                          label:
+                              DateFormat.yMd().add_jms().format(log.timestamp),
+                          outlined: true,
+                          color: scheme.onSurfaceVariant,
+                          scheme: scheme,
+                        ),
+                        _LogMetaChip(
+                          label: logActionTag(log.action),
+                          color: actionColor,
+                          scheme: scheme,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 8),
-
-                // Description
-                Text(
-                  log.description,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: scheme.onSurfaceVariant,
-                    height: 1.5,
-                  ),
-                ),
-
-                if (log.extra != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    log.extra!,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: scheme.outline,
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 12),
-
-                // Timestamp pill
-                _TimestampPill(
-                  timestamp: log.timestamp,
-                  scheme: scheme,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
-  }
-
-  FaIconData _logIcon(LogType type) {
-    switch (type) {
-      case LogType.activity:
-        return FontAwesomeIcons.bolt;
-      case LogType.system:
-        return FontAwesomeIcons.gear;
-      case LogType.userAction:
-        return FontAwesomeIcons.user;
-    }
-  }
-
-  Color _logColor(LogType type) {
-    switch (type) {
-      case LogType.activity:
-        return AppTheme.primary;
-      case LogType.system:
-        return AppTheme.info;
-      case LogType.userAction:
-        return AppTheme.success;
-    }
-  }
-
-  String _logTypeLabel(LogType type) {
-    switch (type) {
-      case LogType.activity:
-        return 'Activity';
-      case LogType.system:
-        return 'System';
-      case LogType.userAction:
-        return 'User Action';
-    }
   }
 }
 
-class _TimestampPill extends StatelessWidget {
-  final DateTime timestamp;
+class _LogMetaChip extends StatelessWidget {
+  final IconData? icon;
+  final String label;
+  final Color color;
   final ColorScheme scheme;
+  final bool outlined;
 
-  const _TimestampPill({
-    required this.timestamp,
+  const _LogMetaChip({
+    this.icon,
+    required this.label,
+    required this.color,
     required this.scheme,
+    this.outlined = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        color: outlined ? Colors.transparent : color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: outlined
+              ? scheme.outline.withValues(alpha: 0.5)
+              : color.withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.access_time_rounded,
-            size: 14,
-            color: scheme.outline,
-          ),
-          const SizedBox(width: 5),
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+          ],
           Text(
-            DateFormat.MMMd().add_jm().format(timestamp),
-            style: GoogleFonts.plusJakartaSans(
+            label,
+            style: GoogleFonts.roboto(
               fontSize: 12,
-              color: scheme.outline,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
+              color: color,
             ),
           ),
         ],
@@ -471,126 +620,3 @@ class _TimestampPill extends StatelessWidget {
   }
 }
 
-class _ActionTag extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _ActionTag({
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterButton extends StatelessWidget {
-  final bool isActive;
-  final VoidCallback onPressed;
-
-  const _FilterButton({
-    required this.isActive,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      width: 56,
-      child: IconButton(
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: isActive
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
-              : Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.45),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        icon: FaIcon(
-          FontAwesomeIcons.sliders,
-          size: 18,
-          color: isActive
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterOption extends StatelessWidget {
-  final String title;
-  final FaIconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterOption({
-    required this.title,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return ListTile(
-      onTap: onTap,
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.14)
-              : scheme.surfaceContainerHighest,
-        ),
-        child: Center(
-          child: FaIcon(
-            icon,
-            size: 16,
-            color: selected ? scheme.primary : scheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      trailing: selected
-          ? Icon(
-              Icons.check_circle_rounded,
-              color: scheme.primary,
-            )
-          : null,
-    );
-  }
-}

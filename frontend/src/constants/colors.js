@@ -20,6 +20,7 @@ export const actionColors = {
   generate_report: 'secondary.main',
   delete_report: 'error.dark',
   user_created: 'success.dark',
+  user_updated: 'info.main',
   user_deleted: 'error.main',
   create_followup: 'success.main',
   delete_followup: 'error.main',

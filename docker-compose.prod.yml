@@ -36,8 +36,11 @@ services:
   redis:
     restart: unless-stopped
 
-  # Use existing image on server — do not rebuild on every deploy (heavy deps).
+  # Rebuild when ai_service/ changes (rsync); image tag stays fixed for compose.
   ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
     image: call-analysis-ai_service
     container_name: call_analysis_ai_service
     ports:

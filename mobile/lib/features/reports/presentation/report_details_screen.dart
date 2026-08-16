@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../shared/enums.dart';
+import '../../../shared/widgets/ui.dart';
+import '../../../l10n/app_localizations.dart';
+import '../application/reports_providers.dart';
+import '../domain/report.dart';
+import 'report_download_button.dart';
 
 class ReportDetailsScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -54,34 +60,40 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
 
-    // ألوان تتبدل حسب الوضع
-    final scaffoldBg = isDark ? AppTheme.backgroundPrimary : const Color(0xFFFAFAFA);
-    final cardBg = isDark ? AppTheme.surface : Colors.white;
-    final cardBorder = isDark ? AppTheme.divider : const Color(0xFFE8E8E8);
-    final textPrimaryColor = isDark ? AppTheme.textPrimary : const Color(0xFF1A1A1A);
-    final textSecondaryColor = isDark ? AppTheme.textSecondary : const Color(0xFF4A4A4A);
-    final textMutedColor = isDark ? AppTheme.textSecondary : const Color(0xFF999999);
-    final dividerColor = isDark ? AppTheme.divider : const Color(0xFFECECEC);
-    final notesCardBg = isDark ? AppTheme.primary.withValues(alpha: 0.08) : const Color(0xFFF0F7FF);
-    final neutralChipBg = isDark ? AppTheme.backgroundSecondary : const Color(0xFFF5F5F5);
-    final neutralChipText = isDark ? AppTheme.textSecondary : const Color(0xFF666666);
-    final rankChipBg = isDark ? AppTheme.primary.withValues(alpha: 0.15) : const Color(0xFFE3F2FD);
-    final countChipBg = isDark ? AppTheme.danger.withValues(alpha: 0.15) : const Color(0xFFFCE4EC);
-    final countChipText = isDark ? AppTheme.danger : const Color(0xFFE91E63);
-    final disabledBtnBg = isDark ? AppTheme.backgroundSecondary : const Color(0xFFF5F5F5);
-    final cancelBtnBorder = isDark ? AppTheme.divider : const Color(0xFFE0E0E0);
+    final scheme = Theme.of(context).colorScheme;
+
+    final scaffoldBg = isDark ? AppTheme.darkBackground : AppTheme.paper;
+    final cardBg = scheme.surface;
+    final cardBorder = scheme.outline;
+    final textPrimaryColor = scheme.onSurface;
+    final textSecondaryColor = scheme.onSurfaceVariant;
+    final textMutedColor = scheme.onSurfaceVariant;
+    final dividerColor = scheme.outline;
+    final notesCardBg = isDark
+        ? AppTheme.primary.withValues(alpha: 0.08)
+        : AppTheme.primaryLight;
+    final rankChipBg = isDark
+        ? AppTheme.primary.withValues(alpha: 0.15)
+        : AppTheme.primaryLight;
+    final countChipBg = isDark
+        ? AppTheme.danger.withValues(alpha: 0.15)
+        : AppTheme.errorLight.withValues(alpha: 0.35);
+    final countChipText = AppTheme.danger;
+    final disabledBtnBg = isDark ? AppTheme.darkLevel2 : AppTheme.grey100;
+    final cancelBtnBorder = scheme.outline;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
-          'Report Details',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.reportDetails,
+          style: GoogleFonts.roboto(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: textPrimaryColor,
@@ -90,8 +102,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: FaIcon(
-            FontAwesomeIcons.arrowLeft,
+          icon: Icon(
+            Icons.arrow_back,
             size: 18,
             color: textPrimaryColor,
           ),
@@ -101,131 +113,205 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         elevation: 0,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Main container
-                  Container(
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: cardBorder,
-                        width: 1,
-                      ),
-                      boxShadow: isDark
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Manager Notes Card
-                        _buildManagerNotesCard(
-                          notesCardBg: notesCardBg,
-                          textPrimaryColor: textPrimaryColor,
-                          textSecondaryColor: textSecondaryColor,
-                          textMutedColor: textMutedColor,
-                        ),
-                        const SizedBox(height: 28),
-
-                        // Summary Section
-                        _buildLegendSection(
-                          title: 'Summary (Issues & Solutions)',
-                          scaffoldBg: scaffoldBg,
-                          cardBg: cardBg,
-                          cardBorder: cardBorder,
-                          textPrimaryColor: textPrimaryColor,
-                          child: _buildSummaryContent(textSecondaryColor),
-                        ),
-                        const SizedBox(height: 28),
-
-                        // Positives Section
-                        _buildLegendSection(
-                          title: 'Positives',
-                          scaffoldBg: scaffoldBg,
-                          cardBg: cardBg,
-                          cardBorder: cardBorder,
-                          textPrimaryColor: textPrimaryColor,
-                          child: _buildPositivesContent(textSecondaryColor),
-                        ),
-                        const SizedBox(height: 28),
-
-                        // Recommendations Section
-                        _buildLegendSection(
-                          title: 'Recommendations',
-                          scaffoldBg: scaffoldBg,
-                          cardBg: cardBg,
-                          cardBorder: cardBorder,
-                          textPrimaryColor: textPrimaryColor,
-                          child: _buildRecommendationsContent(textSecondaryColor),
-                        ),
-                        const SizedBox(height: 28),
-
-                        Divider(
-                          color: dividerColor,
-                          thickness: 1,
-                          height: 32,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Overall Sentiment
-                        _buildOverallSentiment(
-                          textPrimaryColor: textPrimaryColor,
-                          neutralChipBg: neutralChipBg,
-                          neutralChipText: neutralChipText,
-                        ),
-                        const SizedBox(height: 28),
-
-                        // Top Issues Section
-                        _buildTopIssuesSection(
-                          textPrimaryColor: textPrimaryColor,
-                          dividerColor: dividerColor,
-                          rankChipBg: rankChipBg,
-                          countChipBg: countChipBg,
-                          countChipText: countChipText,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Footer Buttons
-                  _buildFooterButtons(
-                    isDark: isDark,
-                    cardBg: cardBg,
-                    cancelBtnBorder: cancelBtnBorder,
-                    disabledBtnBg: disabledBtnBg,
-                    textMutedColor: textMutedColor,
-                  ),
-                ],
+        child: ref.watch(reportDetailsProvider(widget.reportId)).when(
+          data: (report) => SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: _buildReportContent(
+                  l10n: l10n,
+                  report: report,
+                  isDark: isDark,
+                  scaffoldBg: scaffoldBg,
+                  cardBg: cardBg,
+                  cardBorder: cardBorder,
+                  textPrimaryColor: textPrimaryColor,
+                  textSecondaryColor: textSecondaryColor,
+                  textMutedColor: textMutedColor,
+                  dividerColor: dividerColor,
+                  notesCardBg: notesCardBg,
+                  rankChipBg: rankChipBg,
+                  countChipBg: countChipBg,
+                  countChipText: countChipText,
+                  disabledBtnBg: disabledBtnBg,
+                  cancelBtnBorder: cancelBtnBorder,
+                ),
               ),
             ),
+          ),
+          loading: () => const Center(
+            child: CircularProgressIndicator.adaptive(),
+          ),
+          error: (e, _) => ErrorView(
+            message: l10n.failedToLoadReportDetails,
+            onRetry: () => ref.invalidate(reportDetailsProvider(widget.reportId)),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildReportContent({
+    required AppLocalizations l10n,
+    required Report report,
+    required bool isDark,
+    required Color scaffoldBg,
+    required Color cardBg,
+    required Color cardBorder,
+    required Color textPrimaryColor,
+    required Color textSecondaryColor,
+    required Color textMutedColor,
+    required Color dividerColor,
+    required Color notesCardBg,
+    required Color rankChipBg,
+    required Color countChipBg,
+    required Color countChipText,
+    required Color disabledBtnBg,
+    required Color cancelBtnBorder,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: cardBorder,
+              width: 1,
+            ),
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (report.managerNotes.trim().isNotEmpty)
+                _buildManagerNotesCard(
+                  l10n: l10n,
+                  report: report,
+                  notesCardBg: notesCardBg,
+                  textPrimaryColor: textPrimaryColor,
+                  textSecondaryColor: textSecondaryColor,
+                  textMutedColor: textMutedColor,
+                ),
+              if (report.managerNotes.trim().isNotEmpty)
+                const SizedBox(height: 28),
+              _buildLegendSection(
+                title: l10n.summaryIssuesSolutions,
+                scaffoldBg: scaffoldBg,
+                cardBg: cardBg,
+                cardBorder: cardBorder,
+                textPrimaryColor: textPrimaryColor,
+                child: _buildTextBullets(l10n, report.summary, textSecondaryColor),
+              ),
+              const SizedBox(height: 28),
+              _buildLegendSection(
+                title: l10n.positives,
+                scaffoldBg: scaffoldBg,
+                cardBg: cardBg,
+                cardBorder: cardBorder,
+                textPrimaryColor: textPrimaryColor,
+                child: _buildTextBullets(l10n, report.positives, textSecondaryColor),
+              ),
+              const SizedBox(height: 28),
+              _buildLegendSection(
+                title: l10n.recommendations,
+                scaffoldBg: scaffoldBg,
+                cardBg: cardBg,
+                cardBorder: cardBorder,
+                textPrimaryColor: textPrimaryColor,
+                child: _buildTextBullets(
+                  l10n,
+                  report.recommendations,
+                  textSecondaryColor,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Divider(
+                color: dividerColor,
+                thickness: 1,
+                height: 32,
+              ),
+              const SizedBox(height: 16),
+              _buildOverallSentiment(
+                l10n: l10n,
+                sentiment: report.overallSentiment,
+                textPrimaryColor: textPrimaryColor,
+              ),
+              const SizedBox(height: 28),
+              _buildTopIssuesSection(
+                l10n: l10n,
+                issues: report.topIssues,
+                textPrimaryColor: textPrimaryColor,
+                dividerColor: dividerColor,
+                rankChipBg: rankChipBg,
+                countChipBg: countChipBg,
+                countChipText: countChipText,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildFooterButtons(
+          l10n: l10n,
+          report: report,
+          isDark: isDark,
+          cardBg: cardBg,
+          cancelBtnBorder: cancelBtnBorder,
+          disabledBtnBg: disabledBtnBg,
+          textMutedColor: textMutedColor,
+        ),
+      ],
+    );
+  }
+
+  List<String> _textToBullets(AppLocalizations l10n, String text) {
+    final lines = text
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return [l10n.noDataAvailable];
+    return lines;
+  }
+
+  Widget _buildTextBullets(
+    AppLocalizations l10n,
+    String text,
+    Color textSecondaryColor,
+  ) {
+    final bullets = _textToBullets(l10n, text);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < bullets.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _buildBulletItem(bullets[i], textSecondaryColor),
+        ],
+      ],
+    );
+  }
+
   Widget _buildManagerNotesCard({
+    required AppLocalizations l10n,
+    required Report report,
     required Color notesCardBg,
     required Color textPrimaryColor,
     required Color textSecondaryColor,
     required Color textMutedColor,
   }) {
+    final dateLabel = DateFormat.yMMMd().format(report.date);
     return Container(
       decoration: BoxDecoration(
         color: notesCardBg,
@@ -256,8 +342,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Manager Notes',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.managerNotes,
+                  style: GoogleFonts.roboto(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: textPrimaryColor,
@@ -265,8 +351,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'thank you',
-                  style: GoogleFonts.plusJakartaSans(
+                  report.managerNotes,
+                  style: GoogleFonts.roboto(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: textSecondaryColor,
@@ -275,8 +361,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'By sedra • 2026-06-16',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.reportByAuthor(report.createdByUsername, dateLabel),
+                  style: GoogleFonts.roboto(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
                     color: textMutedColor,
@@ -309,7 +395,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
           ),
           child: Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 15,
               fontWeight: FontWeight.w600,
               color: textPrimaryColor,
@@ -333,57 +419,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
     );
   }
 
-  Widget _buildSummaryContent(Color textSecondaryColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildBulletItem(
-          'Product Information Inquiry (x3): Enhance product documentation accessibility for agents and customers by updating FAQs and training agents to quickly provide or direct customers to precise product details.',
-          textSecondaryColor,
-        ),
-        const SizedBox(height: 12),
-        _buildBulletItem(
-          'Sales and Purchase Order Inquiry (x1): Implement standardized pricing and discount guidelines accessible to agents, and streamline communication protocols for bulk order processing and delivery estimates.',
-          textSecondaryColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPositivesContent(Color textSecondaryColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildBulletItem(
-          'Agents successfully identify customer needs and respond with relevant information in sales inquiries.',
-          textSecondaryColor,
-        ),
-        const SizedBox(height: 12),
-        _buildBulletItem(
-          'Clear, polite communication observed in purchase order discussions.',
-          textSecondaryColor,
-        ),
-        const SizedBox(height: 12),
-        _buildBulletItem(
-          'Consistent recognition of product inquiry topics indicates agent awareness of common customer questions.',
-          textSecondaryColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecommendationsContent(Color textSecondaryColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildBulletItem(
-          'Develop comprehensive training modules focused on product knowledge and sales process efficiency.',
-          textSecondaryColor,
-        ),
-      ],
-    );
-  }
-
   Widget _buildBulletItem(String text, Color textSecondaryColor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,7 +436,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         Expanded(
           child: Text(
             text,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 14,
               fontWeight: FontWeight.w400,
               color: textSecondaryColor,
@@ -414,16 +449,28 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
   }
 
   Widget _buildOverallSentiment({
+    required AppLocalizations l10n,
+    required String sentiment,
     required Color textPrimaryColor,
-    required Color neutralChipBg,
-    required Color neutralChipText,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final sentimentValue = switch (sentiment.toLowerCase()) {
+      'positive' => Sentiment.positive,
+      'negative' => Sentiment.negative,
+      _ => Sentiment.neutral,
+    };
+    final chipColor = AppTheme.sentimentColor(sentimentValue, scheme);
+    final icon = switch (sentimentValue) {
+      Sentiment.positive => Icons.sentiment_satisfied_outlined,
+      Sentiment.negative => Icons.sentiment_dissatisfied_outlined,
+      Sentiment.neutral => Icons.sentiment_neutral_outlined,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Overall Sentiment',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.overallSentiment,
+          style: GoogleFonts.roboto(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: textPrimaryColor,
@@ -432,25 +479,22 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: neutralChipBg,
-            borderRadius: BorderRadius.circular(20),
-          ),
+          decoration: AppTheme.chipDecoration(chipColor, radius: 20),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              FaIcon(
-                FontAwesomeIcons.faceMeh,
+              Icon(
+                icon,
                 size: 14,
-                color: neutralChipText,
+                color: chipColor,
               ),
               const SizedBox(width: 8),
               Text(
-                'neutral',
-                style: GoogleFonts.plusJakartaSans(
+                sentiment,
+                style: GoogleFonts.roboto(
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: neutralChipText,
+                  fontWeight: FontWeight.w600,
+                  color: chipColor,
                 ),
               ),
             ],
@@ -461,6 +505,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
   }
 
   Widget _buildTopIssuesSection({
+    required AppLocalizations l10n,
+    required List<ReportIssue> issues,
     required Color textPrimaryColor,
     required Color dividerColor,
     required Color rankChipBg,
@@ -474,16 +520,16 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Top Issues',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.topIssues,
+              style: GoogleFonts.roboto(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: textPrimaryColor,
               ),
             ),
             Text(
-              '2',
-              style: GoogleFonts.plusJakartaSans(
+              '${issues.length}',
+              style: GoogleFonts.roboto(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: textPrimaryColor,
@@ -492,31 +538,39 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
           ],
         ),
         const SizedBox(height: 16),
-        _buildTopIssueRow(
-          rank: 1,
-          title: 'Product Information Inquiry',
-          count: 3,
-          textPrimaryColor: textPrimaryColor,
-          rankChipBg: rankChipBg,
-          countChipBg: countChipBg,
-          countChipText: countChipText,
-        ),
-        const SizedBox(height: 12),
-        Divider(
-          color: dividerColor,
-          thickness: 1,
-          height: 1,
-        ),
-        const SizedBox(height: 12),
-        _buildTopIssueRow(
-          rank: 2,
-          title: 'Sales and Purchase Order Inquiry',
-          count: 1,
-          textPrimaryColor: textPrimaryColor,
-          rankChipBg: rankChipBg,
-          countChipBg: countChipBg,
-          countChipText: countChipText,
-        ),
+        if (issues.isEmpty)
+          Text(
+            l10n.noIssuesData,
+            style: GoogleFonts.roboto(
+              fontSize: 14,
+              color: textPrimaryColor.withValues(alpha: 0.7),
+            ),
+          )
+        else
+          ...issues.asMap().entries.expand((entry) {
+            final index = entry.key;
+            final issue = entry.value;
+            return [
+              if (index > 0) ...[
+                const SizedBox(height: 12),
+                Divider(
+                  color: dividerColor,
+                  thickness: 1,
+                  height: 1,
+                ),
+                const SizedBox(height: 12),
+              ],
+              _buildTopIssueRow(
+                rank: index + 1,
+                title: issue.title,
+                count: issue.count,
+                textPrimaryColor: textPrimaryColor,
+                rankChipBg: rankChipBg,
+                countChipBg: countChipBg,
+                countChipText: countChipText,
+              ),
+            ];
+          }),
       ],
     );
   }
@@ -540,7 +594,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
           ),
           child: Text(
             '#$rank',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppTheme.primary,
@@ -551,7 +605,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         Expanded(
           child: Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: textPrimaryColor,
@@ -566,7 +620,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
           ),
           child: Text(
             '$count',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: countChipText,
@@ -578,12 +632,16 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
   }
 
   Widget _buildFooterButtons({
+    required AppLocalizations l10n,
+    required Report report,
     required bool isDark,
     required Color cardBg,
     required Color cancelBtnBorder,
     required Color disabledBtnBg,
     required Color textMutedColor,
   }) {
+    final hasNotes = report.managerNotes.trim().isNotEmpty;
+
     return Column(
       children: [
         Row(
@@ -607,8 +665,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                   ),
                 ),
                 child: Text(
-                  'Cancel',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.cancel,
+                  style: GoogleFonts.roboto(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: textMutedColor,
@@ -619,9 +677,18 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: null,
+                onPressed: hasNotes
+                    ? null
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.reviewed),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: disabledBtnBg,
+                  backgroundColor: hasNotes ? disabledBtnBg : AppTheme.primary,
                   disabledBackgroundColor: disabledBtnBg,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -634,15 +701,15 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                     Icon(
                       Icons.check,
                       size: 16,
-                      color: textMutedColor,
+                      color: hasNotes ? textMutedColor : Colors.white,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Reviewed',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.reviewed,
+                      style: GoogleFonts.roboto(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: textMutedColor,
+                        color: hasNotes ? textMutedColor : Colors.white,
                       ),
                     ),
                   ],
@@ -652,7 +719,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
-                onPressed: () {},
+                onPressed: () => _showNotesDialog(l10n, report),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: cardBg,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -665,8 +732,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                   ),
                 ),
                 child: Text(
-                  'Add Notes',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.addNotes,
+                  style: GoogleFonts.roboto(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppTheme.secondary,
@@ -677,39 +744,43 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const FaIcon(
-                  FontAwesomeIcons.filePdf,
-                  size: 16,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Download PDF',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
+        ReportDownloadButton(report: report),
+      ],
+    );
+  }
+
+  void _showNotesDialog(AppLocalizations l10n, Report report) {
+    final controller = TextEditingController(text: report.managerNotes);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.addNotes),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText: l10n.addNotes,
           ),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.addNotes),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+          ),
+        ],
+      ),
     );
   }
 }

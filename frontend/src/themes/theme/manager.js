@@ -19,9 +19,9 @@ const managerColor = {
   errorMain: '#f44336',
   errorDark: '#c62828',
 
-  orangeLight: '#fbe9e7',
-  orangeMain: '#ffab91',
-  orangeDark: '#d84315',
+  orangeLight: '#fff3e0',
+  orangeMain: '#ff9800',
+  orangeDark: '#e65100',
 
   warningLight: '#fff8e1',
   warningMain: '#ffe57f',
@@ -57,7 +57,10 @@ const managerColor = {
   darkSecondaryMain: '#7c4dff',
   darkSecondaryDark: '#651fff',
   darkSecondary200: '#b39ddb',
-  darkSecondary800: '#6200ea'
+  darkSecondary800: '#6200ea',
+
+  notificationFollowup: '#ed6c02',
+  notificationReport: '#9c27b0'
 };
 
 export default managerColor;

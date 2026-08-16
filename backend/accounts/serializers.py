@@ -32,10 +32,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_role(self, value):
-        valid_roles = [choice[0] for choice in UserProfile.ROLE_CHOICES]
-        if value not in valid_roles:
+        if value != 'qa':
             raise serializers.ValidationError(
-                f"Invalid role. Must be one of: {', '.join(valid_roles)}."
+                'Public registration is limited to the QA role only.'
             )
         return value
 

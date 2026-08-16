@@ -1,10 +1,10 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:auto_size_text/auto_size_text.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 
+/// Modern sentiment overview — stacked bar + stat tiles (replaces pie chart).
 class SentimentChart extends StatefulWidget {
   final double positivePct;
   final double neutralPct;
@@ -23,223 +23,327 @@ class SentimentChart extends StatefulWidget {
 
 class _SentimentChartState extends State<SentimentChart>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+  late AnimationController _controller;
   late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 900),
     );
-    _animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
     );
-    _animationController.forward();
+    _controller.forward();
   }
 
   @override
   void didUpdateWidget(SentimentChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _animationController.forward(from: 0);
+    _controller.forward(from: 0);
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
     super.dispose();
+  }
+
+  _SentimentInsight _insight(AppLocalizations l10n) {
+    final p = widget.positivePct;
+    final n = widget.neutralPct;
+    final neg = widget.negativePct;
+
+    if (p >= n && p >= neg) {
+      return _SentimentInsight(
+        label: l10n.sentimentPositive,
+        color: AppTheme.sentimentPositive,
+        icon: Icons.sentiment_satisfied_alt_rounded,
+      );
+    }
+    if (neg >= n && neg >= p) {
+      return _SentimentInsight(
+        label: l10n.sentimentNegative,
+        color: AppTheme.sentimentNegative,
+        icon: Icons.sentiment_dissatisfied_rounded,
+      );
+    }
+    return _SentimentInsight(
+      label: l10n.sentimentNeutral,
+      color: AppTheme.sentimentNeutral,
+      icon: Icons.sentiment_neutral_rounded,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
+    final insight = _insight(l10n);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    final segments = [
+      _Segment(
+        value: widget.positivePct,
+        color: AppTheme.sentimentPositive,
+        label: l10n.sentimentPositive,
+        icon: Icons.sentiment_satisfied_alt_rounded,
+      ),
+      _Segment(
+        value: widget.neutralPct,
+        color: AppTheme.sentimentNeutral,
+        label: l10n.sentimentNeutral,
+        icon: Icons.sentiment_neutral_rounded,
+      ),
+      _Segment(
+        value: widget.negativePct,
+        color: AppTheme.sentimentNegative,
+        label: l10n.sentimentNegative,
+        icon: Icons.sentiment_dissatisfied_rounded,
+      ),
+    ];
+
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const FaIcon(
-                FontAwesomeIcons.chartPie,
-                size: 20,
-                color: AppTheme.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sentiment Analysis',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Distribution of analyzed customer calls.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.outline,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final chartSize = min(constraints.maxWidth * 0.7, 280.0);
-            return Center(
-              child: SizedBox(
-                height: chartSize,
-                width: chartSize,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return PieChart(
-                          PieChartData(
-                            startDegreeOffset: -90,
-                            sectionsSpace: 6,
-                            centerSpaceRadius: chartSize * 0.35,
-                            sections: [
-                              PieChartSectionData(
-                                value: widget.positivePct * _animation.value,
-                                color: AppTheme.success,
-                                radius: chartSize * 0.22,
-                                showTitle: false,
-                                borderSide: BorderSide.none,
-                              ),
-                              PieChartSectionData(
-                                value: widget.neutralPct * _animation.value,
-                                color: AppTheme.warning,
-                                radius: chartSize * 0.22,
-                                showTitle: false,
-                                borderSide: BorderSide.none,
-                              ),
-                              PieChartSectionData(
-                                value: widget.negativePct * _animation.value,
-                                color: AppTheme.danger,
-                                radius: chartSize * 0.22,
-                                showTitle: false,
-                                borderSide: BorderSide.none,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AutoSizeText(
-                          '${widget.positivePct.toStringAsFixed(0)}%',
-                          style: TextStyle(
-                            fontSize: chartSize * 0.15,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.success,
-                          ),
-                          maxLines: 1,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Positive',
-                          style: TextStyle(
-                            fontSize: chartSize * 0.06,
-                            color: scheme.outline,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        scheme.primary.withValues(alpha: 0.18),
+                        scheme.primary.withValues(alpha: 0.06),
                       ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.insights_rounded,
+                    size: 22,
+                    color: scheme.primary,
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _LegendItem(
-              color: AppTheme.success,
-              label: 'Positive',
-              percentage: widget.positivePct,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.sentimentAnalysis,
+                        style: GoogleFonts.roboto(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: scheme.onSurface,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.sentimentDistribution,
+                        style: GoogleFonts.roboto(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: insight.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: insight.color.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(insight.icon, size: 16, color: insight.color),
+                      const SizedBox(width: 4),
+                      Text(
+                        insight.label,
+                        style: GoogleFonts.roboto(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: insight.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _LegendItem(
-              color: AppTheme.warning,
-              label: 'Neutral',
-              percentage: widget.neutralPct,
+            const SizedBox(height: 22),
+            _StackedSentimentBar(
+              segments: segments,
+              progress: _animation.value,
             ),
-            _LegendItem(
-              color: AppTheme.danger,
-              label: 'Negative',
-              percentage: widget.negativePct,
+            const SizedBox(height: 18),
+            Row(
+              children: segments
+                  .map(
+                    (s) => Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: s == segments.last ? 0 : 8,
+                        ),
+                        child: _SentimentTile(
+                          segment: s,
+                          progress: _animation.value,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _LegendItem extends StatelessWidget {
+class _SentimentInsight {
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  const _SentimentInsight({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+}
+
+class _Segment {
+  final double value;
   final Color color;
   final String label;
-  final double percentage;
+  final IconData icon;
 
-  const _LegendItem({
+  const _Segment({
+    required this.value,
     required this.color,
     required this.label,
-    required this.percentage,
+    required this.icon,
+  });
+}
+
+class _StackedSentimentBar extends StatelessWidget {
+  final List<_Segment> segments;
+  final double progress;
+
+  const _StackedSentimentBar({
+    required this.segments,
+    required this.progress,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(7),
-          ),
+    final active = segments.where((s) => s.value > 0).toList();
+    if (active.isEmpty) {
+      return Container(
+        height: 14,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(999),
         ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      );
+    }
+
+    final total = active.fold<double>(0, (sum, s) => sum + s.value);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 14,
+        child: Row(
           children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            Text(
-              '${percentage.toStringAsFixed(0)}%',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.outline,
-                  ),
-            ),
+            for (var i = 0; i < active.length; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              Expanded(
+                flex: ((active[i].value / total) * 1000 * progress)
+                    .round()
+                    .clamp(1, 1000),
+                child: Container(
+                  color: active[i].color,
+                ),
+              ),
+            ],
           ],
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _SentimentTile extends StatelessWidget {
+  final _Segment segment;
+  final double progress;
+
+  const _SentimentTile({
+    required this.segment,
+    required this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final pct = (segment.value * progress).round();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: AppTheme.chipDecoration(segment.color, radius: 14),
+      child: Column(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: segment.color.withValues(alpha: 0.14),
+            ),
+            child: Icon(segment.icon, size: 20, color: segment.color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$pct%',
+            style: GoogleFonts.roboto(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            segment.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -37,7 +37,7 @@
 
 ### الأمان والصلاحيات
 - مصادقة JWT مع تجديد تلقائي للرمز
-- صلاحيات حسب الدور: Manager، QA، Agent
+- صلاحيات حسب الدور: Manager، QA
 - حماية على مستوى الـ API والواجهة الأمامية والقائمة الجانبية
 
 ---
@@ -64,10 +64,37 @@ docker compose exec web python manage.py migrate
 
 | الخدمة | الرابط |
 |--------|--------|
-| API | http://localhost:8000 |
-| Swagger | http://localhost:8000/docs/ |
-| Frontend | http://localhost:3000 |
+| API | http://localhost:8001 |
+| Swagger | http://localhost:8001/docs/ |
+| Frontend | http://localhost:3001 |
 | pgAdmin | http://localhost:5050 |
+
+---
+
+## AI Service Setup
+
+خدمة الذكاء الاصطناعي **لا تُشغَّل داخل Docker** بشكل مقصود — WhisperX ومعالجة الصوت تحتاج موارد (GPU/ذاكرة) أفضل على الجهاز المضيف.
+
+**تشغيل يدوي (بعد `docker compose up`):**
+
+```bash
+cd ai_service
+source whisper_env/bin/activate   # أو اسم الـ venv الفعلي لديك
+uvicorn app.main:app --host 0.0.0.0 --port 9000
+```
+
+تتصل خدمات Django وCelery بها عبر `AI_SERVICE_URL` (مثلاً `http://127.0.0.1:9000/analyze-call`).
+
+### متغيرات البيئة الأساسية
+
+| المتغير | الغرض |
+|---------|--------|
+| `AI_SERVICE_API_KEY` | مفتاح مصادقة طلبات التحليل |
+| `AI_SERVICE_URL` | عنوان endpoint التحليل (Backend/Celery) |
+| `CORS_ALLOWED_ORIGINS` | مناشئ مسموحة للواجهات (Frontend، Flutter Web، …) |
+| `HUGGINGFACE_TOKEN` | اختياري — لتحسين LLM داخل AI service |
+
+انسخ `.env.example` إلى `.env` وعدّل القيم؛ الملف يضم باقي المتغيرات (قاعدة البيانات، Redis، Celery، التقارير المجدولة، …).
 
 ---
 

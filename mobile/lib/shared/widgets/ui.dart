@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
-
+import '../../l10n/app_localizations.dart';
 
 class GlassCard extends StatelessWidget {
   final Widget child;
@@ -19,7 +18,7 @@ class GlassCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(18),
     this.onTap,
-    this.borderRadius = 20,
+    this.borderRadius = AppTheme.cardBorderRadius,
     this.boxShadow,
     this.backgroundColor,
   });
@@ -28,20 +27,10 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-        color: backgroundColor ?? scheme.surface,
-        boxShadow: boxShadow ?? [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: AppTheme.textSecondary,
-          width: 1,
-        ),
+      decoration: AppTheme.cardDecoration(
+        scheme,
+        color: backgroundColor,
+        radius: borderRadius,
       ),
       child: Material(
         color: Colors.transparent,
@@ -49,8 +38,8 @@ class GlassCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(borderRadius),
-          splashColor: AppTheme.primary.withValues(alpha: 0.08),
-          highlightColor: AppTheme.primary.withValues(alpha: 0.05),
+          splashColor: scheme.primary.withValues(alpha: 0.08),
+          highlightColor: scheme.primary.withValues(alpha: 0.05),
           child: Padding(padding: padding, child: child),
         ),
       ),
@@ -77,14 +66,14 @@ class AppCard extends StatelessWidget {
     return GlassCard(
       padding: padding,
       onTap: onTap,
-      borderRadius: 20,
+      backgroundColor: color,
       child: child,
     );
   }
 }
 
 class StatCard extends StatelessWidget {
-  final FaIconData icon;
+  final IconData icon;
   final String title;
   final String value;
   final Color color;
@@ -121,14 +110,14 @@ class StatCard extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppTheme.borderRadius),
                   border: Border.all(
                     color: color.withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
                 child: FittedBox(
-                  child: FaIcon(icon, color: color, size: 20),
+                  child: Icon(icon, color: color, size: 20),
                 ),
               ),
               const SizedBox(width: 14),
@@ -139,8 +128,8 @@ class StatCard extends StatelessWidget {
                   children: [
                     AutoSizeText(
                       title,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: AppTheme.textSecondary,
+                      style: GoogleFonts.roboto(
+                        color: scheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
                       ),
@@ -151,9 +140,9 @@ class StatCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     AutoSizeText(
                       value,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.roboto(
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
+                        color: scheme.onSurface,
                         fontSize: 22,
                         letterSpacing: -0.5,
                       ),
@@ -165,7 +154,7 @@ class StatCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       AutoSizeText(
                         subtitle!,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.roboto(
                           color: color,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
@@ -200,15 +189,16 @@ class LoadingShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Shimmer.fromColors(
-      baseColor: AppTheme.backgroundSecondary,
-      highlightColor: AppTheme.surface,
+      baseColor: scheme.outlineVariant,
+      highlightColor: scheme.surface,
       child: Container(
         height: height,
         width: width,
         decoration: BoxDecoration(
-          color: AppTheme.backgroundSecondary,
-          borderRadius: borderRadius ?? BorderRadius.circular(8),
+          color: scheme.outlineVariant,
+          borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.borderRadius),
         ),
       ),
     );
@@ -223,6 +213,8 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -232,16 +224,16 @@ class ErrorView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.danger.withValues(alpha: 0.1),
+                color: scheme.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppTheme.danger.withValues(alpha: 0.2),
+                  color: scheme.error.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
-              child: const FaIcon(
-                FontAwesomeIcons.triangleExclamation,
-                color: AppTheme.danger,
+              child: Icon(
+                Icons.warning_amber_outlined,
+                color: scheme.error,
                 size: 48,
               ),
             ),
@@ -249,9 +241,9 @@ class ErrorView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.roboto(
                 fontSize: 16,
-                color: AppTheme.textSecondary,
+                color: scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -259,8 +251,8 @@ class ErrorView extends StatelessWidget {
             if (onRetry != null)
               ElevatedButton.icon(
                 onPressed: onRetry,
-                icon: const FaIcon(FontAwesomeIcons.rotateRight, size: 18),
-                label: const Text('Retry'),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(l10n.errorViewRetry),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 ),
@@ -274,18 +266,19 @@ class ErrorView extends StatelessWidget {
 
 class EmptyView extends StatelessWidget {
   final String message;
-  final FaIconData? icon;
+  final IconData? icon;
   final String? subtitle;
 
   const EmptyView({
     super.key,
     required this.message,
-    this.icon = FontAwesomeIcons.inbox,
+    this.icon = Icons.inbox_outlined,
     this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -295,16 +288,16 @@ class EmptyView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundSecondary,
+                color: scheme.outlineVariant,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppTheme.divider,
+                  color: scheme.outline,
                   width: 1,
                 ),
               ),
-              child: FaIcon(
+              child: Icon(
                 icon,
-                color: AppTheme.textSecondary,
+                color: scheme.onSurfaceVariant,
                 size: 52,
               ),
             ),
@@ -312,10 +305,10 @@ class EmptyView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.roboto(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: scheme.onSurface,
                 letterSpacing: -0.3,
               ),
             ),
@@ -324,9 +317,9 @@ class EmptyView extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 14,
-                  color: AppTheme.textSecondary,
+                  color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -352,6 +345,7 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
@@ -359,10 +353,10 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
+              color: scheme.onSurface,
               letterSpacing: -0.5,
             ),
           ),
@@ -374,7 +368,7 @@ class SectionHeader extends StatelessWidget {
               ),
               child: Text(
                 actionText!,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.roboto(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.2,

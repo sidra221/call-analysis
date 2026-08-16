@@ -1,4 +1,6 @@
-import { Avatar, Box, List, Stack, Typography } from '@mui/material';
+import { Avatar, Box, List, Stack, Typography, useTheme } from '@mui/material';
+import useTranslation from 'hooks/useTranslation';
+import { alpha } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import {
   IconPhone,
@@ -9,6 +11,7 @@ import {
 
 function NotificationItem({ item, setNotifications, onMarkAsRead }) {
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const handleClick = () => {
     // Mark as read when clicked
@@ -53,19 +56,19 @@ function NotificationItem({ item, setNotifications, onMarkAsRead }) {
   const getAvatarColor = () => {
     switch (item.type) {
       case 'call':
-        return '#1976d2';
+        return theme.palette.primary.main;
       case 'followup':
-        return '#ed6c02';
       case 'followup-status':
-        return '#ed6c02';
+        return theme.palette.notification.followup;
       case 'report':
-        return '#9c27b0';
       case 'report-review':
-        return '#9c27b0';
+        return theme.palette.notification.report;
       default:
-        return '#757575';
+        return theme.palette.text.secondary;
     }
   };
+
+  const avatarColor = getAvatarColor();
 
   return (
     <Box
@@ -85,8 +88,8 @@ function NotificationItem({ item, setNotifications, onMarkAsRead }) {
       <Stack direction="row" spacing={2}>
         <Avatar
           sx={{
-            bgcolor: `${getAvatarColor()}15`,
-            color: getAvatarColor(),
+            bgcolor: alpha(avatarColor, 0.12),
+            color: avatarColor,
             width: 40,
             height: 40
           }}
@@ -122,11 +125,13 @@ function NotificationItem({ item, setNotifications, onMarkAsRead }) {
 }
 
 export default function NotificationList({ notifications, setNotifications, onMarkAsRead }) {
+  const { t } = useTranslation();
+
   if (!notifications || !Array.isArray(notifications) || notifications.length === 0) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          No notifications yet
+          {t('notifications.noNotifications')}
         </Typography>
       </Box>
     );

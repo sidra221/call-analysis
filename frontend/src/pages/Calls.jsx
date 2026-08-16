@@ -14,17 +14,19 @@ import FilterToolbar from 'ui-component/FilterToolbar';
 import FilterPopover from 'ui-component/FilterPopover';
 import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
-import { stateColor, sentimentColor, priorityColor } from 'constants/status';
+import { stateColor, confidenceColor, getPriorityChipSx, getSentimentChipSx } from 'constants/status';
 import {
   Box, Button, Card, Chip, CircularProgress, Divider, Drawer,
   FormControl, IconButton, InputLabel, MenuItem, Select,
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
   Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, Alert, Checkbox, Tooltip
+  DialogActions, Alert, Checkbox, Tooltip, useTheme
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
-import { formatKeywords, parseKeywords, getKeywordChipColor, getKeywordsMeta, formatIssueType } from 'utils/keywords';
+import useTranslation from 'hooks/useTranslation';
+import usePaginationLabels from 'hooks/usePaginationLabels';
+import { formatKeywords, parseKeywords, getKeywordChipColor } from 'utils/keywords';
 import { callsApi } from 'api/api';
 import {
   TABLE_LAYOUT_SX,
@@ -74,25 +76,29 @@ const CALLS_ACTIONS_CELL_SX = {
   pr: 1
 };
 
+function formatConfidenceScore(value) {
+  if (value == null || Number.isNaN(Number(value))) return null;
+  return Math.round(Math.min(100, Math.max(0, Number(value) * 100)));
+}
+
 function buildNormalizedCall(call) {
   if (!call) return null;
   const analysis = call.analysis || {};
+  const isFailed = call.status === 'failed';
 
   const keywordsRaw = analysis.keywords ?? call.keywords;
-  const keywordsMeta = getKeywordsMeta(keywordsRaw);
   const keywordItems = call.keywordItems?.length
     ? call.keywordItems
     : parseKeywords(keywordsRaw);
 
   return {
     ...call,
-    sentiment: analysis.sentiment || call.sentiment || 'neutral',
-    priority: analysis.priority || call.priority || 'low',
+    sentiment: isFailed ? null : (analysis.sentiment || call.sentiment || 'neutral'),
+    priority: isFailed ? null : (analysis.priority || call.priority || 'low'),
     is_reviewed: analysis.is_reviewed ?? call.is_reviewed ?? false,
     issue: analysis.main_issue || call.issue || '',
     transcript: analysis.transcript || call.transcript || '',
     keywordItems,
-    keywordsMeta,
     keywords: call.keywords || formatKeywords(keywordsRaw),
     uploadedBy: call.uploaded_by_username || call.uploadedBy || '',
     uploadedByRole: call.uploaded_by_role ?? call.uploadedByRole,
@@ -106,6 +112,8 @@ function buildNormalizedCall(call) {
       ? analysis.meta_intents
       : (Array.isArray(call.meta_intents) ? call.meta_intents : []),
     llm_refined: Boolean(analysis.llm_refined ?? call.llm_refined),
+    confidence_score: analysis.confidence_score ?? call.confidence_score ?? null,
+    confidence_pct: formatConfidenceScore(analysis.confidence_score ?? call.confidence_score ?? null),
     createdAt: call.created_at
       ? call.created_at.split('T')[0]
       : (call.createdAt || ''),
@@ -116,6 +124,9 @@ function buildNormalizedCall(call) {
 }
 
 export default function Calls() {
+  const { t, priorityLabel, sentimentLabel, statusLabel } = useTranslation();
+  const paginationLabels = usePaginationLabels();
+  const theme = useTheme();
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
   const [editableTranscript, setEditableTranscript] = useState('');
@@ -181,7 +192,11 @@ export default function Calls() {
   const connectWebSocket = (callId) => {
     if (wsRef.current) wsRef.current.close();
     try {
-      const ws = new WebSocket(`${WS_URL}/ws/calls/${callId}/`);
+      const token = localStorage.getItem('access_token');
+      const wsUrl = token
+        ? `${WS_URL}/ws/calls/${callId}/?token=${encodeURIComponent(token)}`
+        : `${WS_URL}/ws/calls/${callId}/`;
+      const ws = new WebSocket(wsUrl);
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
@@ -239,14 +254,14 @@ export default function Calls() {
       setProcessingProgress(30);
       const callId = newCall?.id || newCall?.call_id || newCall?.data?.id;
       if (!callId) {
-        throw new Error('Upload failed — no call ID returned');
+        throw new Error(t('calls.uploadNoCallId'));
       }
       connectWebSocket(callId);
       setProcessingProgress(50);
       startPolling(callId);
     } catch (err) {
       console.error('UPLOAD ERROR:', err);
-      setUploadError(err?.response?.data?.message || err?.message || 'Upload failed');
+      setUploadError(err?.response?.data?.message || err?.message || t('calls.uploadFailed'));
       setIsProcessing(false);
       setProcessingProgress(0);
       stopPolling();
@@ -295,7 +310,7 @@ export default function Calls() {
       await fetchCalls();
     } catch (err) {
       console.error('Delete failed:', err);
-      setUploadError(err.message || 'Delete failed');
+      setUploadError(err.message || t('calls.deleteFailed'));
     } finally {
       setDeleting(false);
       setOpenDeleteDialog(false);
@@ -323,24 +338,41 @@ export default function Calls() {
 
   const renderFollowUpSection = (call) => {
     const followUpChip = call.status !== 'completed'
-      ? { label: 'Awaiting AI analysis', color: 'default', variant: 'outlined' }
+      ? { label: t('calls.awaitingAi'), color: 'info' }
       : call.needs_followup
-        ? { label: 'Needs Follow-up', color: 'warning', variant: 'filled' }
-        : { label: 'No Follow-up Needed', color: 'success', variant: 'outlined' };
+        ? { label: t('calls.needsFollowup'), color: 'primary' }
+        : { label: t('calls.noFollowupNeeded'), color: 'success' };
 
     return (
       <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle1" sx={{ mb: 1 }}>Follow-up</Typography>
-        <Chip label={followUpChip.label} color={followUpChip.color} variant={followUpChip.variant} size="small" />
-        {call.needs_followup && call.followup_reason ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            <strong>Reason:</strong> {call.followup_reason}
-          </Typography>
-        ) : call.llm_refined && !call.needs_followup ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            LLM: no follow-up needed for this call.
-          </Typography>
-        ) : null}
+        <Card
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            borderRadius: 1,
+            bgcolor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'primary.main',
+            boxShadow: 'none',
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('calls.followUpSection')}</Typography>
+          <Chip label={followUpChip.label} color={followUpChip.color} size="small" />
+          {call.needs_followup && call.followup_reason ? (
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>
+                {t('calls.reason')}
+              </Typography>
+              <Typography variant="body2" color="text.primary" sx={{ lineHeight: 1.6 }}>
+                {call.followup_reason}
+              </Typography>
+            </Box>
+          ) : call.llm_refined && !call.needs_followup ? (
+            <Typography variant="body2" color="text.primary" sx={{ mt: 1.5 }}>
+              {t('calls.noFollowupForCall')}
+            </Typography>
+          ) : null}
+        </Card>
       </Box>
     );
   };
@@ -351,52 +383,34 @@ export default function Calls() {
 
   const renderDrawerActions = (call) => (
     <>
-      <Typography variant="subtitle1" gutterBottom>Actions</Typography>
+      <Typography variant="subtitle1" gutterBottom>{t('common.actions')}</Typography>
       <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
         {canReanalyze(call) && (
           <Button
-            variant="outlined"
-            size="small"
+            variant="contained"
             disabled={reanalyzingId === call.id}
-            startIcon={reanalyzingId === call.id ? <CircularProgress size={16} /> : <IconRefresh size={16} />}
+            startIcon={reanalyzingId === call.id ? <CircularProgress size={18} color="inherit" /> : <IconRefresh size={18} />}
             onClick={() => handleReanalyze(call.id)}
           >
-            Re-analyze
+            {t('calls.reanalyzeShort')}
           </Button>
         )}
         <Button
-          variant={call.is_reviewed ? 'contained' : 'outlined'}
+          variant="contained"
           color={call.is_reviewed ? 'success' : 'primary'}
           startIcon={<IconCheck size={18} />}
           onClick={call.is_reviewed ? undefined : () => handleMarkReviewed(call.id)}
-          sx={{
-            ...(call.is_reviewed && {
-              cursor: 'default',
-              pointerEvents: 'none',
-            }),
-            '&:active:not(:disabled)': {
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              borderColor: 'primary.main',
-            },
-          }}
+          sx={call.is_reviewed ? { cursor: 'default', pointerEvents: 'none' } : undefined}
         >
-          {call.is_reviewed ? 'Reviewed' : 'Mark Reviewed'}
+          {call.is_reviewed ? t('common.reviewed') : t('calls.markReviewed')}
         </Button>
         {call.needs_followup && call.status === 'completed' && canCreateFollowup && (
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<IconClipboardText size={18} />}
             onClick={() => handleAssignFollowup(call)}
-            sx={{
-              '&:active': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                borderColor: 'primary.main',
-              },
-            }}
           >
-            Create Follow-up
+            {t('calls.createFollowup')}
           </Button>
         )}
       </Stack>
@@ -434,8 +448,13 @@ export default function Calls() {
     const normalized = buildNormalizedCall(call);
     if (!normalized) return;
     setEditableTranscript(normalized.transcript || '');
-    setEditableSentiment(normalized.sentiment || 'neutral');
-    setEditablePriority(normalized.priority || 'low');
+    if (normalized.status === 'failed') {
+      setEditableSentiment('');
+      setEditablePriority('');
+    } else {
+      setEditableSentiment(normalized.sentiment || 'neutral');
+      setEditablePriority(normalized.priority || 'low');
+    }
     setEditableIssue(normalized.issue || '');
     setEditableKeywords(normalized.keywords || '');
     setIsDirty(false);
@@ -582,7 +601,7 @@ export default function Calls() {
       startPolling(callId);
     } catch (err) {
       setReanalyzingId(null);
-      setUploadError(err?.message || 'Re-analysis failed');
+      setUploadError(err?.message || t('calls.reanalysisFailed'));
     }
   };
 
@@ -626,7 +645,7 @@ export default function Calls() {
         initEditableFields(fresh);
       }
     } catch (err) {
-      setUploadError(err.message || 'Save failed');
+      setUploadError(err.message || t('calls.saveFailed'));
     }
   };
 
@@ -638,7 +657,7 @@ export default function Calls() {
       }
       await fetchCalls();
     } catch (err) {
-      setUploadError(err.message || 'Mark reviewed failed');
+      setUploadError(err.message || t('calls.markReviewedFailed'));
     }
   };
 
@@ -669,7 +688,7 @@ export default function Calls() {
       setSelectedCalls([]);
       setBulkDeleteDialog(false);
     } catch (err) {
-      setUploadError(err.message || 'Bulk delete failed');
+      setUploadError(err.message || t('calls.bulkDeleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -693,17 +712,17 @@ export default function Calls() {
 
       {userFilter && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Showing calls uploaded by <strong>{userFilter}</strong>
+          {t('calls.showingCallsBy', { user: userFilter })}
         </Alert>
       )}
 
       <PageCard>
-          <PageTitle title="Calls Management" />
+          <PageTitle title={t('calls.title')} />
 
           <FilterToolbar
             search={search}
             onSearchChange={(event) => setSearch(event.target.value)}
-            searchPlaceholder="Search calls ..."
+            searchPlaceholder={t('calls.searchPlaceholder')}
             searchLoading={loading}
             activeFilterCount={activeFilterCount}
             onOpenFilters={openFilters}
@@ -728,7 +747,7 @@ export default function Calls() {
                     onClick={() => setBulkDeleteDialog(true)}
                     disabled={deleting}
                   >
-                    Delete ({selectedCalls.length})
+                    {t('calls.deleteCount', { count: selectedCalls.length })}
                   </Button>
                 )}
                 <Button
@@ -736,7 +755,7 @@ export default function Calls() {
                   startIcon={<IconUpload size={18} />}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  Upload Call
+                  {t('calls.uploadCall')}
                 </Button>
               </>
             )}
@@ -746,68 +765,68 @@ export default function Calls() {
             open={Boolean(filterAnchorEl)}
             anchorEl={filterAnchorEl}
             onClose={closeFilters}
-            title="Filter Calls"
+            title={t('calls.filterTitle')}
             width={320}
           >
               <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="processing">Processing</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                  <MenuItem value="failed">Failed</MenuItem>
+                <InputLabel>{t('common.status')}</InputLabel>
+                <Select value={statusFilter} label={t('common.status')} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <MenuItem value="all">{t('calls.allStatus')}</MenuItem>
+                  <MenuItem value="pending">{statusLabel('pending')}</MenuItem>
+                  <MenuItem value="processing">{statusLabel('processing')}</MenuItem>
+                  <MenuItem value="completed">{statusLabel('completed')}</MenuItem>
+                  <MenuItem value="failed">{statusLabel('failed')}</MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl fullWidth size="small">
-                <InputLabel>Priority</InputLabel>
-                <Select value={priorityFilter} label="Priority" onChange={(e) => setPriorityFilter(e.target.value)}>
-                  <MenuItem value="all">All Priorities</MenuItem>
-                  <MenuItem value="critical">Critical</MenuItem>
-                  <MenuItem value="high">High</MenuItem>
-                  <MenuItem value="medium">Medium</MenuItem>
-                  <MenuItem value="low">Low</MenuItem>
+                <InputLabel>{t('calls.priority')}</InputLabel>
+                <Select value={priorityFilter} label={t('calls.priority')} onChange={(e) => setPriorityFilter(e.target.value)}>
+                  <MenuItem value="all">{t('calls.allPriorities')}</MenuItem>
+                  <MenuItem value="critical">{priorityLabel('critical')}</MenuItem>
+                  <MenuItem value="high">{priorityLabel('high')}</MenuItem>
+                  <MenuItem value="medium">{priorityLabel('medium')}</MenuItem>
+                  <MenuItem value="low">{priorityLabel('low')}</MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl fullWidth size="small">
-                <InputLabel>Sentiment</InputLabel>
-                <Select value={sentimentFilter} label="Sentiment" onChange={(e) => setSentimentFilter(e.target.value)}>
-                  <MenuItem value="all">All Sentiments</MenuItem>
-                  <MenuItem value="positive">Positive</MenuItem>
-                  <MenuItem value="negative">Negative</MenuItem>
-                  <MenuItem value="neutral">Neutral</MenuItem>
+                <InputLabel>{t('calls.sentiment')}</InputLabel>
+                <Select value={sentimentFilter} label={t('calls.sentiment')} onChange={(e) => setSentimentFilter(e.target.value)}>
+                  <MenuItem value="all">{t('calls.allSentiments')}</MenuItem>
+                  <MenuItem value="positive">{sentimentLabel('positive')}</MenuItem>
+                  <MenuItem value="negative">{sentimentLabel('negative')}</MenuItem>
+                  <MenuItem value="neutral">{sentimentLabel('neutral')}</MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl fullWidth size="small">
-                <InputLabel>Reviewed</InputLabel>
-                <Select value={reviewedFilter} label="Reviewed" onChange={(e) => setReviewedFilter(e.target.value)}>
-                  <MenuItem value="all">All Reviews</MenuItem>
-                  <MenuItem value="Yes">Reviewed</MenuItem>
-                  <MenuItem value="No">Not Reviewed</MenuItem>
+                <InputLabel>{t('calls.reviewed')}</InputLabel>
+                <Select value={reviewedFilter} label={t('calls.reviewed')} onChange={(e) => setReviewedFilter(e.target.value)}>
+                  <MenuItem value="all">{t('calls.allReviews')}</MenuItem>
+                  <MenuItem value="Yes">{t('common.reviewed')}</MenuItem>
+                  <MenuItem value="No">{t('calls.notReviewed')}</MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl fullWidth size="small">
-                <InputLabel>Follow-up</InputLabel>
-                <Select value={needsFollowupFilter} label="Follow-up" onChange={(e) => setNeedsFollowupFilter(e.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="yes">Needs Follow-up</MenuItem>
-                  <MenuItem value="no">No Follow-up</MenuItem>
+                <InputLabel>{t('calls.followup')}</InputLabel>
+                <Select value={needsFollowupFilter} label={t('calls.followup')} onChange={(e) => setNeedsFollowupFilter(e.target.value)}>
+                  <MenuItem value="all">{t('common.all')}</MenuItem>
+                  <MenuItem value="yes">{t('calls.needsFollowup')}</MenuItem>
+                  <MenuItem value="no">{t('calls.noFollowup')}</MenuItem>
                 </Select>
               </FormControl>
 
               <Box>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
-                  Date Range
+                  {t('calls.dateRange')}
                 </Typography>
                 <Stack direction="row" spacing={1}>
-                  <TextField fullWidth size="small" type="date" label="From"
+                  <TextField fullWidth size="small" type="date" label={t('common.from')}
                     InputLabelProps={{ shrink: true }} value={startDate}
                     onChange={(e) => setStartDate(e.target.value)} />
-                  <TextField fullWidth size="small" type="date" label="To"
+                  <TextField fullWidth size="small" type="date" label={t('common.to')}
                     InputLabelProps={{ shrink: true }} value={endDate}
                     onChange={(e) => setEndDate(e.target.value)} />
                 </Stack>
@@ -829,23 +848,23 @@ export default function Calls() {
                       />
                     </TableCell>
                   )}
-                  <TableCell sx={CALLS_ID_CELL_SX}>ID</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Priority</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>Status</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>Sentiment</TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '9%', display: { xs: 'none', md: 'table-cell' } }}>Duration</TableCell>
+                  <TableCell sx={CALLS_ID_CELL_SX}>{t('table.id')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>{t('table.priority')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '12%' }}>{t('table.status')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '11%' }}>{t('table.sentiment')}</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '9%', display: { xs: 'none', md: 'table-cell' } }}>{t('table.duration')}</TableCell>
                   <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '13%', display: { xs: 'none', lg: 'table-cell' } }}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Created At
+                      {t('table.createdAt')}
                       <IconButton size="small" onClick={toggleSortByDate} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByDate === 'desc' ? <IconArrowDown size={16} /> : <IconArrowUp size={16} />}
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '10%' }}>Reviewed</TableCell>
+                  <TableCell sx={{ ...TABLE_HEADER_CELL_SX, width: '10%' }}>{t('table.reviewed')}</TableCell>
                   <TableCell sx={CALLS_UPLOADED_BY_CELL_SX}>
                     <Box component="span" sx={TABLE_HEADER_SORT_SX}>
-                      Uploaded By
+                      {t('table.uploadedBy')}
                       <IconButton size="small" onClick={toggleSortByUploader} sx={{ p: 0, flexShrink: 0 }}>
                         {sortByUploader === 'asc' ? <IconArrowUp size={16} /> :
                           sortByUploader === 'desc' ? <IconArrowDown size={16} /> :
@@ -853,7 +872,7 @@ export default function Calls() {
                       </IconButton>
                     </Box>
                   </TableCell>
-                  <TableCell align="center" sx={CALLS_ACTIONS_CELL_SX}>Actions</TableCell>
+                  <TableCell align="center" sx={CALLS_ACTIONS_CELL_SX}>{t('table.actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -871,10 +890,36 @@ export default function Calls() {
                       <TableCell sx={CALLS_ID_BODY_SX}>
                         #{call.id}
                       </TableCell>
-                      <TableCell><Chip label={call.priority} color={priorityColor[call.priority]} size="small" /></TableCell>
+                      <TableCell>
+                        {call.status === 'failed' ? (
+                          <Chip label={t('calls.analysisFailed')} color="error" size="small" />
+                        ) : (
+                          <Chip
+                            label={priorityLabel(call.priority)}
+                            size="small"
+                            variant="outlined"
+                            sx={getPriorityChipSx(theme, call.priority)}
+                          />
+                        )}
+                      </TableCell>
                       <TableCell><StatusChip status={call.status} /></TableCell>
-                      <TableCell><Chip label={call.sentiment} color={sentimentColor[call.sentiment]} size="small" /></TableCell>
-                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
+                      <TableCell>
+                        {call.status === 'failed' ? (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
+                        ) : (
+                          <Chip
+                            label={sentimentLabel(call.sentiment)}
+                            size="small"
+                            variant="outlined"
+                            sx={getSentimentChipSx(theme, call.sentiment)}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        <Box component="span" sx={{ direction: 'ltr', unicodeBidi: 'isolate', display: 'inline-block', whiteSpace: 'nowrap' }}>
+                          {call.duration}
+                        </Box>
+                      </TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         <Box component="span" sx={{ direction: 'ltr', unicodeBidi: 'isolate', display: 'inline-block', whiteSpace: 'nowrap' }}>
                           {call.createdAt}
@@ -882,7 +927,7 @@ export default function Calls() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={call.is_reviewed ? 'Yes' : 'No'}
+                          label={call.is_reviewed ? t('common.yes') : t('common.no')}
                           color={call.is_reviewed ? 'success' : 'error'}
                           size="small"
                         />
@@ -901,7 +946,7 @@ export default function Calls() {
                             size="small"
                             sx={{ color: 'info.main' }}
                             onClick={() => openViewDrawerFunc(call)}
-                            title="View Call"
+                            title={t('calls.viewCall')}
                           >
                             <IconEye size={18} />
                           </IconButton>
@@ -909,7 +954,7 @@ export default function Calls() {
                             size="small"
                             color="primary"
                             onClick={() => openCallDrawer(call, true)}
-                            title="Edit Call"
+                            title={t('calls.editCall')}
                           >
                             <IconEdit size={18} />
                           </IconButton>
@@ -922,7 +967,7 @@ export default function Calls() {
                     <TableCell colSpan={isManager ? 10 : 9}>
                       <Box sx={{ py: 2, textAlign: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
-                          {loading ? 'Loading...' : 'No results found'}
+                          {loading ? t('common.loading') : t('common.noResults')}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -940,34 +985,35 @@ export default function Calls() {
               onPageChange={(event, newPage) => setPage(newPage)}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={[]}
+              {...paginationLabels}
             />
           </Box>
       </PageCard>
 
       <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>{t('calls.confirmDelete')}</DialogTitle>
         <DialogContent>
-          <DialogContentText>Are you sure you want to delete call #{callToDelete}?</DialogContentText>
+          <DialogContentText>{t('calls.confirmDeleteBody', { id: callToDelete })}</DialogContentText>
         </DialogContent>
         <DialogActions>
           <DialogCancelButton onClick={() => setOpenDeleteDialog(false)} />
           <Button onClick={() => handleDelete(callToDelete)} variant="contained" color="error" disabled={deleting}>
-            {deleting ? <CircularProgress size={18} /> : 'Delete'}
+            {deleting ? <CircularProgress size={18} /> : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Confirm Bulk Delete</DialogTitle>
+        <DialogTitle>{t('calls.confirmBulkDelete')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete <strong>{selectedCalls.length}</strong> selected call(s)? This action cannot be undone.
+            {t('calls.confirmBulkDeleteBody', { count: selectedCalls.length })}
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <DialogCancelButton onClick={() => setBulkDeleteDialog(false)} />
           <Button onClick={handleBulkDelete} variant="contained" color="error" disabled={deleting}>
-            {deleting ? <CircularProgress size={18} /> : 'Delete All'}
+            {deleting ? <CircularProgress size={18} /> : t('common.deleteAll')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -983,17 +1029,17 @@ export default function Calls() {
                     width: 10, height: 10, borderRadius: '50%',
                     backgroundColor: (theme) => theme.palette[stateColor[viewingCall.status]]?.main || '#999'
                   }} />
-                  <Typography variant="h5">Call #{viewingCall.id}</Typography>
+                  <Typography variant="h5">{t('calls.callTitle', { id: viewingCall.id })}</Typography>
                   <IconButton
                     size="small"
-                    title={isEditMode ? 'Save' : 'Edit Call'}
+                    title={isEditMode ? t('calls.saveCall') : t('calls.editCall')}
                     onClick={() => { if (isEditMode) { handleSave(); } else { setIsEditMode(true); } }}
                     sx={{ color: isDirty ? 'primary.main' : 'text.primary' }}
                   >
                     {isEditMode ? <IconDeviceFloppy size={22} /> : <IconEdit size={18} />}
                   </IconButton>
                   {canReanalyze(viewingCall) && (
-                    <Tooltip title={reanalyzingId === viewingCall.id ? 'Analyzing…' : 'Re-analyze with AI'}>
+                    <Tooltip title={reanalyzingId === viewingCall.id ? t('calls.analyzing') : t('calls.reanalyze')}>
                       <span>
                         <IconButton
                           size="small"
@@ -1015,7 +1061,7 @@ export default function Calls() {
               <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">{viewingCall.createdAt}</Typography>
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Typography variant="body2" color="text.secondary">Uploaded by</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('calls.uploadedBy')}</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {viewingCall.uploadedBy}
                   </Typography>
@@ -1026,11 +1072,11 @@ export default function Calls() {
 
               {reanalyzingId === viewingCall.id && (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Re-analyzing call — this may take 1–2 minutes…
+                  {t('calls.reanalyzingMessage')}
                 </Alert>
               )}
 
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Main Issue</Typography>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('calls.mainIssue')}</Typography>
               {isEditMode ? (
                 <TextField
                   fullWidth
@@ -1043,95 +1089,75 @@ export default function Calls() {
                 <Typography variant="body2" sx={{ mb: 2 }}>{editableIssue || '—'}</Typography>
               )}
 
-              {(viewingCall.llm_refined || viewingCall.summary || viewingCall.meta_intent) && !isEditMode && (
+              {viewingCall.summary && !isEditMode && (
                 <Box sx={{
                   mb: 2, p: 1.5, borderRadius: 1,
                   bgcolor: viewingCall.sentiment === 'negative' ? 'rgba(211, 47, 47, 0.08)' : 'action.hover',
                   border: '1px solid',
                   borderColor: viewingCall.sentiment === 'negative' ? 'error.light' : 'divider',
                 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1, gap: 0.5 }}>
-                    <Typography variant="subtitle1">AI Insights</Typography>
-                    {viewingCall.llm_refined && (
-                      <Chip label="LLM enhanced" size="small" color="info" variant="outlined" />
-                    )}
-                    {viewingCall.meta_intent && (
-                      <Chip
-                        label={viewingCall.meta_intent.replace(/_/g, ' ')}
-                        size="small"
-                        color={viewingCall.sentiment === 'negative' ? 'error' : 'primary'}
-                        sx={{ textTransform: 'capitalize' }}
-                      />
-                    )}
-                  </Stack>
-                  {viewingCall.summary ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      {viewingCall.summary}
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: 1 }}>
-                      No summary — try Re-analyze (↻).
-                    </Typography>
-                  )}
-                  {viewingCall.followup_reason && (
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      <strong>Follow-up:</strong> {viewingCall.followup_reason}
-                    </Typography>
-                  )}
-                  {viewingCall.meta_intents?.length > 1 && (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                      Intents: {viewingCall.meta_intents.join(', ')}
-                    </Typography>
-                  )}
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('calls.summary')}</Typography>
+                  <Typography variant="body2" color="text.primary" sx={{ lineHeight: 1.6 }}>
+                    {viewingCall.summary}
+                  </Typography>
                 </Box>
               )}
 
               <Divider sx={{ my: 2 }} />
 
-              <Typography variant="subtitle1" gutterBottom>Analysis</Typography>
+              <Typography variant="subtitle1" gutterBottom>{t('calls.analysis')}</Typography>
               <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                {isEditMode ? (
+                {viewingCall.status === 'failed' ? (
+                  <Chip label={t('calls.analysisFailed')} color="error" size="small" />
+                ) : isEditMode ? (
                   <>
                     <Select fullWidth size="small" value={editableSentiment}
                       onChange={(e) => { setEditableSentiment(e.target.value); setIsDirty(true); }}>
-                      <MenuItem value="positive">Positive</MenuItem>
-                      <MenuItem value="negative">Negative</MenuItem>
-                      <MenuItem value="neutral">Neutral</MenuItem>
+                      <MenuItem value="positive">{sentimentLabel('positive')}</MenuItem>
+                      <MenuItem value="negative">{sentimentLabel('negative')}</MenuItem>
+                      <MenuItem value="neutral">{sentimentLabel('neutral')}</MenuItem>
                     </Select>
                     <Select fullWidth size="small" value={editablePriority}
                       onChange={(e) => { setEditablePriority(e.target.value); setIsDirty(true); }}>
-                      <MenuItem value="critical">Critical</MenuItem>
-                      <MenuItem value="high">High</MenuItem>
-                      <MenuItem value="medium">Medium</MenuItem>
-                      <MenuItem value="low">Low</MenuItem>
+                      <MenuItem value="critical">{priorityLabel('critical')}</MenuItem>
+                      <MenuItem value="high">{priorityLabel('high')}</MenuItem>
+                      <MenuItem value="medium">{priorityLabel('medium')}</MenuItem>
+                      <MenuItem value="low">{priorityLabel('low')}</MenuItem>
                     </Select>
                   </>
                 ) : (
                   <>
-                    <Chip label={editableSentiment} color={sentimentColor[editableSentiment]} size="small" />
-                    <Chip label={`${editablePriority} Priority`} color={priorityColor[editablePriority]} size="small" />
+                    <Chip
+                      label={sentimentLabel(editableSentiment)}
+                      size="small"
+                      variant="outlined"
+                      sx={getSentimentChipSx(theme, editableSentiment)}
+                    />
+                    <Chip
+                      label={t('calls.prioritySuffix', { priority: priorityLabel(editablePriority) })}
+                      size="small"
+                      variant="outlined"
+                      sx={getPriorityChipSx(theme, editablePriority)}
+                    />
+                    {viewingCall.confidence_pct != null && (
+                      <Chip
+                        label={t('calls.confidence', { pct: viewingCall.confidence_pct })}
+                        color={confidenceColor(viewingCall.confidence_pct)}
+                        size="small"
+                      />
+                    )}
                   </>
                 )}
               </Stack>
 
               <Divider sx={{ my: 2 }} />
 
-              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" sx={{ mb: 1.5, gap: 0.5 }}>
-                <Typography variant="subtitle1">Keywords</Typography>
-                {!isEditMode && viewingCall.keywordsMeta?.primary_issue_type && (
-                  <Chip
-                    label={formatIssueType(viewingCall.keywordsMeta.primary_issue_type)}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                  />
-                )}
-              </Stack>
+              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>{t('calls.keywords')}</Typography>
               {isEditMode ? (
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="comma separated..."
+                  placeholder={t('calls.keywordsPlaceholder')}
                   value={editableKeywords}
                   onChange={(e) => { setEditableKeywords(e.target.value); setIsDirty(true); }}
                   sx={{ mb: 3 }}
@@ -1146,7 +1172,6 @@ export default function Calls() {
                       label={item.text}
                       size="small"
                       color={getKeywordChipColor(item.polarity)}
-                      variant={item.polarity === 'neutral' ? 'outlined' : 'filled'}
                     />
                   )) : (
                     <Typography variant="body2" color="text.secondary">—</Typography>
@@ -1156,10 +1181,12 @@ export default function Calls() {
 
               <Divider sx={{ my: 2 }} />
 
-              <Typography variant="subtitle1" gutterBottom>Transcript</Typography>
+              <Typography variant="subtitle1" gutterBottom>{t('calls.transcript')}</Typography>
               {viewingCall.issue === 'Analysis failed' && !editableTranscript && !drawerLoading && (
                 <Alert severity="warning" sx={{ mb: 1.5 }}>
-                  AI analysis failed. Use <strong>Re-analyze</strong> below after the AI service is running.
+                  {t('calls.analysisFailedAlertBefore')}{' '}
+                  <strong>{t('calls.reanalyzeShort')}</strong>{' '}
+                  {t('calls.analysisFailedAlertAfter')}
                 </Alert>
               )}
               <TextField
@@ -1184,7 +1211,7 @@ export default function Calls() {
 
               <Divider sx={{ my: 2 }} />
 
-              <Typography variant="subtitle1" gutterBottom>Audio</Typography>
+              <Typography variant="subtitle1" gutterBottom>{t('calls.audio')}</Typography>
               <Box sx={{ mb: 2, width: '100%' }}>
                 {viewingCall.audio_file && (
                   <audio
@@ -1198,7 +1225,7 @@ export default function Calls() {
                       src={viewingCall.audio_file?.startsWith('http') ? viewingCall.audio_file : `${API_URL}${viewingCall.audio_file}`}
                       type="audio/wav"
                     />
-                    Your browser does not support the audio element.
+                    {t('calls.audioNotSupported')}
                   </audio>
                 )}
               </Box>
@@ -1243,7 +1270,7 @@ export default function Calls() {
                     </Typography>
                   </Box>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>Processing...</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 700 }}>{t('calls.processing')}</Typography>
               </>
             ) : (
               <>
@@ -1254,7 +1281,7 @@ export default function Calls() {
                   <IconCheck size={50} stroke={3} />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  Completed
+                  {statusLabel('completed')}
                 </Typography>
               </>
             )}

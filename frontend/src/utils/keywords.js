@@ -1,11 +1,5 @@
 const KEYWORD_BUCKETS = ['negative', 'positive', 'neutral'];
 
-const keywordPolarityColor = {
-  negative: 'error',
-  positive: 'success',
-  neutral: 'primary',
-};
-
 const ISSUE_TYPE_LABELS = {
   technical: 'Technical',
   financial: 'Financial',
@@ -91,8 +85,8 @@ export function formatKeywords(raw) {
     .join(', ');
 }
 
-export function getKeywordChipColor(polarity) {
-  return keywordPolarityColor[polarity] || 'primary';
+export function getKeywordChipColor() {
+  return 'primary';
 }
 
 export function getKeywordsMeta(raw) {

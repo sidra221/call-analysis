@@ -124,12 +124,16 @@ class CallListSerializer(serializers.ModelSerializer):
         return _uploader_avatar_style(obj.uploaded_by)
 
     def get_sentiment(self, obj):
+        if obj.status == 'failed':
+            return None
         try:
             return obj.analysis.sentiment
         except Exception:
             return 'neutral'
 
     def get_priority(self, obj):
+        if obj.status == 'failed':
+            return None
         try:
             return obj.analysis.priority
         except Exception:

@@ -81,24 +81,7 @@ def analyze_call(self, call_id: str, force: bool = False):
         # -----------------------------------
         # تحليل AI
         # -----------------------------------
-        try:
-
-            ai_result = analyze_audio_file(audio_path)
-
-        except Exception as e:
-
-            logger.error(f"AI analysis failed: {e}")
-
-            ai_result = {
-                "main_issue": "Analysis failed",
-                "sentiment": "neutral",
-                "sentiment_score": 0,
-                "keywords": [],
-                "priority": "low",
-                "needs_followup": False,
-                "transcript": "",
-                "duration": call.duration,
-            }
+        ai_result = analyze_audio_file(audio_path)
 
         mapped = map_ai_response(call, ai_result)
 

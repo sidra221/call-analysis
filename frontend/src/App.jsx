@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import NavigationScroll from 'layout/NavigationScroll';
 import ThemeCustomization from 'themes';
 import useAuth from 'hooks/useAuth';
+import useTranslation from 'hooks/useTranslation';
 import AuthRoutes from 'routes/AuthRoutes';
 import getMainRoutes from 'routes/MainRoutes';
 import { SplashProvider } from 'contexts/SplashContext';
@@ -11,6 +12,7 @@ import SplashScreen from 'ui-component/SplashScreen';
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
   const { showSplash, splashVariant, completeSplash, handleLogoutExitStart } = useSplash();
 
   // Validate token on every render
@@ -26,7 +28,7 @@ function AppContent() {
   );
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>{t('common.loading')}</div>;
   }
 
   return (

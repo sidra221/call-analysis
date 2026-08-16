@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { Button, Popover, Stack, Typography } from '@mui/material';
+import useTranslation from 'hooks/useTranslation';
 
 export default function FilterPopover({
   open,
@@ -9,8 +10,10 @@ export default function FilterPopover({
   title,
   children,
   width = 300,
-  applyLabel = 'Apply Filters'
+  applyLabel
 }) {
+  const { t, isAr } = useTranslation();
+
   const handleApply = () => {
     if (onApply) onApply();
     onClose();
@@ -21,8 +24,8 @@ export default function FilterPopover({
       open={open}
       anchorEl={anchorEl}
       onClose={onClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      anchorOrigin={{ vertical: 'bottom', horizontal: isAr ? 'right' : 'left' }}
+      transformOrigin={{ vertical: 'top', horizontal: isAr ? 'left' : 'left' }}
       PaperProps={{ sx: { p: 3, width, mt: 1.5 } }}
     >
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
@@ -31,7 +34,7 @@ export default function FilterPopover({
       <Stack spacing={2.5}>
         {children}
         <Button variant="contained" fullWidth onClick={handleApply}>
-          {applyLabel}
+          {applyLabel || t('common.applyFilters')}
         </Button>
       </Stack>
     </Popover>

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/app_localizations.dart';
+import '../../shared/l10n/call_chip_labels.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/enums.dart';
 import '../../features/calls/domain/call.dart';
@@ -16,55 +17,24 @@ class CallTile extends StatelessWidget {
     required this.item,
   });
 
-  Color _priorityColor(PriorityLevel priority) {
-    switch (priority) {
-      case PriorityLevel.low:
-        return AppTheme.info;
-      case PriorityLevel.medium:
-        return AppTheme.warning;
-      case PriorityLevel.high:
-        return AppTheme.danger;
-    }
-  }
-
-  Color _sentimentColor(Sentiment sentiment) {
-    switch (sentiment) {
-      case Sentiment.positive:
-        return AppTheme.success;
-      case Sentiment.neutral:
-        return AppTheme.warning;
-      case Sentiment.negative:
-        return AppTheme.danger;
-    }
-  }
-
-  Color _statusColor(CallStatus status) {
+  IconData _statusIcon(CallStatus status) {
     switch (status) {
       case CallStatus.completed:
-        return AppTheme.success;
+        return Icons.check_circle_outline;
       case CallStatus.inProgress:
-        return AppTheme.info;
+        return Icons.phone_in_talk_outlined;
       default:
-        return AppTheme.warning;
-    }
-  }
-
-  FaIconData _statusIcon(CallStatus status) {
-    switch (status) {
-      case CallStatus.completed:
-        return FontAwesomeIcons.circleCheck;
-      case CallStatus.inProgress:
-        return FontAwesomeIcons.phoneVolume;
-      default:
-        return FontAwesomeIcons.clock;
+        return Icons.access_time_outlined;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final priorityColor = _priorityColor(item.priority);
-    final sentimentColor = _sentimentColor(item.sentiment);
-    final statusColor = _statusColor(item.status);
+    final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
+    final priorityColor = AppTheme.priorityColor(item.priority);
+    final sentimentColor = AppTheme.sentimentColor(item.sentiment, scheme);
+    final statusColor = AppTheme.statusColor(item.status);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -78,62 +48,38 @@ class CallTile extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Caller icon
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.18),
-                      ),
-                    ),
-                    child: const Center(
-                      child: FaIcon(
-                        FontAwesomeIcons.user,
-                        size: 18,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // Caller info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item.callerName,
-                          maxLines: 1,
+                          item.callerName.isNotEmpty
+                              ? item.callerName
+                              : l10n.noIssueRecorded,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.roboto(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
+                            color: scheme.onSurface,
                             letterSpacing: -0.2,
                           ),
                         ),
                         const SizedBox(height: 5),
                         Row(
                           children: [
-                            const FaIcon(
-                              FontAwesomeIcons.phone,
+                            Icon(
+                              Icons.phone_outlined,
                               size: 10,
-                              color: AppTheme.textSecondary,
+                              color: scheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                item.callerNumber,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  color: AppTheme.textSecondary,
-                                ),
+                            Text(
+                              l10n.callNumber(item.id),
+                              style: GoogleFonts.roboto(
+                                fontSize: 12,
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -141,47 +87,40 @@ class CallTile extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // Status
                   MiniBadge(
-                    label: item.status.name,
+                    label: item.status.localized(l10n),
                     color: statusColor,
                     icon: _statusIcon(item.status),
                   ),
                 ],
               ),
-
               const SizedBox(height: 14),
-
-              
-              // Bottom info
               Row(
                 children: [
                   CallTag(
-                    label: item.priority.label,
+                    label: item.priority.localizedFull(l10n),
                     color: priorityColor,
                   ),
                   const SizedBox(width: 8),
                   CallTag(
-                    label: item.sentiment.label,
+                    label: item.sentiment.localized(l10n),
                     color: sentimentColor,
                   ),
                   const Spacer(),
                   Row(
                     children: [
-                      const FaIcon(
-                        FontAwesomeIcons.clock,
+                      Icon(
+                        Icons.access_time_outlined,
                         size: 11,
-                        color: AppTheme.textSecondary,
+                        color: scheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         '${item.durationMinutes} min',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.roboto(
                           fontSize: 11,
-                          color: AppTheme.textSecondary,
+                          color: scheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -189,31 +128,28 @@ class CallTile extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: 8),
-
-              // Date and arrow
               Row(
                 children: [
-                  const FaIcon(
-                    FontAwesomeIcons.calendar,
+                  Icon(
+                    Icons.calendar_today_outlined,
                     size: 10,
-                    color: AppTheme.textSecondary,
+                    color: scheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       item.dateLabel,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.roboto(
                         fontSize: 11,
-                        color: AppTheme.textSecondary,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                  const FaIcon(
-                    FontAwesomeIcons.chevronRight,
+                  Icon(
+                    Icons.chevron_right,
                     size: 11,
-                    color: AppTheme.textSecondary,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -242,18 +178,12 @@ class CallTag extends StatelessWidget {
         horizontal: 9,
         vertical: 5,
       ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.20),
-        ),
-      ),
+      decoration: AppTheme.chipDecoration(color),
       child: Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.roboto(
           fontSize: 10,
           fontWeight: FontWeight.w700,
           color: color,
@@ -266,7 +196,7 @@ class CallTag extends StatelessWidget {
 class MiniBadge extends StatelessWidget {
   final String label;
   final Color color;
-  final FaIconData icon;
+  final IconData icon;
 
   const MiniBadge({
     super.key,
@@ -282,17 +212,11 @@ class MiniBadge extends StatelessWidget {
         horizontal: 8,
         vertical: 6,
       ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: color.withValues(alpha: 0.20),
-        ),
-      ),
+      decoration: AppTheme.chipDecoration(color),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FaIcon(
+          Icon(
             icon,
             size: 10,
             color: color,
@@ -300,7 +224,7 @@ class MiniBadge extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.roboto(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: color,

@@ -1,6 +1,47 @@
+List<String> parseCallKeywords(dynamic raw) {
+  if (raw == null) return const [];
 
+  if (raw is List) {
+    return raw
+        .whereType<String>()
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
 
+  if (raw is Map) {
+    final map = Map<String, dynamic>.from(raw);
+    final display = map['display'];
+    if (display is List) {
+      final fromDisplay = <String>[];
+      for (final item in display) {
+        if (item is Map && item['text'] is String) {
+          final text = (item['text'] as String).trim();
+          if (text.isNotEmpty) fromDisplay.add(text);
+        } else if (item is String && item.trim().isNotEmpty) {
+          fromDisplay.add(item.trim());
+        }
+      }
+      if (fromDisplay.isNotEmpty) return fromDisplay;
+    }
 
+    final merged = <String>[];
+    final seen = <String>{};
+    for (final bucket in ['negative', 'positive', 'neutral']) {
+      final items = map[bucket];
+      if (items is! List) continue;
+      for (final item in items) {
+        if (item is! String) continue;
+        final text = item.trim();
+        final key = text.toLowerCase();
+        if (text.isNotEmpty && seen.add(key)) merged.add(text);
+      }
+    }
+    return merged;
+  }
+
+  return const [];
+}
 
 // ─────────────────────────────────────────
 // Call Analysis Model
@@ -30,15 +71,15 @@ class CallAnalysis {
 
   factory CallAnalysis.fromJson(Map<String, dynamic> json) {
     return CallAnalysis(
-      id: json['id'] ?? 0,
-      mainIssue: json['main_issue'],
-      sentiment: json['sentiment'],
+      id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? 0,
+      mainIssue: json['main_issue'] as String?,
+      sentiment: json['sentiment'] as String?,
       sentimentScore: (json['sentiment_score'] ?? 0).toDouble(),
-      keywords: List<String>.from(json['keywords'] ?? []),
-      priority: json['priority'] ?? 'low',
-      needsFollowup: json['needs_followup'] ?? false,
-      isReviewed: json['is_reviewed'] ?? false,
-      transcript: json['transcript'],
+      keywords: parseCallKeywords(json['keywords']),
+      priority: json['priority']?.toString() ?? 'low',
+      needsFollowup: json['needs_followup'] == true,
+      isReviewed: json['is_reviewed'] == true,
+      transcript: json['transcript'] as String?,
     );
   }
 }
@@ -52,6 +93,7 @@ class CallModel {
   final double duration;
   final String createdAt;
   final String? uploadedByUsername;
+  final String? audioFile;
   final CallAnalysis? analysis;
 
   CallModel({
@@ -60,21 +102,21 @@ class CallModel {
     required this.duration,
     required this.createdAt,
     this.uploadedByUsername,
+    this.audioFile,
     this.analysis,
   });
 
   factory CallModel.fromJson(Map<String, dynamic> json) {
     return CallModel(
-      id: json['id'] ?? '',
-      status: json['status'] ?? 'pending',
+      id: json['id']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'pending',
       duration: (json['duration'] ?? 0).toDouble(),
-      createdAt: json['created_at'] ?? '',
-      uploadedByUsername: json['uploaded_by_username'],
-      analysis: json['analysis'] != null
-          ? CallAnalysis.fromJson(json['analysis'])
+      createdAt: json['created_at']?.toString() ?? '',
+      uploadedByUsername: json['uploaded_by_username'] as String?,
+      audioFile: json['audio_file'] as String?,
+      analysis: json['analysis'] is Map<String, dynamic>
+          ? CallAnalysis.fromJson(json['analysis'] as Map<String, dynamic>)
           : null,
     );
   }
 }
-
-

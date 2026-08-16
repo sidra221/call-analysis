@@ -1,68 +1,106 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:intl/intl.dart';
+
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../shared/widgets/app_pagination.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/app_notification.dart';
 import '../application/notifications_provider.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  static const _pageSize = 5;
+  int _currentPage = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final async = ref.watch(notificationsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(l10n.notificationsTitle),
         centerTitle: true,
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: const FaIcon(FontAwesomeIcons.arrowLeft),
+          icon: const Icon(Icons.arrow_back),
         ),
       ),
       body: SafeArea(
         child: async.when(
-          data: (notifications) => notifications.isEmpty
-              ? const EmptyView(
-                  message: 'No Notifications',
-                  subtitle: 'You\'re all caught up!',
-                  icon: FontAwesomeIcons.bell,
-                )
-              : AnimationLimiter(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = notifications[index];
-                      return AnimationConfiguration.staggeredList(
-                        position: index,
-                        duration: const Duration(milliseconds: 375),
-                        child: SlideAnimation(
-                          verticalOffset: 50,
-                          child: FadeInAnimation(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: NotificationCard(
-                                notification: notification,
+          data: (notifications) {
+            if (notifications.isEmpty) {
+              return EmptyView(
+                message: l10n.noNotifications,
+                subtitle: l10n.allCaughtUp,
+                icon: Icons.notifications_outlined,
+              );
+            }
+
+            final totalPages = totalPagesFor(notifications.length, _pageSize);
+            if (_currentPage >= totalPages) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() => _currentPage = totalPages - 1);
+              });
+            }
+
+            final pageItems =
+                paginateList(notifications, _currentPage, _pageSize);
+
+            return Column(
+              children: [
+                Expanded(
+                  child: AnimationLimiter(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      itemCount: pageItems.length,
+                      itemBuilder: (context, index) {
+                        final notification = pageItems[index];
+                        return AnimationConfiguration.staggeredList(
+                          position: index,
+                          duration: const Duration(milliseconds: 375),
+                          child: SlideAnimation(
+                            verticalOffset: 50,
+                            child: FadeInAnimation(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: NotificationCard(
+                                  notification: notification,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
+                AppPaginationBar(
+                  currentPage: _currentPage,
+                  totalPages: totalPages,
+                  totalItems: notifications.length,
+                  pageSize: _pageSize,
+                  onPageChanged: (page) => setState(() => _currentPage = page),
+                ),
+              ],
+            );
+          },
           error: (e, _) => ErrorView(
-            message: 'Failed to load notifications',
-            onRetry: () => ref.invalidate(notificationsProvider),
+            message: l10n.failedToLoadNotifications,
+            onRetry: () => ref.read(notificationsProvider.notifier).refresh(),
           ),
           loading: () => const Center(
             child: CircularProgressIndicator.adaptive(),
@@ -80,61 +118,56 @@ class NotificationCard extends ConsumerWidget {
     required this.notification,
   });
 
-  FaIconData _getIcon(String type) {
+  IconData _getIcon(NotificationType type) {
     switch (type) {
-      case 'call':
-        return FontAwesomeIcons.phone;
-      case 'followup':
-        return FontAwesomeIcons.clock;
-      case 'report':
-        return FontAwesomeIcons.fileLines;
-      case 'system':
-        return FontAwesomeIcons.gear;
-      default:
-        return FontAwesomeIcons.bell;
+      case NotificationType.call:
+        return Icons.phone_outlined;
+      case NotificationType.followup:
+      case NotificationType.followupStatus:
+        return Icons.refresh;
+      case NotificationType.report:
+      case NotificationType.reportReview:
+        return Icons.analytics_outlined;
     }
   }
 
-  Color _getColor(String type) {
+  Color _getColor(NotificationType type) {
     switch (type) {
-      case 'call':
+      case NotificationType.call:
         return AppTheme.primary;
-      case 'followup':
-        return AppTheme.warning;
-      case 'report':
-        return AppTheme.info;
-      case 'system':
-        return AppTheme.success;
-      default:
-        return AppTheme.primary;
+      case NotificationType.followup:
+      case NotificationType.followupStatus:
+        return AppTheme.notificationFollowup;
+      case NotificationType.report:
+      case NotificationType.reportReview:
+        return AppTheme.notificationReport;
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final icon = _getIcon(notification.type);
     final color = _getColor(notification.type);
+    final actor = notification.localizedActor(l10n);
+    final body = notification.localizedBody(l10n);
 
     return AppCard(
       onTap: () async {
         if (!notification.isRead) {
           await ref
               .read(notificationsProvider.notifier)
-              .markAsRead(notification.id);
+              .markAsRead(notification);
         }
-        // TODO: Add notification-specific navigation here later if needed
       },
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: FaIcon(
+            decoration: AppTheme.chipDecoration(color, radius: 12),
+            child: Icon(
               icon,
               size: 22,
               color: color,
@@ -148,26 +181,35 @@ class NotificationCard extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        notification.title,
-                        maxLines: 1,
+                      child: RichText(
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(
-                              fontWeight: notification.isRead
-                                  ? FontWeight.w600
-                                  : FontWeight.w800,
+                        text: TextSpan(
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: notification.isRead
+                                        ? FontWeight.w600
+                                        : FontWeight.w800,
+                                    color: scheme.onSurface,
+                                  ),
+                          children: [
+                            TextSpan(
+                              text: actor,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800),
                             ),
+                            TextSpan(text: ' $body'),
+                          ],
+                        ),
                       ),
                     ),
                     if (!notification.isRead)
                       Container(
                         width: 8,
                         height: 8,
+                        margin: const EdgeInsets.only(left: 8),
                         decoration: const BoxDecoration(
-                          color: AppTheme.danger,
+                          color: AppTheme.primary,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -175,16 +217,7 @@ class NotificationCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  notification.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  DateFormat('h:mm a, MMM d').format(notification.time),
+                  notification.localizedRelativeTime(l10n),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: scheme.outline,
                       ),

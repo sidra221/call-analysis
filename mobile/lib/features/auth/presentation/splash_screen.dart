@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../l10n/app_localizations.dart';
+import '../../../core/theme/app_theme.dart';
 import '../application/auth_controller.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -74,6 +76,7 @@ _textAnimation = CurvedAnimation(
 
   @override
 Widget build(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
   return Scaffold(
     body: Container(
       width: double.infinity,
@@ -83,8 +86,8 @@ Widget build(BuildContext context) {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFF8FAFC),
-            Color(0xFFEFF6FF),
+            AppTheme.grey50,
+            AppTheme.primaryLight,
           ],
         ),
       ),
@@ -97,7 +100,7 @@ Widget build(BuildContext context) {
               children: [
                 // Logo animation
                 Opacity(
-                  opacity: _logoAnimation.value,
+                  opacity: _logoAnimation.value.clamp(0.0, 1.0),
                   child: Transform.scale(
                     scale: 0.65 + (_logoAnimation.value * 0.35),
                     child: Image.asset(
@@ -112,20 +115,20 @@ Widget build(BuildContext context) {
 
                 // Text appears after logo
                 Opacity(
-                  opacity: _textAnimation.value,
+                  opacity: _textAnimation.value.clamp(0.0, 1.0),
                   child: Transform.translate(
                     offset: Offset(
                       0,
                       20 * (1 - _textAnimation.value),
                     ),
                     child: Text(
-                      'VOICE INTELLIGENCE. REAL INSIGHT.',
+                      l10n.splashTagline,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.roboto(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 2.2,
-                        color: const Color(0xFF1976D2),
+                        color: AppTheme.primary800,
                       ),
                     ),
                   ),
@@ -134,7 +137,7 @@ Widget build(BuildContext context) {
                 const SizedBox(height: 36),
 
                 Opacity(
-                  opacity: _textAnimation.value,
+                  opacity: _textAnimation.value.clamp(0.0, 1.0),
                   child: const SizedBox(
                     width: 26,
                     height: 26,

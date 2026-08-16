@@ -22,10 +22,11 @@ import Transitions from 'ui-component/extended/Transitions';
 
 import { useGetMenuMaster } from 'api/menu';
 import useConfig from 'hooks/useConfig';
+import useTranslation from 'hooks/useTranslation';
 import useMenuCollapse from 'hooks/useMenuCollapse';
 
 // assets
-import { IconChevronDown, IconChevronRight, IconChevronUp } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp } from '@tabler/icons-react';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 export default function NavCollapse({ menu, level, parentId }) {
@@ -35,6 +36,7 @@ export default function NavCollapse({ menu, level, parentId }) {
   const {
     state: { borderRadius }
   } = useConfig();
+  const { t } = useTranslation();
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
@@ -105,7 +107,7 @@ export default function NavCollapse({ menu, level, parentId }) {
       default:
         return (
           <Typography key={item.id} variant="h6" align="center" sx={{ color: 'error.main' }}>
-            Menu Items Error
+            {t('common.menuItemsError')}
           </Typography>
         );
     }
@@ -128,6 +130,8 @@ export default function NavCollapse({ menu, level, parentId }) {
 
   const collapseIcon = drawerOpen ? (
     <IconChevronUp stroke={1.5} size="16px" style={{ marginTop: 'auto', marginBottom: 'auto' }} />
+  ) : theme.direction === 'rtl' ? (
+    <IconChevronLeft stroke={1.5} size="16px" style={{ marginTop: 'auto', marginBottom: 'auto' }} />
   ) : (
     <IconChevronRight stroke={1.5} size="16px" style={{ marginTop: 'auto', marginBottom: 'auto' }} />
   );
@@ -139,8 +143,10 @@ export default function NavCollapse({ menu, level, parentId }) {
           zIndex: 1201,
           borderRadius: `${borderRadius}px`,
           mb: 0.5,
-          ...(drawerOpen && level !== 1 && { ml: `${level * 18}px` }),
-          ...(!drawerOpen && { pl: 1.25 }),
+          gap: drawerOpen ? 1.25 : 0,
+          justifyContent: drawerOpen ? 'flex-start' : 'center',
+          ...(drawerOpen && level !== 1 && { ms: `${level * 18}px` }),
+          ...(!drawerOpen && { px: 1.25 }),
           ...((!drawerOpen || level !== 1) && {
             py: level === 1 ? 0 : 1,
             '&:hover': { bgcolor: 'transparent' },
@@ -179,6 +185,11 @@ export default function NavCollapse({ menu, level, parentId }) {
         {(drawerOpen || (!drawerOpen && level !== 1)) && (
           <Tooltip title={menu.title} disableHoverListener={!hoverStatus}>
             <ListItemText
+              sx={{
+                my: 0,
+                flex: drawerOpen ? '1 1 auto' : '0 0 auto',
+                minWidth: 0
+              }}
               primary={
                 <Typography
                   ref={ref}
@@ -188,7 +199,7 @@ export default function NavCollapse({ menu, level, parentId }) {
                     color: 'inherit',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    width: 120
+                    textAlign: 'start'
                   }}
                 >
                   {menu.title}
