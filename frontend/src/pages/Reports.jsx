@@ -877,7 +877,7 @@ export default function Reports() {
               >
                 {reviewing
                   ? <CircularProgress size={16} />
-                  : isReviewed(selectedReport) ? t('common.reviewedCheck') : t('common.review')}
+                  : isReviewed(selectedReport) ? t('common.reviewedCheck') : t('calls.markReviewed')}
               </Button>
               <Button
                 variant="outlined"

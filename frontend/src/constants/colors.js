@@ -1,13 +1,24 @@
-export const roleColors = {
-  manager: { bg: '#e3f2fd', color: '#1e88e5' },
-  qa: { bg: '#f3e5f5', color: '#7b1fa2' }
-};
+const pick = (theme, group, shade) => theme?.palette?.[group]?.[shade];
 
-export const defaultRoleColor = { bg: '#f5f5f5', color: '#757575' };
-
-export const getRoleColor = (role) => {
+export const getRoleColor = (role, theme) => {
   const key = (role || '').toLowerCase();
-  return roleColors[key] || defaultRoleColor;
+  const isDark = theme?.palette?.mode === 'dark';
+
+  if (key === 'manager') {
+    return isDark
+      ? { bg: pick(theme, 'primary', 'dark') || 'primary.dark', color: pick(theme, 'primary', 'light') || 'primary.light' }
+      : { bg: pick(theme, 'primary', 'light') || 'primary.light', color: pick(theme, 'primary', 'dark') || 'primary.dark' };
+  }
+
+  if (key === 'qa') {
+    return isDark
+      ? { bg: pick(theme, 'secondary', 'dark') || 'secondary.dark', color: pick(theme, 'secondary', 'light') || 'secondary.light' }
+      : { bg: pick(theme, 'secondary', 'light') || 'secondary.light', color: pick(theme, 'secondary', 'dark') || 'secondary.dark' };
+  }
+
+  return isDark
+    ? { bg: pick(theme, 'grey', 700) || 'grey.700', color: pick(theme, 'grey', 100) || 'grey.100' }
+    : { bg: theme?.palette?.action?.hover || 'action.hover', color: pick(theme, 'text', 'secondary') || 'text.secondary' };
 };
 
 export const actionColors = {

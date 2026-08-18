@@ -693,7 +693,7 @@ export default function Followups() {
                     width: 10,
                     height: 10,
                     borderRadius: '50%',
-                    backgroundColor: (theme) => theme.palette[followupStatusColor[selectedFollowup.status] || 'grey']?.main || '#999',
+                    backgroundColor: (theme) => theme.palette[followupStatusColor[selectedFollowup.status] || 'grey']?.main || theme.palette.text.disabled,
                   }} />
                   <Typography variant="h5">
                     {t('followups.followUpTitle', { id: selectedFollowup.id })}

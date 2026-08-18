@@ -54,7 +54,7 @@ export default function ProfileSection() {
 
   const avatarSrc = getAvatarUrl(user, displayName);
   const showInitial = !avatarSrc;
-  const avatarBorderSx = getRoleAvatarBorderSx(user?.role, 2);
+  const avatarBorderSx = getRoleAvatarBorderSx(user?.role, 2, theme);
 
   const handleClose = () => {
     setAnchorEl(null);

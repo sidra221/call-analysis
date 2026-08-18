@@ -36,26 +36,20 @@ class NotificationsNotifier extends AsyncNotifier<List<AppNotification>> {
   Future<void> markAsRead(AppNotification notification) async {
     if (notification.isRead) return;
     await ref.read(notificationsRepositoryProvider).markAsRead(notification);
-    final updated = (state.value ?? []).map((n) {
-      if (n.id == notification.id) {
-        return AppNotification(
-          id: n.id,
-          actorName: n.actorName,
-          type: n.type,
-          time: n.time,
-          isRead: true,
-          readType: n.readType,
-          readId: n.readId,
-          callId: n.callId,
-          followupStatus: n.followupStatus,
-          statusCompleted: n.statusCompleted,
-          reportPeriod: n.reportPeriod,
-          hasManagerNotes: n.hasManagerNotes,
-        );
-      }
-      return n;
-    }).toList();
+    final updated = (state.value ?? [])
+        .map((n) => n.id == notification.id ? n.copyWith(isRead: true) : n)
+        .toList();
     state = AsyncData(updated);
+  }
+
+  Future<void> markAllAsRead() async {
+    final items = state.value ?? [];
+    final unread = items.where((n) => !n.isRead).toList();
+    if (unread.isEmpty) return;
+    for (final notification in unread) {
+      await ref.read(notificationsRepositoryProvider).markAsRead(notification);
+    }
+    state = AsyncData(items.map((n) => n.copyWith(isRead: true)).toList());
   }
 }
 

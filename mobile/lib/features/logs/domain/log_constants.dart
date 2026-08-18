@@ -64,33 +64,33 @@ Color logActionColor(String action, ColorScheme scheme) {
 IconData logActionIcon(String action) {
   switch (action) {
     case 'upload_call':
-      return Icons.phone_outlined;
+      return Icons.phone;
     case 'delete_call':
-      return Icons.delete_outline;
+      return Icons.delete;
     case 'call_processing':
-      return Icons.hourglass_top_outlined;
+      return Icons.hourglass_top;
     case 'call_status_change':
       return Icons.swap_horiz;
     case 'review_call':
       return Icons.check;
     case 'publish_report':
-      return Icons.analytics_outlined;
+      return Icons.analytics;
     case 'generate_report':
-      return Icons.description_outlined;
+      return Icons.description;
     case 'delete_report':
-      return Icons.description_outlined;
+      return Icons.description;
     case 'user_created':
-      return Icons.person_add_outlined;
+      return Icons.person_add;
     case 'user_updated':
-      return Icons.edit_outlined;
+      return Icons.edit;
     case 'user_deleted':
-      return Icons.person_remove_outlined;
+      return Icons.person_remove;
     case 'create_followup':
-      return Icons.add_comment_outlined;
+      return Icons.add_comment;
     case 'delete_followup':
-      return Icons.remove_circle_outline;
+      return Icons.remove_circle;
     case 'update_followup':
-      return Icons.edit_note_outlined;
+      return Icons.edit_note;
     default:
       return Icons.history;
   }

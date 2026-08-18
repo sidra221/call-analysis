@@ -1,12 +1,14 @@
 enum CallStatus { completed, inProgress, queued, failed }
 
-enum PriorityLevel { low, medium, high }
+enum PriorityLevel { critical, high, medium, low }
 
 enum Sentiment { positive, neutral, negative }
 
 extension EnumParsers on PriorityLevel {
   static PriorityLevel fromString(String v) {
     switch (v.toLowerCase()) {
+      case 'critical':
+        return PriorityLevel.critical;
       case 'low':
         return PriorityLevel.low;
       case 'medium':
@@ -20,6 +22,8 @@ extension EnumParsers on PriorityLevel {
 
   String get label {
     switch (this) {
+      case PriorityLevel.critical:
+        return 'Critical';
       case PriorityLevel.low:
         return 'Low';
       case PriorityLevel.medium:

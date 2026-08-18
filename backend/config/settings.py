@@ -40,6 +40,17 @@ _default_cors_origins = (
 _cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", _default_cors_origins)
 CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 
+# Flutter web (`flutter run -d chrome`) uses a random localhost port.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://localhost(:\d+)?$",
+    r"^https?://127\.0\.0\.1(:\d+)?$",
+]
+
+CSRF_TRUSTED_ORIGINS = list(CORS_ALLOWED_ORIGINS) + [
+    "http://localhost:38065",
+    "http://127.0.0.1:38065",
+]
+
 # -----------------------------
 # INSTALLED APPS
 # -----------------------------

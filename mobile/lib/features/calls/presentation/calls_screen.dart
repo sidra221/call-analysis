@@ -76,13 +76,18 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: AppFilterToolbar(
         activeFilterCount: activeFilterCount,
-        onOpenFilters: () => _showFilters(context, state),
         showReset: activeFilterCount > 0 || _searchQuery.isNotEmpty,
         onResetFilters: () {
           _searchCtrl.clear();
           ref.read(callsControllerProvider.notifier).applyFilter(const CallsFilter());
           setState(() => _searchQuery = '');
         },
+        filterPanel: _CallsFilterSheet(
+          initialFilter: state.filter,
+          onFilterChanged: (filter) {
+            ref.read(callsControllerProvider.notifier).applyFilter(filter);
+          },
+        ),
         searchField: TextField(
           controller: _searchCtrl,
           onChanged: (value) {
@@ -96,7 +101,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
               fontSize: 14,
               color: scheme.onSurfaceVariant,
             ),
-            prefixIcon: const Icon(Icons.search_rounded),
+            prefixIcon: const Icon(Icons.search),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear_rounded),
@@ -124,30 +129,11 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
     return count;
   }
 
-  void _showFilters(BuildContext context, CallsState state) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return _CallsFilterSheet(
-          initialFilter: state.filter,
-          onFilterChanged: (filter) {
-            ref.read(callsControllerProvider.notifier).applyFilter(filter);
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(callsControllerProvider);
     final filteredItems = _filterItems(state.items);
-
-    final hasActiveFilters = _activeFilterCount(state) > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -170,53 +156,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search and Filter
             _buildTopSection(context, state),
-
-            // Active filters indicator
-            if (hasActiveFilters)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.filter_list_outlined,
-                      size: 12,
-                      color: scheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.filters,
-                      style: GoogleFonts.roboto(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {
-                        ref
-                            .read(callsControllerProvider.notifier)
-                            .applyFilter(const CallsFilter());
-                      },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        l10n.clear,
-                        style: GoogleFonts.roboto(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
             // Calls list
             Expanded(
@@ -311,9 +251,23 @@ class _CallsFilterSheetState extends State<_CallsFilterSheet> {
     _sentiment = widget.initialFilter.sentiment;
   }
 
+  @override
+  void didUpdateWidget(_CallsFilterSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialFilter.priority != widget.initialFilter.priority ||
+        oldWidget.initialFilter.sentiment != widget.initialFilter.sentiment) {
+      _priority = widget.initialFilter.priority;
+      _sentiment = widget.initialFilter.sentiment;
+    }
+  }
+
   void _apply() {
     widget.onFilterChanged(
-      CallsFilter(priority: _priority, sentiment: _sentiment),
+      CallsFilter(
+        priority: _priority,
+        sentiment: _sentiment,
+        search: widget.initialFilter.search,
+      ),
     );
   }
 
@@ -321,84 +275,62 @@ class _CallsFilterSheetState extends State<_CallsFilterSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.filterCalls,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 18),
-              DropdownButtonFormField<PriorityLevel?>(
-                value: _priority,
-                decoration: InputDecoration(
-                  labelText: l10n.priority,
-                  border: const OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem<PriorityLevel?>(
-                    value: null,
-                    child: Text(l10n.allCalls),
-                  ),
-                  DropdownMenuItem(
-                    value: PriorityLevel.high,
-                    child: Text(l10n.highPriority),
-                  ),
-                  DropdownMenuItem(
-                    value: PriorityLevel.medium,
-                    child: Text(l10n.mediumPriority),
-                  ),
-                  DropdownMenuItem(
-                    value: PriorityLevel.low,
-                    child: Text(l10n.lowPriority),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _priority = value);
-                  _apply();
-                },
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<Sentiment?>(
-                value: _sentiment,
-                decoration: InputDecoration(
-                  labelText: l10n.sentiment,
-                  border: const OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem<Sentiment?>(
-                    value: null,
-                    child: Text(l10n.allCalls),
-                  ),
-                  DropdownMenuItem(
-                    value: Sentiment.positive,
-                    child: Text(l10n.sentimentPositive),
-                  ),
-                  DropdownMenuItem(
-                    value: Sentiment.neutral,
-                    child: Text(l10n.sentimentNeutral),
-                  ),
-                  DropdownMenuItem(
-                    value: Sentiment.negative,
-                    child: Text(l10n.sentimentNegative),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _sentiment = value);
-                  _apply();
-                },
-              ),
-            ],
-          ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppExpandingSelect<PriorityLevel>(
+          label: l10n.priority,
+          value: _priority,
+          options: [
+            AppSelectOption(label: l10n.allCalls),
+            AppSelectOption(
+              value: PriorityLevel.critical,
+              label: l10n.criticalPriority,
+            ),
+            AppSelectOption(
+              value: PriorityLevel.high,
+              label: l10n.highPriority,
+            ),
+            AppSelectOption(
+              value: PriorityLevel.medium,
+              label: l10n.mediumPriority,
+            ),
+            AppSelectOption(
+              value: PriorityLevel.low,
+              label: l10n.lowPriority,
+            ),
+          ],
+          onChanged: (value) {
+            setState(() => _priority = value);
+            _apply();
+          },
         ),
-      ),
+        const SizedBox(height: 14),
+        AppExpandingSelect<Sentiment>(
+          label: l10n.sentiment,
+          value: _sentiment,
+          options: [
+            AppSelectOption(label: l10n.allCalls),
+            AppSelectOption(
+              value: Sentiment.positive,
+              label: l10n.sentimentPositive,
+            ),
+            AppSelectOption(
+              value: Sentiment.neutral,
+              label: l10n.sentimentNeutral,
+            ),
+            AppSelectOption(
+              value: Sentiment.negative,
+              label: l10n.sentimentNegative,
+            ),
+          ],
+          onChanged: (value) {
+            setState(() => _sentiment = value);
+            _apply();
+          },
+        ),
+      ],
     );
   }
 }

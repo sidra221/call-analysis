@@ -74,7 +74,7 @@ export default function Register() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'grey.50',
+        bgcolor: 'background.default',
         p: 2
       }}
     >

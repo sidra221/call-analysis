@@ -14,8 +14,11 @@ class AuthService {
       requiresAuth: false,
     );
 
-    final access = response['access'] as String?;
-    final refresh = response['refresh'] as String?;
+    final payload = response['data'] is Map
+        ? Map<String, dynamic>.from(response['data'] as Map)
+        : response;
+    final access = payload['access'] as String?;
+    final refresh = payload['refresh'] as String?;
 
     if (access == null || access.isEmpty) {
       throw ApiException(

@@ -37,6 +37,23 @@ class AppNotification {
     this.hasManagerNotes,
   });
 
+  AppNotification copyWith({bool? isRead}) {
+    return AppNotification(
+      id: id,
+      actorName: actorName,
+      type: type,
+      time: time,
+      isRead: isRead ?? this.isRead,
+      readType: readType,
+      readId: readId,
+      callId: callId,
+      followupStatus: followupStatus,
+      statusCompleted: statusCompleted,
+      reportPeriod: reportPeriod,
+      hasManagerNotes: hasManagerNotes,
+    );
+  }
+
   String localizedActor(AppLocalizations l10n) {
     switch (actorName) {
       case 'System':

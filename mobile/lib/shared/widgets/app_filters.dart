@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Search row + Filters button — mirrors React `FilterToolbar`.
+/// Search row + filter dropdown anchored under the tune button.
 class AppFilterToolbar extends StatelessWidget {
   final Widget searchField;
   final int activeFilterCount;
-  final VoidCallback onOpenFilters;
+  final Widget filterPanel;
   final VoidCallback? onResetFilters;
   final bool showReset;
 
   const AppFilterToolbar({
     super.key,
     required this.searchField,
+    required this.filterPanel,
     this.activeFilterCount = 0,
-    required this.onOpenFilters,
     this.onResetFilters,
     this.showReset = false,
   });
@@ -26,31 +26,9 @@ class AppFilterToolbar extends StatelessWidget {
       children: [
         Expanded(child: searchField),
         const SizedBox(width: 10),
-        SizedBox(
-          height: 56,
-          width: 56,
-          child: IconButton(
-            onPressed: onOpenFilters,
-            style: IconButton.styleFrom(
-              backgroundColor: activeFilterCount > 0
-                  ? scheme.primary.withValues(alpha: 0.12)
-                  : scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            icon: Badge(
-              isLabelVisible: activeFilterCount > 0,
-              label: Text('$activeFilterCount'),
-              child: Icon(
-                Icons.tune_outlined,
-                size: 18,
-                color: activeFilterCount > 0
-                    ? scheme.primary
-                    : scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
+        _FilterDropdownButton(
+          activeFilterCount: activeFilterCount,
+          panel: filterPanel,
         ),
         if (showReset && onResetFilters != null) ...[
           const SizedBox(width: 8),
@@ -59,6 +37,205 @@ class AppFilterToolbar extends StatelessWidget {
             icon: const Icon(Icons.refresh, size: 18),
             label: const Text('Reset'),
             style: TextButton.styleFrom(foregroundColor: scheme.error),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FilterDropdownButton extends StatefulWidget {
+  final int activeFilterCount;
+  final Widget panel;
+
+  const _FilterDropdownButton({
+    required this.activeFilterCount,
+    required this.panel,
+  });
+
+  @override
+  State<_FilterDropdownButton> createState() => _FilterDropdownButtonState();
+}
+
+class _FilterDropdownButtonState extends State<_FilterDropdownButton> {
+  final OverlayPortalController _overlay = OverlayPortalController();
+  final LayerLink _link = LayerLink();
+
+  void _toggle() {
+    if (_overlay.isShowing) {
+      _overlay.hide();
+    } else {
+      _overlay.show();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final active = widget.activeFilterCount > 0;
+
+    return CompositedTransformTarget(
+      link: _link,
+      child: OverlayPortal(
+        controller: _overlay,
+        overlayChildBuilder: (context) {
+          return Positioned.fill(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _overlay.hide,
+                  ),
+                ),
+                CompositedTransformFollower(
+                  link: _link,
+                  showWhenUnlinked: false,
+                  targetAnchor:
+                      isRtl ? Alignment.bottomLeft : Alignment.bottomRight,
+                  followerAnchor:
+                      isRtl ? Alignment.topLeft : Alignment.topRight,
+                  offset: const Offset(0, 8),
+                  child: Material(
+                    elevation: 8,
+                    color: scheme.surface,
+                    shadowColor: Colors.black.withValues(alpha: 0.28),
+                    borderRadius: BorderRadius.circular(16),
+                    clipBehavior: Clip.antiAlias,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 260,
+                        maxWidth: 320,
+                        maxHeight: 440,
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                        child: widget.panel,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        child: SizedBox(
+          height: 56,
+          width: 56,
+          child: IconButton(
+            onPressed: _toggle,
+            style: IconButton.styleFrom(
+              backgroundColor: active
+                  ? scheme.primary.withValues(alpha: 0.12)
+                  : scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: Badge(
+              isLabelVisible: active,
+              label: Text('${widget.activeFilterCount}'),
+              child: Icon(
+                Icons.tune,
+                size: 20,
+                color: active ? scheme.primary : scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppSelectOption<T> {
+  final T? value;
+  final String label;
+
+  const AppSelectOption({this.value, required this.label});
+}
+
+/// Options expand under the field (no overlay / bottom sheet).
+class AppExpandingSelect<T> extends StatefulWidget {
+  final String label;
+  final T? value;
+  final List<AppSelectOption<T>> options;
+  final ValueChanged<T?> onChanged;
+
+  const AppExpandingSelect({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  State<AppExpandingSelect<T>> createState() => _AppExpandingSelectState<T>();
+}
+
+class _AppExpandingSelectState<T> extends State<AppExpandingSelect<T>> {
+  bool _open = false;
+
+  String get _currentLabel {
+    for (final option in widget.options) {
+      if (option.value == widget.value) return option.label;
+    }
+    return widget.options.isEmpty ? '' : widget.options.first.label;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          borderRadius: BorderRadius.circular(12),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: widget.label,
+              border: const OutlineInputBorder(),
+              suffixIcon: Icon(
+                _open ? Icons.expand_less : Icons.expand_more,
+              ),
+            ),
+            child: Text(
+              _currentLabel,
+              style: GoogleFonts.roboto(fontSize: 14),
+            ),
+          ),
+        ),
+        if (_open) ...[
+          const SizedBox(height: 6),
+          Material(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < widget.options.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  ListTile(
+                    dense: true,
+                    selected: widget.options[i].value == widget.value,
+                    title: Text(widget.options[i].label),
+                    trailing: widget.options[i].value == widget.value
+                        ? Icon(Icons.check, size: 18, color: scheme.primary)
+                        : null,
+                    onTap: () {
+                      widget.onChanged(widget.options[i].value);
+                      setState(() => _open = false);
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ],
@@ -254,7 +431,7 @@ class AppSearchAutocomplete extends StatelessWidget {
               fontSize: 14,
               color: scheme.onSurfaceVariant,
             ),
-            prefixIcon: const Icon(Icons.search_rounded),
+            prefixIcon: const Icon(Icons.search),
             suffixIcon: controller.text.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear_rounded),
@@ -293,7 +470,7 @@ class AppSearchAutocomplete extends StatelessWidget {
                   return ListTile(
                     dense: true,
                     leading: Icon(
-                      isUser ? Icons.person_outline : Icons.search,
+                      isUser ? Icons.person : Icons.search,
                       size: 18,
                     ),
                     title: Text(

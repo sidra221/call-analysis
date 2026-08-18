@@ -75,6 +75,11 @@ class CallViewSet(viewsets.ModelViewSet):
 
             queryset = queryset.filter(id__in=call_ids)
 
+        priority = self.request.query_params.get('priority')
+
+        if priority:
+            queryset = queryset.filter(analysis__priority=priority)
+
         status_filter = self.request.query_params.get('status')
 
         if status_filter:

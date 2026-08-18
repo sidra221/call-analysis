@@ -5,6 +5,7 @@ enum Sentiment {
 }
 
 enum PriorityLevel {
+  critical,
   low,
   medium,
   high,

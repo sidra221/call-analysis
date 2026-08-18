@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ui.dart';
@@ -18,14 +19,33 @@ class NotificationsScreen extends ConsumerStatefulWidget {
       _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
+    with SingleTickerProviderStateMixin {
   static const _pageSize = 5;
   int _currentPage = 0;
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      setState(() => _currentPage = 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final async = ref.watch(notificationsProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -35,27 +55,68 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
+        actions: [
+          async.maybeWhen(
+            data: (notifications) {
+              final hasUnread = notifications.any((n) => !n.isRead);
+              if (!hasUnread) return const SizedBox.shrink();
+              return TextButton(
+                onPressed: () =>
+                    ref.read(notificationsProvider.notifier).markAllAsRead(),
+                child: Text(l10n.markAllRead),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelStyle: GoogleFonts.roboto(fontWeight: FontWeight.w700),
+          tabs: [
+            Tab(
+              text: async.maybeWhen(
+                data: (list) => '${l10n.notificationsAll} (${list.length})',
+                orElse: () => l10n.notificationsAll,
+              ),
+            ),
+            Tab(
+              text: async.maybeWhen(
+                data: (list) {
+                  final unread = list.where((n) => !n.isRead).length;
+                  return '${l10n.unread} ($unread)';
+                },
+                orElse: () => l10n.unread,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: async.when(
           data: (notifications) {
-            if (notifications.isEmpty) {
+            final showUnreadOnly = _tabController.index == 1;
+            final visible = showUnreadOnly
+                ? notifications.where((n) => !n.isRead).toList()
+                : notifications;
+
+            if (visible.isEmpty) {
               return EmptyView(
-                message: l10n.noNotifications,
+                message: showUnreadOnly
+                    ? l10n.noUnreadNotifications
+                    : l10n.noNotifications,
                 subtitle: l10n.allCaughtUp,
-                icon: Icons.notifications_outlined,
+                icon: Icons.notifications,
               );
             }
 
-            final totalPages = totalPagesFor(notifications.length, _pageSize);
+            final totalPages = totalPagesFor(visible.length, _pageSize);
             if (_currentPage >= totalPages) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) setState(() => _currentPage = totalPages - 1);
               });
             }
 
-            final pageItems =
-                paginateList(notifications, _currentPage, _pageSize);
+            final pageItems = paginateList(visible, _currentPage, _pageSize);
 
             return Column(
               children: [
@@ -91,7 +152,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 AppPaginationBar(
                   currentPage: _currentPage,
                   totalPages: totalPages,
-                  totalItems: notifications.length,
+                  totalItems: visible.length,
                   pageSize: _pageSize,
                   onPageChanged: (page) => setState(() => _currentPage = page),
                 ),
@@ -107,6 +168,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
         ),
       ),
+      backgroundColor: scheme.surface,
     );
   }
 }
@@ -121,13 +183,13 @@ class NotificationCard extends ConsumerWidget {
   IconData _getIcon(NotificationType type) {
     switch (type) {
       case NotificationType.call:
-        return Icons.phone_outlined;
+        return Icons.phone;
       case NotificationType.followup:
       case NotificationType.followupStatus:
         return Icons.refresh;
       case NotificationType.report:
       case NotificationType.reportReview:
-        return Icons.analytics_outlined;
+        return Icons.analytics;
     }
   }
 
@@ -152,15 +214,17 @@ class NotificationCard extends ConsumerWidget {
     final color = _getColor(notification.type);
     final actor = notification.localizedActor(l10n);
     final body = notification.localizedBody(l10n);
+    final unread = !notification.isRead;
 
     return AppCard(
       onTap: () async {
-        if (!notification.isRead) {
+        if (unread) {
           await ref
               .read(notificationsProvider.notifier)
               .markAsRead(notification);
         }
       },
+      color: unread ? color.withValues(alpha: 0.06) : null,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -187,9 +251,8 @@ class NotificationCard extends ConsumerWidget {
                         text: TextSpan(
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: notification.isRead
-                                        ? FontWeight.w600
-                                        : FontWeight.w800,
+                                    fontWeight:
+                                        unread ? FontWeight.w800 : FontWeight.w600,
                                     color: scheme.onSurface,
                                   ),
                           children: [
@@ -203,16 +266,29 @@ class NotificationCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    if (!notification.isRead)
-                      Container(
-                        width: 8,
-                        height: 8,
-                        margin: const EdgeInsets.only(left: 8),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primary,
-                          shape: BoxShape.circle,
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: unread
+                            ? AppTheme.primary.withValues(alpha: 0.12)
+                            : scheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        unread ? l10n.unread : l10n.read,
+                        style: GoogleFonts.roboto(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: unread
+                              ? AppTheme.primary
+                              : scheme.onSurfaceVariant,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),

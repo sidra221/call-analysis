@@ -18,14 +18,11 @@ class CallsRepository {
       page: page,
       pageSize: pageSize,
       sentiment: sentiment?.name,
+      priority: priority?.name,
       search: search,
     );
 
-    var items = result.items.map(callModelToItem).toList();
-
-    if (priority != null) {
-      items = items.where((call) => call.priority == priority).toList();
-    }
+    final items = result.items.map(callModelToItem).toList();
 
     return PaginatedResult(
       items: items,

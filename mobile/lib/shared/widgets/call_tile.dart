@@ -20,11 +20,11 @@ class CallTile extends StatelessWidget {
   IconData _statusIcon(CallStatus status) {
     switch (status) {
       case CallStatus.completed:
-        return Icons.check_circle_outline;
+        return Icons.check_circle;
       case CallStatus.inProgress:
-        return Icons.phone_in_talk_outlined;
+        return Icons.phone_in_talk;
       default:
-        return Icons.access_time_outlined;
+        return Icons.access_time;
     }
   }
 
@@ -69,7 +69,7 @@ class CallTile extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              Icons.phone_outlined,
+                              Icons.phone,
                               size: 10,
                               color: scheme.onSurfaceVariant,
                             ),
@@ -111,7 +111,7 @@ class CallTile extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        Icons.access_time_outlined,
+                        Icons.access_time,
                         size: 11,
                         color: scheme.onSurfaceVariant,
                       ),
@@ -132,7 +132,7 @@ class CallTile extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    Icons.calendar_today_outlined,
+                    Icons.calendar_today,
                     size: 10,
                     color: scheme.onSurfaceVariant,
                   ),

@@ -85,8 +85,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         ? AppTheme.danger.withValues(alpha: 0.15)
         : AppTheme.errorLight.withValues(alpha: 0.35);
     final countChipText = AppTheme.danger;
-    final disabledBtnBg = isDark ? AppTheme.darkLevel2 : AppTheme.grey100;
-    final cancelBtnBorder = scheme.outline;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -135,8 +133,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                   rankChipBg: rankChipBg,
                   countChipBg: countChipBg,
                   countChipText: countChipText,
-                  disabledBtnBg: disabledBtnBg,
-                  cancelBtnBorder: cancelBtnBorder,
                 ),
               ),
             ),
@@ -168,8 +164,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
     required Color rankChipBg,
     required Color countChipBg,
     required Color countChipText,
-    required Color disabledBtnBg,
-    required Color cancelBtnBorder,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,11 +260,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         _buildFooterButtons(
           l10n: l10n,
           report: report,
-          isDark: isDark,
-          cardBg: cardBg,
-          cancelBtnBorder: cancelBtnBorder,
-          disabledBtnBg: disabledBtnBg,
-          textMutedColor: textMutedColor,
         ),
       ],
     );
@@ -330,7 +319,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
             ),
             child: const Center(
               child: Icon(
-                Icons.info_outline,
+                Icons.info,
                 color: AppTheme.primary,
                 size: 20,
               ),
@@ -461,9 +450,9 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
     };
     final chipColor = AppTheme.sentimentColor(sentimentValue, scheme);
     final icon = switch (sentimentValue) {
-      Sentiment.positive => Icons.sentiment_satisfied_outlined,
-      Sentiment.negative => Icons.sentiment_dissatisfied_outlined,
-      Sentiment.neutral => Icons.sentiment_neutral_outlined,
+      Sentiment.positive => Icons.sentiment_satisfied,
+      Sentiment.negative => Icons.sentiment_dissatisfied,
+      Sentiment.neutral => Icons.sentiment_neutral,
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,11 +623,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
   Widget _buildFooterButtons({
     required AppLocalizations l10n,
     required Report report,
-    required bool isDark,
-    required Color cardBg,
-    required Color cancelBtnBorder,
-    required Color disabledBtnBg,
-    required Color textMutedColor,
   }) {
     final hasNotes = report.managerNotes.trim().isNotEmpty;
 
@@ -647,36 +631,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: cardBg,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: BorderSide(
-                    color: cancelBtnBorder,
-                    width: 1,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  l10n.cancel,
-                  style: GoogleFonts.roboto(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: textMutedColor,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: hasNotes
                     ? null
                     : () {
@@ -687,58 +642,15 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
                           ),
                         );
                       },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: hasNotes ? disabledBtnBg : AppTheme.primary,
-                  disabledBackgroundColor: disabledBtnBg,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.check,
-                      size: 16,
-                      color: hasNotes ? textMutedColor : Colors.white,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.reviewed,
-                      style: GoogleFonts.roboto(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: hasNotes ? textMutedColor : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+                icon: const Icon(Icons.check, size: 18),
+                label: Text(hasNotes ? l10n.reviewed : l10n.markReviewed),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
                 onPressed: () => _showNotesDialog(l10n, report),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: cardBg,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(
-                    color: AppTheme.secondary,
-                    width: 1,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  l10n.addNotes,
-                  style: GoogleFonts.roboto(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.secondary,
-                  ),
-                ),
+                child: Text(l10n.addNotes),
               ),
             ),
           ],
@@ -753,34 +665,45 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen>
     final controller = TextEditingController(text: report.managerNotes);
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.addNotes),
-        content: TextField(
-          controller: controller,
-          maxLines: 4,
-          decoration: InputDecoration(
-            hintText: l10n.addNotes,
+      builder: (dialogContext) {
+        final width = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+          title: Text(l10n.addNotes),
+          content: SizedBox(
+            width: width,
+            child: TextField(
+              controller: controller,
+              minLines: 8,
+              maxLines: 12,
+              decoration: InputDecoration(
+                hintText: l10n.addNotes,
+                alignLabelWithHint: true,
+              ),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l10n.addNotes),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
-          ),
-        ],
-      ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.addNotes),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+            ),
+          ],
+        );
+      },
     );
   }
 }

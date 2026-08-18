@@ -19,6 +19,8 @@ extension CallStatusL10n on CallStatus {
 extension PriorityLevelL10n on PriorityLevel {
   String localizedShort(AppLocalizations l10n) {
     switch (this) {
+      case PriorityLevel.critical:
+        return l10n.priorityCritical;
       case PriorityLevel.high:
         return l10n.priorityHigh;
       case PriorityLevel.medium:
@@ -30,6 +32,8 @@ extension PriorityLevelL10n on PriorityLevel {
 
   String localizedFull(AppLocalizations l10n) {
     switch (this) {
+      case PriorityLevel.critical:
+        return l10n.criticalPriority;
       case PriorityLevel.high:
         return l10n.highPriority;
       case PriorityLevel.medium:

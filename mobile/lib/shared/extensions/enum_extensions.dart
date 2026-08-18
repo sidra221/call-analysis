@@ -16,6 +16,8 @@ extension SentimentX on Sentiment {
 extension PriorityLevelX on PriorityLevel {
   String get label {
     switch (this) {
+      case PriorityLevel.critical:
+        return "Critical";
       case PriorityLevel.low:
         return "Low";
       case PriorityLevel.medium:

@@ -112,7 +112,7 @@ function Sidebar() {
   }, [drawerOpen, theme, user?.id, user?.role]);
 
   return (
-    <Box component="nav" sx={{ flexShrink: { md: 0 }, width: { xs: 'auto', md: drawerWidth } }}>
+    <Box component="nav" sx={{ flexShrink: 0, width: downMD ? 0 : drawerWidth }}>
       {/* Mobile view or temporary drawer */}
       {downMD ? (
         <Drawer

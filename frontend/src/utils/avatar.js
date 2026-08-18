@@ -25,8 +25,8 @@ export function getAvatarUrl(user, displayName) {
   return undefined;
 }
 
-export function getRoleAvatarBorderSx(role, width = 2) {
-  const { color, bg } = getRoleColor(role);
+export function getRoleAvatarBorderSx(role, width = 2, theme) {
+  const { color, bg } = getRoleColor(role, theme);
   return {
     border: `${width}px solid`,
     borderColor: color,

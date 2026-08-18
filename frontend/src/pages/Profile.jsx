@@ -317,7 +317,7 @@ export default function ProfilePage() {
           <Box
             sx={{
               flex: 1,
-              textAlign: { xs: 'center', sm: 'left' },
+              textAlign: { xs: 'center', sm: 'start' },
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',

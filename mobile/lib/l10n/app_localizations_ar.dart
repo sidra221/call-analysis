@@ -72,7 +72,37 @@ class AppLocalizationsAr extends AppLocalizations {
   String get dashboard => 'لوحة التحكم';
 
   @override
-  String get welcomeBack => 'مرحباً بعودتك،';
+  String get welcomeBack => 'مرحباً بعودتك';
+
+  @override
+  String get showMore => 'عرض المزيد';
+
+  @override
+  String get showLess => 'عرض أقل';
+
+  @override
+  String get welcomeSubtitle => 'إليك نظرة عامة على مكالماتك';
+
+  @override
+  String get callPriorityTitle => 'أولوية المكالمات';
+
+  @override
+  String get priorityCritical => 'حرج';
+
+  @override
+  String get unread => 'غير مقروء';
+
+  @override
+  String get read => 'مقروء';
+
+  @override
+  String get notificationsAll => 'الكل';
+
+  @override
+  String get markAllRead => 'تعيين الكل كمقروء';
+
+  @override
+  String get noUnreadNotifications => 'لا توجد إشعارات غير مقروءة';
 
   @override
   String get totalCalls => 'إجمالي المكالمات';
@@ -393,7 +423,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get lowPriority => 'أولوية منخفضة';
 
   @override
-  String get liveFeed => 'البث المباشر';
+  String get liveFeed => 'آخر المكالمات';
 
   @override
   String get noRecentCalls => 'لا توجد مكالمات حديثة';
@@ -404,7 +434,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get failedToLoadLiveFeed => 'فشل تحميل البث المباشر';
+  String get failedToLoadLiveFeed => 'فشل تحميل آخر المكالمات';
 
   @override
   String get noKeywordsAvailable => 'لا توجد كلمات مفتاحية';

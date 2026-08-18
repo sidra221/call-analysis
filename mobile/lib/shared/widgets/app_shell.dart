@@ -47,22 +47,22 @@ class AppShell extends ConsumerWidget {
         },
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home_rounded),
+            icon: const Icon(Icons.home),
+            selectedIcon: const Icon(Icons.home),
             label: l10n.home,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.phone_outlined),
-            selectedIcon: const Icon(Icons.phone_in_talk_outlined),
+            icon: const Icon(Icons.phone),
+            selectedIcon: const Icon(Icons.phone_in_talk),
             label: l10n.calls,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.analytics_outlined),
+            icon: const Icon(Icons.analytics),
             selectedIcon: const Icon(Icons.analytics),
             label: l10n.reports,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.description_outlined),
+            icon: const Icon(Icons.description),
             selectedIcon: const Icon(Icons.description),
             label: l10n.logs,
           ),

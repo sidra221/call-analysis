@@ -12,10 +12,29 @@ import '../../../core/locale/locale_provider.dart';
 import '../../../features/notifications/application/notifications_provider.dart';
 import '../../../features/auth/application/auth_controller.dart';
 import '../../../features/auth/domain/user_profile.dart';
+import '../../../shared/enums.dart';
+import '../../calls/application/calls_controller.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/dashboard_issue.dart';
 import 'sentiment_chart.dart';
 import '../../../l10n/app_localizations.dart';
+
+void _openCalls(
+  BuildContext context,
+  WidgetRef ref, {
+  PriorityLevel? priority,
+  Sentiment? sentiment,
+  String? search,
+}) {
+  ref.read(callsControllerProvider.notifier).applyFilter(
+        CallsFilter(
+          priority: priority,
+          sentiment: sentiment,
+          search: search,
+        ),
+      );
+  context.go('/calls');
+}
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -49,32 +68,42 @@ class DashboardScreen extends ConsumerWidget {
                   child: userAsync.when(
                     data: (user) => Row(
                       children: [
-                       Expanded(
-  child: Row(
-    children: [
-      Text(
-        '${l10n.welcomeBack} ',
-        style: GoogleFonts.roboto(
-          fontSize: 14,
-          color: scheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      Flexible(
-        child: Text(
-          user.name.split(' ').first,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.roboto(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: scheme.onSurface,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ),
-    ],
-  ),
-),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.welcomeBack,
+                                style: GoogleFonts.roboto(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.onSurface,
+                                  letterSpacing: -0.5,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                user.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.roboto(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                l10n.welcomeSubtitle,
+                                style: GoogleFonts.roboto(
+                                  fontSize: 13,
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         Consumer(
                           builder: (context, ref, child) {
                             final notificationsAsync =
@@ -94,7 +123,7 @@ class DashboardScreen extends ConsumerWidget {
 IconButton(
   onPressed: () => context.push('/notifications'),
   icon: Icon(
-    Icons.notifications_outlined,
+    Icons.notifications,
     size: 20,
     color: scheme.onSurfaceVariant,
   ),
@@ -175,55 +204,98 @@ IconButton(
                           child: FadeInAnimation(child: widget),
                         ),
                         children: [
-                          Row(
-  children: [
-    Expanded(
-      child: PriorityCard(
-        icon: Icons.warning_amber_outlined,
-        title: l10n.criticalPriority,
-        value: summary.criticalPriorityCount.toString(),
-        color: AppTheme.danger,
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: PriorityCard(
-        icon: Icons.arrow_upward,
-        title: l10n.highPriority,
-        value: summary.highPriorityCount.toString(),
-        color: AppTheme.orange,
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 12),
-Row(
-  children: [
-    Expanded(
-      child: PriorityCard(
-        icon: Icons.remove,
-        title: l10n.mediumPriority,
-        value: summary.mediumPriorityCount.toString(),
-        color: AppTheme.warningDark,
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: PriorityCard(
-        icon: Icons.arrow_downward,
-        title: l10n.lowPriority,
-        value: summary.lowPriorityCount.toString(),
-        color: AppTheme.success,
-      ),
-    ),
-  ],
-),
+                          Text(
+                            l10n.callPriorityTitle,
+                            style: GoogleFonts.roboto(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
                           const SizedBox(height: 12),
-                          AppCard(
-                            child: SentimentChart(
-                              positivePct: summary.positivePct,
-                              neutralPct: summary.neutralPct,
-                              negativePct: summary.negativePct,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: PriorityCard(
+                                  icon: Icons.warning_amber,
+                                  title: l10n.criticalPriority,
+                                  value: summary.criticalPriorityCount.toString(),
+                                  color: AppTheme.danger,
+                                  onTap: () => _openCalls(
+                                    context,
+                                    ref,
+                                    priority: PriorityLevel.critical,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: PriorityCard(
+                                  icon: Icons.arrow_upward,
+                                  title: l10n.highPriority,
+                                  value: summary.highPriorityCount.toString(),
+                                  color: AppTheme.orange,
+                                  onTap: () => _openCalls(
+                                    context,
+                                    ref,
+                                    priority: PriorityLevel.high,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: PriorityCard(
+                                  icon: Icons.remove,
+                                  title: l10n.mediumPriority,
+                                  value: summary.mediumPriorityCount.toString(),
+                                  color: AppTheme.warningDark,
+                                  onTap: () => _openCalls(
+                                    context,
+                                    ref,
+                                    priority: PriorityLevel.medium,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: PriorityCard(
+                                  icon: Icons.arrow_downward,
+                                  title: l10n.lowPriority,
+                                  value: summary.lowPriorityCount.toString(),
+                                  color: AppTheme.success,
+                                  onTap: () => _openCalls(
+                                    context,
+                                    ref,
+                                    priority: PriorityLevel.low,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            l10n.sentimentAnalysis,
+                            style: GoogleFonts.roboto(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SentimentChart(
+                            positivePct: summary.positivePct,
+                            neutralPct: summary.neutralPct,
+                            negativePct: summary.negativePct,
+                            onSentimentTap: (sentiment) => _openCalls(
+                              context,
+                              ref,
+                              sentiment: sentiment,
                             ),
                           ),
                         ],
@@ -253,7 +325,7 @@ Row(
                         ),
                       ),
                       TextButton(
-                        onPressed: () => context.go('/calls'),
+                        onPressed: () => _openCalls(context, ref),
                         child: Text(
                           l10n.viewAll,
                           style: GoogleFonts.roboto(
@@ -377,7 +449,14 @@ Row(
                             child: FadeInAnimation(
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 12),
-                                child: HorizontalIssueCard(issue: issues[i]),
+                                child: HorizontalIssueCard(
+                                  issue: issues[i],
+                                  onTap: () => _openCalls(
+                                    context,
+                                    ref,
+                                    search: issues[i].title,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -437,7 +516,14 @@ Row(
                             child: FadeInAnimation(
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 12),
-                                child: HorizontalIssueCard(issue: issues[i]),
+                                child: HorizontalIssueCard(
+                                  issue: issues[i],
+                                  onTap: () => _openCalls(
+                                    context,
+                                    ref,
+                                    search: issues[i].title,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -465,7 +551,7 @@ Row(
                         ),
                       ),
                       TextButton(
-                        onPressed: () => context.go('/calls'),
+                        onPressed: () => _openCalls(context, ref),
                         child: Text(
                           l10n.viewAll,
                           style: GoogleFonts.roboto(
@@ -508,6 +594,7 @@ class PriorityCard extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const PriorityCard({
     super.key,
@@ -515,20 +602,26 @@ class PriorityCard extends StatelessWidget {
     required this.title,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      height: 92,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
-      decoration: AppTheme.cardDecoration(scheme, radius: 16),
-      child: Row(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          height: 92,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          decoration: AppTheme.cardDecoration(scheme, radius: 16),
+          child: Row(
         children: [
           Container(
             width: 44,
@@ -576,6 +669,8 @@ class PriorityCard extends StatelessWidget {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -584,11 +679,13 @@ class PriorityCard extends StatelessWidget {
 class HorizontalIssueCard extends StatelessWidget {
   final DashboardIssue issue;
   final bool fullWidth;
+  final VoidCallback? onTap;
 
   const HorizontalIssueCard({
     super.key,
     required this.issue,
     this.fullWidth = false,
+    this.onTap,
   });
 
   @override
@@ -602,6 +699,7 @@ class HorizontalIssueCard extends StatelessWidget {
     return SizedBox(
       width: cardWidth,
       child: AppCard(
+        onTap: onTap,
         padding: const EdgeInsets.all(14),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -620,7 +718,7 @@ class HorizontalIssueCard extends StatelessWidget {
                     ),
                   ),
                   child: Icon(
-                    issue.isPositive ? Icons.thumb_up_outlined : Icons.thumb_down_outlined,
+                    issue.isPositive ? Icons.thumb_up : Icons.thumb_down,
                     size: 18,
                     color: color,
                   ),
@@ -745,7 +843,7 @@ icon: Container(
     ),
   ),
   child: Icon(
-    Icons.person_outline,
+    Icons.person,
     size: 20,
     color: scheme.onSurfaceVariant,
   ),
@@ -773,7 +871,7 @@ icon: Container(
               title: Text(l10n.logOut),
               content: Text(l10n.logoutConfirmation),
               actions: [
-                TextButton(
+                OutlinedButton(
                   onPressed: () => Navigator.pop(context, false),
                   child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
                 ),
@@ -782,6 +880,7 @@ icon: Container(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.danger,
                     foregroundColor: Colors.white,
+                    overlayColor: Colors.white.withValues(alpha: 0.16),
                   ),
                   child: Text(l10n.logOut),
                 ),
@@ -820,7 +919,7 @@ icon: Container(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      Icons.person_outline,
+                      Icons.person,
                       size: 18,
                       color: AppTheme.primary,
                     ),
@@ -878,7 +977,7 @@ icon: Container(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                  isDarkMode ? Icons.dark_mode : Icons.light_mode,
                   size: 18,
                   color: isDarkMode ? AppTheme.primary : AppTheme.warning,
                 ),
@@ -915,7 +1014,7 @@ icon: Container(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.logout_outlined,
+                  Icons.logout,
                   size: 18,
                   color: AppTheme.danger,
                 ),

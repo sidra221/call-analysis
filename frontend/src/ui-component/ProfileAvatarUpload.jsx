@@ -31,7 +31,7 @@ export default function ProfileAvatarUpload({
     [user, value, displayName]
   );
 
-  const borderSx = getRoleAvatarBorderSx(role, 3);
+  const borderSx = getRoleAvatarBorderSx(role, 3, theme);
   const roleColor = borderSx.borderColor;
 
   useEffect(() => () => {

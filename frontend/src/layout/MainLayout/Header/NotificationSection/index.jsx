@@ -41,7 +41,7 @@ export default function NotificationSection() {
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
   const { t, locale } = useTranslation();
-  const avatarRoleSx = getRoleAvatarBorderSx(user?.role, 2);
+  const avatarRoleSx = getRoleAvatarBorderSx(user?.role, 2, theme);
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('all');
@@ -388,9 +388,9 @@ export default function NotificationSection() {
                     overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
-                    boxShadow: '0px 8px 24px rgba(0,0,0,0.20)',
+                    boxShadow: theme.vars?.customShadows?.z8 || theme.customShadows?.z8,
                     '&:hover': {
-                      boxShadow: '0px 8px 24px rgba(0,0,0,0.20)'
+                      boxShadow: theme.vars?.customShadows?.z8 || theme.customShadows?.z8
                     }
                   }}
                 >
@@ -442,7 +442,9 @@ export default function NotificationSection() {
                           width: 6
                         },
                         '&::-webkit-scrollbar-thumb': {
-                          backgroundColor: 'rgba(0,0,0,0.2)',
+                          backgroundColor: theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.common.white, 0.24)
+                            : alpha(theme.palette.common.black, 0.2),
                           borderRadius: 3
                         }
                       }}

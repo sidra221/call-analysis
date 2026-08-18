@@ -73,7 +73,8 @@ class AppTheme {
 
   static const double borderRadius = 8;
   static const double cardBorderRadius = 16; // Card override: borderRadius * 2
-  static const double buttonHeight = 40;
+  static const double buttonHeight = 48;
+  static const double buttonRadius = 12;
 
   static const double chipBackgroundOpacity = 0.12;
   static const double chipBorderOpacity = 0.25;
@@ -90,6 +91,8 @@ class AppTheme {
   /// Critical uses [danger] when shown as its own tier (e.g. dashboard card).
   static Color priorityColor(PriorityLevel priority) {
     switch (priority) {
+      case PriorityLevel.critical:
+        return danger;
       case PriorityLevel.low:
         return success;
       case PriorityLevel.medium:
@@ -256,10 +259,35 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
+          shadowColor: Colors.transparent,
           minimumSize: const Size(64, buttonHeight),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: isLight ? grey200 : darkLevel1,
+          disabledForegroundColor: isLight ? grey500 : darkTextSecondary,
+          overlayColor: Colors.white.withValues(alpha: 0.16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(buttonRadius),
+          ),
+          textStyle: GoogleFonts.roboto(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          elevation: 0,
+          minimumSize: const Size(64, buttonHeight),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: isLight ? grey200 : darkLevel1,
+          disabledForegroundColor: isLight ? grey500 : darkTextSecondary,
+          overlayColor: Colors.white.withValues(alpha: 0.16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
           textStyle: GoogleFonts.roboto(
             fontWeight: FontWeight.w600,
@@ -270,11 +298,13 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(64, buttonHeight),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          foregroundColor: primary,
+          overlayColor: primary.withValues(alpha: 0.12),
+          side: const BorderSide(color: primary, width: 1.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
-          side: BorderSide(color: scheme.outline),
           textStyle: GoogleFonts.roboto(
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -283,6 +313,12 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: primary,
+          overlayColor: primary.withValues(alpha: 0.12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(buttonRadius),
+          ),
           textStyle: GoogleFonts.roboto(
             fontWeight: FontWeight.w600,
             fontSize: 14,

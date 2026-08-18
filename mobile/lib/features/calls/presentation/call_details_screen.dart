@@ -29,6 +29,7 @@ class CallDetailsScreen extends ConsumerStatefulWidget {
 class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
   bool? _reviewedOverride;
   bool _markingReviewed = false;
+  bool _transcriptExpanded = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -49,6 +50,14 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
         setState(() => _isPlaying = state == PlayerState.playing);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(CallDetailsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.callId != widget.callId) {
+      _transcriptExpanded = false;
+    }
   }
 
   @override
@@ -199,13 +208,6 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
                   color: scheme.onSurface,
                 ),
               ),
-            ),
-            // Close button
-            IconButton(
-              icon: const Icon(Icons.close, size: 20),
-              onPressed: () => context.pop(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
             ),
           ],
         ),
@@ -376,6 +378,10 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
 
   // Transcript section
   Widget _buildTranscriptSection(BuildContext context, CallDetails details, AppLocalizations l10n, ColorScheme scheme) {
+    final transcript = details.transcript.trim();
+    final lineCount = '\n'.allMatches(transcript).length + 1;
+    final canExpand = transcript.length > 280 || lineCount > 6;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -383,7 +389,7 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(16),
@@ -392,13 +398,43 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
               width: 1,
             ),
           ),
-          child: Text(
-            details.transcript,
-            style: GoogleFonts.roboto(
-              fontSize: 14,
-              color: scheme.onSurface,
-              height: 1.6,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                transcript.isEmpty ? '—' : transcript,
+                maxLines: _transcriptExpanded || !canExpand ? null : 6,
+                overflow: _transcriptExpanded || !canExpand
+                    ? TextOverflow.visible
+                    : TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 14,
+                  color: scheme.onSurface,
+                  height: 1.6,
+                ),
+              ),
+              if (canExpand)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() => _transcriptExpanded = !_transcriptExpanded);
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      _transcriptExpanded ? l10n.showLess : l10n.showMore,
+                      style: GoogleFonts.roboto(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -628,47 +664,21 @@ class _CallDetailsScreenState extends ConsumerState<CallDetailsScreen> {
       children: [
         _buildSectionTitle(context, l10n.actions),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildActionButton(
-              label: l10n.markReviewed,
-              icon: Icons.check,
-              reviewed: reviewed,
-              onPressed: reviewed || _markingReviewed
-                  ? null
-                  : () => _markAsReviewed(details),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: reviewed || _markingReviewed
+                ? null
+                : () => _markAsReviewed(details),
+            icon: Icon(
+              reviewed ? Icons.check_circle : Icons.check,
+              size: 18,
             ),
-          ],
+            label: Text(l10n.markReviewed),
+          ),
         ),
       ],
     );
   }
-
-Widget _buildActionButton({
-  required String label,
-  required IconData icon,
-  required VoidCallback? onPressed,
-  required bool reviewed,
-}) {
-  return ElevatedButton.icon(
-    onPressed: onPressed,
-    icon: Icon(icon, size: 16),
-    label: Text(label),
-    style: ElevatedButton.styleFrom(
-      backgroundColor:
-          reviewed ? Colors.grey.shade400 : AppTheme.primary,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 12,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  );
-}
 
 }

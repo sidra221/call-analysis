@@ -54,7 +54,7 @@ export default function Breadcrumbs({
   const [item, setItem] = useState();
 
   const iconSX = {
-    marginRight: 6,
+    marginInlineEnd: 6,
     marginTop: -2,
     width: '1rem',
     height: '1rem',
@@ -160,7 +160,7 @@ export default function Breadcrumbs({
               >
                 <Typography component={Link} to="/" variant="h6" sx={{ ...linkSX, color: 'text.secondary' }}>
                   {icons && <HomeTwoToneIcon style={iconSX} />}
-                  {icon && !icons && <HomeIcon style={{ ...iconSX, marginRight: 0 }} />}
+                  {icon && !icons && <HomeIcon style={{ ...iconSX, marginInlineEnd: 0 }} />}
                   {(!icon || icons) && 'Dashboard'}
                 </Typography>
                 {mainContent}
@@ -208,7 +208,7 @@ export default function Breadcrumbs({
       >
         <Typography component={Link} to="/" variant="h6" sx={{ ...linkSX, color: 'text.secondary' }}>
           {icons && <HomeTwoToneIcon style={{ ...iconSX }} />}
-          {icon && !icons && <HomeIcon style={{ ...iconSX, marginRight: 0 }} />}
+          {icon && !icons && <HomeIcon style={{ ...iconSX, marginInlineEnd: 0 }} />}
           {(!icon || icons) && 'Dashboard'}
         </Typography>
         {mainContent}

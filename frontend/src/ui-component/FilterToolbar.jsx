@@ -61,7 +61,7 @@ export default function FilterToolbar({
       )}
 
       {actions && (
-        <Grid size={{ xs: 12, md: 'auto' }} sx={{ ml: 'auto', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+        <Grid size={{ xs: 12, md: 'auto' }} sx={{ marginInlineStart: 'auto', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
           {actions}
         </Grid>
       )}

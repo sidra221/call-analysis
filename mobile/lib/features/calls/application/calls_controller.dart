@@ -7,11 +7,17 @@ import '../domain/call.dart';
 class CallsFilter {
   final PriorityLevel? priority;
   final Sentiment? sentiment;
-  const CallsFilter({this.priority, this.sentiment});
-  CallsFilter copyWith({PriorityLevel? priority, Sentiment? sentiment}) =>
+  final String? search;
+  const CallsFilter({this.priority, this.sentiment, this.search});
+  CallsFilter copyWith({
+    PriorityLevel? priority,
+    Sentiment? sentiment,
+    String? search,
+  }) =>
       CallsFilter(
         priority: priority ?? this.priority,
         sentiment: sentiment ?? this.sentiment,
+        search: search ?? this.search,
       );
 }
 
@@ -69,6 +75,7 @@ class CallsController extends Notifier<CallsState> {
         pageSize: _pageSize,
         priority: state.filter.priority,
         sentiment: state.filter.sentiment,
+        search: state.filter.search,
       );
       state = state.copyWith(
         items: result.items,
@@ -95,6 +102,7 @@ class CallsController extends Notifier<CallsState> {
         pageSize: _pageSize,
         priority: state.filter.priority,
         sentiment: state.filter.sentiment,
+        search: state.filter.search,
       );
       state = state.copyWith(
         items: result.items,

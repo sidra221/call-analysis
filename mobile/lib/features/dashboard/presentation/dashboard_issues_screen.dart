@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../calls/application/calls_controller.dart';
 import '../application/dashboard_providers.dart';
 import 'dashboard_screen.dart';
 
@@ -62,6 +63,12 @@ class DashboardIssuesScreen extends ConsumerWidget {
                   return HorizontalIssueCard(
                     issue: issues[index],
                     fullWidth: true,
+                    onTap: () {
+                      ref.read(callsControllerProvider.notifier).applyFilter(
+                            CallsFilter(search: issues[index].title),
+                          );
+                      context.go('/calls');
+                    },
                   );
                 },
               ),

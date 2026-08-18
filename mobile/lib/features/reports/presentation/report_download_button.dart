@@ -73,7 +73,7 @@ class _ReportDownloadButtonState extends ConsumerState<ReportDownloadButton> {
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Icon(Icons.download_outlined, size: 20),
+            : const Icon(Icons.download, size: 20),
         color: AppTheme.success,
         tooltip: l10n.downloadPdf,
       );
@@ -81,43 +81,19 @@ class _ReportDownloadButtonState extends ConsumerState<ReportDownloadButton> {
 
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: ElevatedButton.icon(
         onPressed: _downloading ? null : _download,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.success,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_downloading)
-              const SizedBox(
-                width: 16,
-                height: 16,
+        icon: _downloading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: Colors.white,
                 ),
               )
-            else
-              const Icon(
-                Icons.picture_as_pdf_outlined,
-                size: 16,
-                color: Colors.white,
-              ),
-            const SizedBox(width: 8),
-            Text(
-              l10n.downloadPdf,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-            ),
-          ],
-        ),
+            : const Icon(Icons.picture_as_pdf, size: 18),
+        label: Text(l10n.downloadPdf),
       ),
     );
   }

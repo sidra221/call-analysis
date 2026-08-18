@@ -1,16 +1,11 @@
 import { useState } from 'react';
-import {
-  Link as RouterLink,
-  useNavigate,
-  useLocation
-} from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import {
   Box,
   Button,
   TextField,
   Typography,
-  Link,
   CircularProgress,
   IconButton,
   InputAdornment,
@@ -68,7 +63,7 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'grey.50',
+        bgcolor: 'background.default',
         p: 2
       }}
     >
@@ -150,19 +145,6 @@ export default function Login() {
                 ? <CircularProgress size={24} color="inherit" />
                 : t('auth.login')}
             </Button>
-
-            <Typography
-              variant="body2"
-              sx={{
-                mt: 3,
-                textAlign: 'center'
-              }}
-            >
-              {t('auth.noAccount')}{' '}
-              <Link component={RouterLink} to="/register" underline="hover">
-                {t('auth.register')}
-              </Link>
-            </Typography>
           </Box>
       </AuthCard>
     </Box>

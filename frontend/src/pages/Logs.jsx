@@ -395,7 +395,7 @@ export default function Logs() {
                     <Box
                       sx={{
                         position: 'absolute',
-                        left: 23,
+                        insetInlineStart: 23,
                         top: 50,
                         bottom: -35,
                         width: 2,

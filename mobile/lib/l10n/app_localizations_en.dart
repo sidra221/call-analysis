@@ -72,7 +72,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboard => 'Dashboard';
 
   @override
-  String get welcomeBack => 'Welcome back,';
+  String get welcomeBack => 'Welcome back';
+
+  @override
+  String get showMore => 'Show more';
+
+  @override
+  String get showLess => 'Show less';
+
+  @override
+  String get welcomeSubtitle => 'Here\'s an overview of your calls';
+
+  @override
+  String get callPriorityTitle => 'Call Priority';
+
+  @override
+  String get priorityCritical => 'Critical';
+
+  @override
+  String get unread => 'Unread';
+
+  @override
+  String get read => 'Read';
+
+  @override
+  String get notificationsAll => 'All';
+
+  @override
+  String get markAllRead => 'Mark all as read';
+
+  @override
+  String get noUnreadNotifications => 'No unread notifications';
 
   @override
   String get totalCalls => 'Total Calls';
@@ -342,7 +372,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reanalyze => 'Re-analyze';
 
   @override
-  String get markReviewed => 'Mark Reviewed';
+  String get markReviewed => 'Mark Review';
 
   @override
   String get createFollowUp => 'Create Follow-up';
@@ -393,7 +423,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lowPriority => 'Low Priority';
 
   @override
-  String get liveFeed => 'Live Feed';
+  String get liveFeed => 'Latest Calls';
 
   @override
   String get noRecentCalls => 'No recent calls';
@@ -404,7 +434,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get failedToLoadLiveFeed => 'Failed to load live feed';
+  String get failedToLoadLiveFeed => 'Failed to load latest calls';
 
   @override
   String get noKeywordsAvailable => 'No keywords available';

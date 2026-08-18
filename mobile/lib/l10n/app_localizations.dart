@@ -227,8 +227,68 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeBack.
   ///
   /// In en, this message translates to:
-  /// **'Welcome back,'**
+  /// **'Welcome back'**
   String get welcomeBack;
+
+  /// No description provided for @showMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get showMore;
+
+  /// No description provided for @showLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get showLess;
+
+  /// No description provided for @welcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Here\'s an overview of your calls'**
+  String get welcomeSubtitle;
+
+  /// No description provided for @callPriorityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Call Priority'**
+  String get callPriorityTitle;
+
+  /// No description provided for @priorityCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get priorityCritical;
+
+  /// No description provided for @unread.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get unread;
+
+  /// No description provided for @read.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get read;
+
+  /// No description provided for @notificationsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get notificationsAll;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get markAllRead;
+
+  /// No description provided for @noUnreadNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'No unread notifications'**
+  String get noUnreadNotifications;
 
   /// No description provided for @totalCalls.
   ///
@@ -767,7 +827,7 @@ abstract class AppLocalizations {
   /// No description provided for @markReviewed.
   ///
   /// In en, this message translates to:
-  /// **'Mark Reviewed'**
+  /// **'Mark Review'**
   String get markReviewed;
 
   /// No description provided for @createFollowUp.
@@ -869,7 +929,7 @@ abstract class AppLocalizations {
   /// No description provided for @liveFeed.
   ///
   /// In en, this message translates to:
-  /// **'Live Feed'**
+  /// **'Latest Calls'**
   String get liveFeed;
 
   /// No description provided for @noRecentCalls.
@@ -887,7 +947,7 @@ abstract class AppLocalizations {
   /// No description provided for @failedToLoadLiveFeed.
   ///
   /// In en, this message translates to:
-  /// **'Failed to load live feed'**
+  /// **'Failed to load latest calls'**
   String get failedToLoadLiveFeed;
 
   /// No description provided for @noKeywordsAvailable.

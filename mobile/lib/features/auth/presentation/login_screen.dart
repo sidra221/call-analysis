@@ -170,8 +170,8 @@ Future<void> login() async {
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: textSecondaryColor,
                         ),
                         onPressed: () {
@@ -210,17 +210,8 @@ Future<void> login() async {
                   // Login Button
                   SizedBox(
                     width: double.infinity,
-                    height: 55,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: isLoading
@@ -236,42 +227,9 @@ Future<void> login() async {
                             : Text(
                                 l10n.login,
                                 key: const ValueKey('label'),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
                               ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Register link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        l10n.noAccount,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: textPrimaryColor,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          // Navigator.pushNamed(context, '/register');
-                        },
-                        child: Text(
-                          l10n.register,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),

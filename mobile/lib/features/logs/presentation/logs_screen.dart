@@ -111,7 +111,6 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSearchRow(context, logsState),
-            if (hasFilters) _buildActiveFilters(context, logsState),
             Expanded(
               child: logsState.isLoading && logs.isEmpty
                   ? const Center(child: CircularProgressIndicator.adaptive())
@@ -186,7 +185,6 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: AppFilterToolbar(
         activeFilterCount: _activeFilterCount(filter),
-        onOpenFilters: () => _showFilters(context, logsState),
         showReset: _activeFilterCount(filter) > 0 || filter.search.isNotEmpty,
         onResetFilters: () {
           _searchController.clear();
@@ -194,6 +192,21 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
               .read(logsControllerProvider.notifier)
               .applyFilter(const LogsFilter());
         },
+        filterPanel: _LogsFilterSheet(
+          initialAction: filter.action,
+          initialUsername: filter.username,
+          initialDate: filter.date,
+          userOptions: logsState.userOptions,
+          onApply: (action, username, date) {
+            ref.read(logsControllerProvider.notifier).applyFilter(
+                  filter.copyWith(
+                    action: action,
+                    username: username,
+                    date: date,
+                  ),
+                );
+          },
+        ),
         searchField: RawAutocomplete<String>(
           textEditingController: _searchController,
           focusNode: _searchFocusNode,
@@ -217,7 +230,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
                   fontSize: 14,
                   color: scheme.onSurfaceVariant,
                 ),
-                prefixIcon: const Icon(Icons.search_rounded),
+                prefixIcon: const Icon(Icons.search),
                 suffixIcon: filter.search.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
@@ -260,7 +273,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
                       return ListTile(
                         dense: true,
                         leading: Icon(
-                          isUser ? Icons.person_outline : Icons.search,
+                          isUser ? Icons.person : Icons.search,
                           size: 18,
                         ),
                         title: Text(
@@ -278,89 +291,6 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
           },
         ),
       ),
-    );
-  }
-
-  Widget _buildActiveFilters(BuildContext context, LogsState logsState) {
-    final scheme = Theme.of(context).colorScheme;
-    final filter = logsState.filter;
-    final resultCount = logsState.totalCount;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (filter.search.isNotEmpty)
-            InputChip(
-              label: Text('Search: ${filter.search}'),
-              onDeleted: () {
-                _searchController.clear();
-                ref.read(logsControllerProvider.notifier).applyFilter(
-                      filter.copyWith(search: ''),
-                    );
-              },
-            ),
-          if (filter.action != 'all')
-            InputChip(
-              label: Text(
-                'Action: ${logActionOptions.firstWhere((o) => o.value == filter.action, orElse: () => const LogActionOption(value: '', label: '')).label}',
-              ),
-              onDeleted: () => ref
-                  .read(logsControllerProvider.notifier)
-                  .applyFilter(filter.copyWith(action: 'all')),
-            ),
-          if (filter.username.isNotEmpty)
-            InputChip(
-              label: Text('User: ${filter.username}'),
-              onDeleted: () => ref
-                  .read(logsControllerProvider.notifier)
-                  .applyFilter(filter.copyWith(username: '')),
-            ),
-          if (filter.date.isNotEmpty)
-            InputChip(
-              label: Text('Date: ${filter.date}'),
-              onDeleted: () => ref
-                  .read(logsControllerProvider.notifier)
-                  .applyFilter(filter.copyWith(date: '')),
-            ),
-          Text(
-            '$resultCount result${resultCount == 1 ? '' : 's'}',
-            style: GoogleFonts.roboto(
-              fontSize: 12,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showFilters(BuildContext context, LogsState logsState) {
-    final filter = logsState.filter;
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return _LogsFilterSheet(
-          initialAction: filter.action,
-          initialUsername: filter.username,
-          initialDate: filter.date,
-          userOptions: logsState.userOptions,
-          onApply: (action, username, date) {
-            ref.read(logsControllerProvider.notifier).applyFilter(
-                  filter.copyWith(
-                    action: action,
-                    username: username,
-                    date: date,
-                  ),
-                );
-          },
-        );
-      },
     );
   }
 }
@@ -399,76 +329,90 @@ class _LogsFilterSheetState extends State<_LogsFilterSheet> {
   }
 
   @override
+  void didUpdateWidget(_LogsFilterSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialAction != widget.initialAction) {
+      _action = widget.initialAction;
+    }
+    if (oldWidget.initialUsername != widget.initialUsername) {
+      _username = widget.initialUsername;
+    }
+    if (oldWidget.initialDate != widget.initialDate &&
+        _dateController.text != widget.initialDate) {
+      _dateController.text = widget.initialDate;
+    }
+  }
+
+  @override
   void dispose() {
     _dateController.dispose();
     super.dispose();
   }
 
+  void _emit() {
+    widget.onApply(
+      _action,
+      _username.trim(),
+      _dateController.text.trim(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: AppFilterSheet(
-          title: 'Filter Logs',
-          onApply: () => widget.onApply(
-            _action,
-            _username.trim(),
-            _dateController.text.trim(),
-          ),
-          children: [
-            DropdownButtonFormField<String>(
-              value: _action,
-              decoration: const InputDecoration(
-                labelText: 'Action',
-                border: OutlineInputBorder(),
-              ),
-              items: logActionOptions
-                  .map(
-                    (option) => DropdownMenuItem(
-                      value: option.value,
-                      child: Text(option.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _action = value);
-              },
-            ),
-            const SizedBox(height: 14),
-            AppUsernameAutocomplete(
-              initialValue: widget.initialUsername,
-              options: widget.userOptions,
-              onChanged: (value) => _username = value,
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _dateController,
-              decoration: const InputDecoration(
-                labelText: 'Date',
-                border: OutlineInputBorder(),
-              ),
-              readOnly: true,
-              onTap: () async {
-                final current = _dateController.text;
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: current.isNotEmpty
-                      ? DateTime.tryParse(current) ?? DateTime.now()
-                      : DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _dateController.text =
-                        DateFormat('yyyy-MM-dd').format(picked);
-                  });
-                }
-              },
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppExpandingSelect<String>(
+          label: 'Action',
+          value: _action,
+          options: [
+            for (final option in logActionOptions)
+              AppSelectOption(value: option.value, label: option.label),
           ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _action = value);
+            _emit();
+          },
         ),
-      ),
+        const SizedBox(height: 14),
+        AppUsernameAutocomplete(
+          initialValue: widget.initialUsername,
+          options: widget.userOptions,
+          onChanged: (value) {
+            _username = value;
+            _emit();
+          },
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _dateController,
+          decoration: const InputDecoration(
+            labelText: 'Date',
+            border: OutlineInputBorder(),
+            suffixIcon: Icon(Icons.calendar_today),
+          ),
+          readOnly: true,
+          onTap: () async {
+            final current = _dateController.text;
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: current.isNotEmpty
+                  ? DateTime.tryParse(current) ?? DateTime.now()
+                  : DateTime.now(),
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+            );
+            if (picked != null) {
+              setState(() {
+                _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+              });
+              _emit();
+            }
+          },
+        ),
+      ],
     );
   }
 }

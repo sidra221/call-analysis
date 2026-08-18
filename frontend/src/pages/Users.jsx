@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 import {
   Box, Button, Typography, IconButton, Dialog,
   DialogTitle, DialogContent, DialogContentText, DialogActions,
@@ -87,6 +88,7 @@ function DrawerInfoRow({ label, children }) {
 }
 
 export default function UsersPage() {
+  const theme = useTheme();
   const navigate = useNavigate();
   const { users, loading, error, fetchUsers, addUser, updateUser, deleteUser } = useUsersStore();
   const { user: currentUser } = useAuth();
@@ -544,14 +546,14 @@ export default function UsersPage() {
                       <TableCell sx={TABLE_BODY_CELL_SX}>{u.email}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                         <Chip label={roleLabel(u.role)} size="small"
-                          sx={{ bgcolor: getRoleColor(u.role).bg, color: getRoleColor(u.role).color }} />
+                          sx={{ bgcolor: getRoleColor(u.role, theme).bg, color: getRoleColor(u.role, theme).color }} />
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                         <Box component="span" sx={{ unicodeBidi: 'isolate', display: 'inline-block' }}>
                           {u.created_at ? u.created_at.split('T')[0] : ''}
                         </Box>
                       </TableCell>
-                      <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, pl: 0.5, pr: 1 }}>
+                      <TableCell align="center" sx={{ ...TABLE_ACTIONS_CELL_SX, paddingInlineStart: 0.5, paddingInlineEnd: 1 }}>
                         <Stack direction="row" spacing={0.5} justifyContent="center">
                           <IconButton
                             size="small"
@@ -679,8 +681,8 @@ export default function UsersPage() {
                         fontSize: 16,
                         fontWeight: 700,
                         flexShrink: 0,
-                        ...getRoleAvatarBorderSx(selectedUser.role, 2),
-                        color: getRoleColor(selectedUser.role).color,
+                        ...getRoleAvatarBorderSx(selectedUser.role, 2, theme),
+                        color: getRoleColor(selectedUser.role, theme).color,
                         '& img': { objectFit: 'cover' },
                       }}
                     >
@@ -783,8 +785,8 @@ export default function UsersPage() {
                         label={roleLabel(selectedUser.role)}
                         size="small"
                         sx={{
-                          bgcolor: getRoleColor(selectedUser.role).bg,
-                          color: getRoleColor(selectedUser.role).color,
+                          bgcolor: getRoleColor(selectedUser.role, theme).bg,
+                          color: getRoleColor(selectedUser.role, theme).color,
                           fontWeight: 600,
                         }}
                       />

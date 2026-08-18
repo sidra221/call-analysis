@@ -49,7 +49,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               return EmptyView(
                 message: l10n.noReports,
                 subtitle: l10n.checkBackLater,
-                icon: Icons.description_outlined,
+                icon: Icons.description,
               );
             }
 
@@ -131,7 +131,7 @@ class _ReportTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
-                    Icons.description_outlined,
+                    Icons.description,
                     size: 24,
                     color: AppTheme.info,
                   ),
@@ -163,7 +163,7 @@ class _ReportTile extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.calendar_today_outlined,
+                  Icons.calendar_today,
                   size: 14,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

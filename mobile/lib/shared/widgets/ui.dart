@@ -232,7 +232,7 @@ class ErrorView extends StatelessWidget {
                 ),
               ),
               child: Icon(
-                Icons.warning_amber_outlined,
+                Icons.warning_amber,
                 color: scheme.error,
                 size: 48,
               ),
@@ -253,9 +253,6 @@ class ErrorView extends StatelessWidget {
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 18),
                 label: Text(l10n.errorViewRetry),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                ),
               ),
           ],
         ),
@@ -272,7 +269,7 @@ class EmptyView extends StatelessWidget {
   const EmptyView({
     super.key,
     required this.message,
-    this.icon = Icons.inbox_outlined,
+    this.icon = Icons.inbox,
     this.subtitle,
   });
 

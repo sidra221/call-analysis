@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useEffect, useMemo, useRef } from 'react';
+import { CacheProvider } from '@emotion/react';
 
 // material-ui
 import { createTheme, ThemeProvider, StyledEngineProvider } from '@mui/material/styles';
@@ -14,12 +15,13 @@ import { getRoleDefaultTheme, getThemeForUser, hasCustomThemeForUser } from 'con
 import { buildPalette } from './palette';
 import Typography from './typography';
 import componentsOverrides from './overrides';
+import { createEmotionCache } from 'utils/createEmotionCache';
 
 // ==============================|| DEFAULT THEME - MAIN ||============================== //
 
 export default function ThemeCustomization({ children }) {
   const {
-    state: { borderRadius, fontFamily, outlinedFilled, presetColor, themeCustomized, themeUserId, language },
+    state: { borderRadius, outlinedFilled, presetColor, themeCustomized, themeUserId, language },
     setState
   } = useConfig();
   const { user } = useAuth();
@@ -56,11 +58,17 @@ export default function ThemeCustomization({ children }) {
 
   const palette = useMemo(() => buildPalette(activePreset), [activePreset]);
 
-  const themeTypography = useMemo(() => Typography(fontFamily), [fontFamily]);
+  const resolvedFontFamily = language === 'ar'
+    ? "'Cairo', 'Roboto', sans-serif"
+    : "'Roboto', sans-serif";
+  const themeTypography = useMemo(() => Typography(resolvedFontFamily), [resolvedFontFamily]);
+
+  const direction = language === 'ar' ? 'rtl' : 'ltr';
+  const emotionCache = useMemo(() => createEmotionCache(direction), [direction]);
 
   const themeOptions = useMemo(
     () => ({
-      direction: language === 'ar' ? 'rtl' : 'ltr',
+      direction,
       mixins: {
         toolbar: {
           minHeight: '48px',
@@ -90,25 +98,27 @@ export default function ThemeCustomization({ children }) {
         colorSchemeSelector: 'data-color-scheme'
       }
     }),
-    [themeTypography, palette, language]
+    [themeTypography, palette, direction]
   );
 
   const themes = createTheme(themeOptions);
   themes.components = useMemo(() => componentsOverrides(themes, borderRadius, outlinedFilled), [themes, borderRadius, outlinedFilled]);
 
   return (
-    <StyledEngineProvider injectFirst>
-      <ThemeProvider
-        key={`${activePreset}-${language}`}
-        disableTransitionOnChange
-        theme={themes}
-        modeStorageKey="theme-mode"
-        defaultMode={DEFAULT_THEME_MODE}
-      >
-        <CssBaseline enableColorScheme />
-        {children}
-      </ThemeProvider>
-    </StyledEngineProvider>
+    <CacheProvider key={direction} value={emotionCache}>
+      <StyledEngineProvider injectFirst>
+        <ThemeProvider
+          key={`${activePreset}-${direction}`}
+          disableTransitionOnChange
+          theme={themes}
+          modeStorageKey="theme-mode"
+          defaultMode={DEFAULT_THEME_MODE}
+        >
+          <CssBaseline enableColorScheme />
+          {children}
+        </ThemeProvider>
+      </StyledEngineProvider>
+    </CacheProvider>
   );
 }
 

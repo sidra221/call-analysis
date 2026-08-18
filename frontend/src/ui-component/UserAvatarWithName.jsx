@@ -1,12 +1,14 @@
 import PropTypes from 'prop-types';
 import { Avatar, Stack, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { getRoleColor } from 'constants/colors';
 import { getAvatarInitial, getAvatarUrl, getRoleAvatarBorderSx } from 'utils/avatar';
 
 export const getUserRoleColor = getRoleColor;
 
 export default function UserAvatarWithName({ username, role, avatar, avatarStyle, size = 28 }) {
-  const roleColor = getUserRoleColor(role);
+  const theme = useTheme();
+  const roleColor = getUserRoleColor(role, theme);
   const userLike = { avatar, avatar_style: avatarStyle, username };
   const avatarSrc = getAvatarUrl(userLike, username);
   const showInitial = !avatarSrc;
@@ -18,7 +20,7 @@ export default function UserAvatarWithName({ username, role, avatar, avatarStyle
         sx={{
           width: size,
           height: size,
-          ...getRoleAvatarBorderSx(role, 2),
+          ...getRoleAvatarBorderSx(role, 2, theme),
           color: roleColor.color,
           fontSize: 12,
           fontWeight: 600,

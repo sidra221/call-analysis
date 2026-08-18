@@ -35,6 +35,7 @@ CallStatus mapCallStatus(String status) {
 PriorityLevel mapPriority(String? value) {
   switch ((value ?? 'low').toLowerCase()) {
     case 'critical':
+      return PriorityLevel.critical;
     case 'high':
       return PriorityLevel.high;
     case 'medium':

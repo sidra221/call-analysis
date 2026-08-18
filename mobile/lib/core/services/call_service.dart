@@ -8,6 +8,7 @@ class CallsService {
   static Future<PaginatedResult<CallModel>> getCallsPaginated({
     String? status,
     String? sentiment,
+    String? priority,
     String? search,
     int page = 1,
     int pageSize = defaultPageSize,
@@ -18,6 +19,7 @@ class CallsService {
     };
     if (status != null) query['status'] = status;
     if (sentiment != null) query['sentiment'] = sentiment;
+    if (priority != null) query['priority'] = priority;
     if (search != null && search.isNotEmpty) query['search'] = search;
 
     final uri = Uri(path: '/api/calls/calls/', queryParameters: query);

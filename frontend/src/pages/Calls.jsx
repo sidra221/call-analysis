@@ -45,7 +45,10 @@ const CALLS_CHECKBOX_CELL_SX = {
   width: 68,
   minWidth: 68,
   maxWidth: 68,
-  pr: 3.5
+  pl: undefined,
+  pr: undefined,
+  paddingInlineStart: 1.5,
+  paddingInlineEnd: 3.5
 };
 
 const CALLS_ID_PL = 2.5;
@@ -53,18 +56,18 @@ const CALLS_ID_PL = 2.5;
 const CALLS_ID_CELL_SX = {
   ...TABLE_HEADER_CELL_SX,
   width: '8%',
-  pl: CALLS_ID_PL
+  paddingInlineStart: CALLS_ID_PL
 };
 
 const CALLS_ID_BODY_SX = {
   ...TABLE_BODY_CELL_SX,
-  pl: CALLS_ID_PL
+  paddingInlineStart: CALLS_ID_PL
 };
 
 const CALLS_UPLOADED_BY_CELL_SX = {
   ...TABLE_HEADER_CELL_SX,
   width: '12%',
-  pr: 0.5,
+  paddingInlineEnd: 0.5,
   display: { xs: 'none', lg: 'table-cell' }
 };
 
@@ -72,8 +75,8 @@ const CALLS_ACTIONS_CELL_SX = {
   ...TABLE_HEADER_CELL_SX,
   width: '11%',
   minWidth: 84,
-  pl: 0.5,
-  pr: 1
+  paddingInlineStart: 0.5,
+  paddingInlineEnd: 1
 };
 
 function formatConfidenceScore(value) {
@@ -130,6 +133,7 @@ export default function Calls() {
   const [page, setPage] = useState(0);
   const [editableIssue, setEditableIssue] = useState('');
   const [editableTranscript, setEditableTranscript] = useState('');
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false);
   const [editableSentiment, setEditableSentiment] = useState('neutral');
   const [editablePriority, setEditablePriority] = useState('medium');
   const [editableKeywords, setEditableKeywords] = useState('');
@@ -448,6 +452,7 @@ export default function Calls() {
     const normalized = buildNormalizedCall(call);
     if (!normalized) return;
     setEditableTranscript(normalized.transcript || '');
+    setTranscriptExpanded(false);
     if (normalized.status === 'failed') {
       setEditableSentiment('');
       setEditablePriority('');
@@ -481,6 +486,10 @@ export default function Calls() {
       setDrawerLoading(false);
     }
   };
+
+  const transcriptNeedsExpand =
+    (editableTranscript || '').length > 280 ||
+    (editableTranscript || '').split('\n').length > 6;
 
   const openViewDrawerFunc = (call) => openCallDrawer(call, false);
 
@@ -932,7 +941,7 @@ export default function Calls() {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell sx={{ ...CALLS_UPLOADED_BY_CELL_SX, pl: 1 }}>
+                      <TableCell sx={{ ...CALLS_UPLOADED_BY_CELL_SX, paddingInlineStart: 1 }}>
                         <UserAvatarWithName
                           username={call.uploadedBy}
                           role={call.uploadedByRole}
@@ -940,7 +949,7 @@ export default function Calls() {
                           avatarStyle={call.uploadedByAvatarStyle}
                         />
                       </TableCell>
-                      <TableCell align="center" sx={{ ...CALLS_ACTIONS_CELL_SX, pl: 0.5, pr: 1 }}>
+                      <TableCell align="center" sx={{ ...CALLS_ACTIONS_CELL_SX, paddingInlineStart: 0.5, paddingInlineEnd: 1 }}>
                         <Stack direction="row" spacing={0.5} justifyContent="center">
                           <IconButton
                             size="small"
@@ -1027,7 +1036,7 @@ export default function Calls() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{
                     width: 10, height: 10, borderRadius: '50%',
-                    backgroundColor: (theme) => theme.palette[stateColor[viewingCall.status]]?.main || '#999'
+                    backgroundColor: (theme) => theme.palette[stateColor[viewingCall.status]]?.main || theme.palette.text.disabled
                   }} />
                   <Typography variant="h5">{t('calls.callTitle', { id: viewingCall.id })}</Typography>
                   <IconButton
@@ -1189,25 +1198,76 @@ export default function Calls() {
                   {t('calls.analysisFailedAlertAfter')}
                 </Alert>
               )}
-              <TextField
-                fullWidth
-                multiline
-                minRows={4}
-                maxRows={8}
-                value={editableTranscript}
-                disabled={!isEditMode}
-                onChange={(e) => { setEditableTranscript(e.target.value); setIsDirty(true); }}
-                variant="outlined"
-                size="small"
-                sx={{
-                  mb: 2,
-                  '& .MuiInputBase-input': {
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    lineHeight: 1.5
-                  }
-                }}
-              />
+              {isEditMode ? (
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  maxRows={8}
+                  value={editableTranscript}
+                  onChange={(e) => { setEditableTranscript(e.target.value); setIsDirty(true); }}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    mb: 2,
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                      fontSize: '13px',
+                      lineHeight: 1.5
+                    }
+                  }}
+                />
+              ) : (
+                <Box sx={{ mb: 2 }}>
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      maxHeight: transcriptExpanded ? 'none' : 156,
+                      overflow: 'hidden',
+                      p: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      bgcolor: 'action.hover'
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontFamily: 'monospace',
+                        fontSize: '13px',
+                        lineHeight: 1.5,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {editableTranscript || '—'}
+                    </Typography>
+                    {!transcriptExpanded && transcriptNeedsExpand && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: 48,
+                          background: (theme) =>
+                            `linear-gradient(transparent, ${theme.palette.action.hover})`
+                        }}
+                      />
+                    )}
+                  </Box>
+                  {transcriptNeedsExpand && (
+                    <Button
+                      size="small"
+                      onClick={() => setTranscriptExpanded((prev) => !prev)}
+                      sx={{ mt: 0.5, px: 0, minWidth: 0 }}
+                    >
+                      {transcriptExpanded ? t('calls.showLess') : t('calls.showMore')}
+                    </Button>
+                  )}
+                </Box>
+              )}
 
               <Divider sx={{ my: 2 }} />
 
