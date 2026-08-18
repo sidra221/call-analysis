@@ -19,12 +19,11 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import { THEME_PRESETS, getRoleDefaultTheme, isLegacyPreset } from 'constants/themes';
 import { accountsApi } from 'api/api';
+import { API_URL } from 'api/baseUrl';
 import {
   buildSavedAvatarState,
   isAvatarDraftDirty,
 } from 'utils/avatar';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function SettingIcon({ children }) {
   const theme = useTheme();

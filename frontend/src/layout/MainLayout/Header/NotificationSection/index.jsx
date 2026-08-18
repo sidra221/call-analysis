@@ -34,8 +34,6 @@ import useAuth from 'hooks/useAuth';
 import useTranslation from 'hooks/useTranslation';
 import { getRoleAvatarBorderSx } from 'utils/avatar';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
 export default function NotificationSection() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));

@@ -11,7 +11,35 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MOBILE_DIR="${ROOT}/mobile"
 ENV_FILE="${ROOT}/.env"
 URL_FILE="${ROOT}/.ngrok-url"
-DEFAULT_LAN_HOST="${API_HOST:-192.168.1.113}"
+
+detect_lan_ip() {
+  ip -4 addr show scope global 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | while read -r candidate; do
+    case "$candidate" in
+      127.*|10.2.0.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) continue ;;
+      10.*|192.168.*)
+        echo "$candidate"
+        return 0
+        ;;
+    esac
+  done
+}
+
+is_ipv4() {
+  local ip="$1"
+  [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  local IFS=.
+  local -a parts=($ip)
+  local part
+  for part in "${parts[@]}"; do
+    if ((10#$part > 255)); then
+      return 1
+    fi
+  done
+  return 0
+}
+
+DEFAULT_LAN_HOST="${API_HOST:-$(detect_lan_ip)}"
+DEFAULT_LAN_HOST="${DEFAULT_LAN_HOST:-10.37.235.187}"
 
 read_env_value() {
   local key="$1"
@@ -80,15 +108,30 @@ case "$API_CHOICE" in
     echo "API mode : ngrok"
     echo "API URL  : ${PUBLIC_URL}"
     ;;
-  1|localhost|local|*)
+  1|localhost|local)
     API_MODE="localhost"
-    read -r -p "LAN IP for Android devices [${DEFAULT_LAN_HOST}]: " LAN_HOST
-    LAN_HOST="${LAN_HOST:-$DEFAULT_LAN_HOST}"
+    while true; do
+      read -r -p "LAN IP for Android devices [${DEFAULT_LAN_HOST}]: " LAN_HOST
+      LAN_HOST="${LAN_HOST:-$DEFAULT_LAN_HOST}"
+      if [[ "$LAN_HOST" == "1" || "$LAN_HOST" == "2" ]]; then
+        echo "That's a menu number, not an IP. Press Enter to use ${DEFAULT_LAN_HOST}, or type your Wi-Fi IP (e.g. 192.168.1.10)."
+        continue
+      fi
+      if ! is_ipv4 "$LAN_HOST"; then
+        echo "Invalid IPv4 address: ${LAN_HOST}"
+        continue
+      fi
+      break
+    done
     DART_DEFINES+=( "--dart-define=API_HOST=${LAN_HOST}" )
     echo ""
     echo "API mode : localhost / LAN"
     echo "API host : ${LAN_HOST}:8001 (Android)"
     echo "           localhost:8001 (Web / iOS simulator)"
+    ;;
+  *)
+    echo "ERROR: Enter 1 for LAN or 2 for ngrok."
+    exit 1
     ;;
 esac
 

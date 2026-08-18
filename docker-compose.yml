@@ -1,3 +1,5 @@
+name: call_analysis
+
 services:
 
   web:
@@ -22,8 +24,10 @@ services:
       - .env
 
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -31,6 +35,17 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs/')\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
 
 
   celery_worker:
@@ -115,11 +130,15 @@ services:
     environment:
       - PORT=3000
       - HOST=0.0.0.0
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8001}
-      - VITE_WS_BASE_URL=${VITE_WS_BASE_URL:-ws://localhost:8001}
+      # Browser talks to the mapped backend port. Do not inherit ngrok URLs
+      # from root .env — those are for the Flutter app only.
+      - VITE_API_BASE_URL=http://localhost:8001
+      - VITE_WS_BASE_URL=ws://localhost:8001
+      - VITE_API_PROXY_TARGET=http://web:8000
 
     depends_on:
-      - web
+      web:
+        condition: service_healthy
 
 
   db:
@@ -137,6 +156,13 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d call_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 
   pgadmin:

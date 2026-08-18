@@ -89,7 +89,6 @@ fi
 
 PUBLIC_URL="$(echo "$PUBLIC_URL" | sed 's|/*$||')"
 NGROK_HOST="$(echo "$PUBLIC_URL" | sed -E 's|https?://||' | cut -d/ -f1)"
-WS_URL="$(echo "$PUBLIC_URL" | sed -E 's|^https://|wss://|; s|^http://|ws://|')"
 echo "$PUBLIC_URL" > "$URL_FILE"
 
 ensure_env_file() {
@@ -138,11 +137,13 @@ upsert_csv_value() {
   set_env_value "$key" "$merged"
 }
 
-# Backend + frontend + mobile build configs (single source of truth).
+# Mobile builds use NGROK_PUBLIC_URL / API_BASE_URL.
+# Keep the local web UI on localhost:8001 so `docker compose up -d` still
+# shows data even while ngrok is running for the Flutter app.
 set_env_value "NGROK_PUBLIC_URL" "$PUBLIC_URL"
 set_env_value "API_BASE_URL" "$PUBLIC_URL"
-set_env_value "VITE_API_BASE_URL" "$PUBLIC_URL"
-set_env_value "VITE_WS_BASE_URL" "$WS_URL"
+set_env_value "VITE_API_BASE_URL" "http://localhost:8001"
+set_env_value "VITE_WS_BASE_URL" "ws://localhost:8001"
 upsert_csv_value "ALLOWED_HOSTS" "$NGROK_HOST" 'ngrok'
 upsert_csv_value "CORS_ALLOWED_ORIGINS" "$PUBLIC_URL" 'ngrok'
 
@@ -154,12 +155,12 @@ echo " Saved to   : ${URL_FILE}"
 echo " Updated    : ${ENV_FILE}"
 echo "   NGROK_PUBLIC_URL=${PUBLIC_URL}"
 echo "   API_BASE_URL=${PUBLIC_URL}"
-echo "   VITE_API_BASE_URL=${PUBLIC_URL}"
-echo "   VITE_WS_BASE_URL=${WS_URL}"
+echo "   VITE_API_BASE_URL=http://localhost:8001  (local web UI)"
+echo "   VITE_WS_BASE_URL=ws://localhost:8001"
 echo "============================================"
 echo ""
-echo "Restart services to apply env changes:"
-echo "  cd \"${ROOT}\" && docker compose up -d web frontend"
+echo "Restart the backend so it allows the ngrok host:"
+echo "  cd \"${ROOT}\" && docker compose up -d web"
 echo ""
 echo "Build the mobile app with ngrok:"
 echo "  ./scripts/build-flutter-app.sh"

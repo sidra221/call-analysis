@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { API_URL } from './baseUrl';
+
+export { API_URL, WS_URL } from './baseUrl';
 
 // ─────────────────────────────────────────────
 // TOKEN HELPERS

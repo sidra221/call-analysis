@@ -28,6 +28,7 @@ import useTranslation from 'hooks/useTranslation';
 import usePaginationLabels from 'hooks/usePaginationLabels';
 import { formatKeywords, parseKeywords, getKeywordChipColor } from 'utils/keywords';
 import { callsApi } from 'api/api';
+import { API_URL, WS_URL } from 'api/baseUrl';
 import {
   TABLE_LAYOUT_SX,
   TABLE_CHECKBOX_CELL_SX,
@@ -36,8 +37,6 @@ import {
   TABLE_BODY_CELL_SX
 } from 'constants/table';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
 const rowsPerPage = 6;
 
 const CALLS_CHECKBOX_CELL_SX = {

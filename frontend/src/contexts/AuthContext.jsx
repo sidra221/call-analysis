@@ -6,13 +6,7 @@ import {
   useCallback,
   useEffect
 } from 'react';
-
-// ========================================
-// API base URL
-// ========================================
-
-const API_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { API_URL } from 'api/baseUrl';
 
 export const AuthContext = createContext(undefined);
 

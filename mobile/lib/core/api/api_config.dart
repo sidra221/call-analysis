@@ -14,7 +14,7 @@ class ApiConfig {
   /// LAN IP for physical devices — override: --dart-define=API_HOST=<IP>
   static const String host = String.fromEnvironment(
     'API_HOST',
-    defaultValue: '192.168.1.113',
+    defaultValue: '10.37.235.187',
   );
 
   static String get baseUrl {

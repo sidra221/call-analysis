@@ -1,0 +1,6 @@
+# Lets `docker compose up -d` work from mobile/ as well as the repo root.
+name: call_analysis
+
+include:
+  - path: ../docker-compose.yml
+    project_directory: ..

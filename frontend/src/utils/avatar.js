@@ -1,6 +1,5 @@
 import { getRoleColor } from 'constants/colors';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { API_URL } from 'api/baseUrl';
 
 export function getAvatarStyle(user) {
   if (user?.avatar) return 'custom';

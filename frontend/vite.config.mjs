@@ -11,10 +11,21 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       // this ensures that the browser opens upon server start
-      open: true,
+      open: false,
       // this sets a default port to 3000
       port: PORT,
-      host: true
+      host: true,
+      proxy: {
+        '/api': {
+          target: env.VITE_API_PROXY_TARGET || 'http://web:8000',
+          changeOrigin: true
+        },
+        '/ws': {
+          target: env.VITE_API_PROXY_TARGET || 'http://web:8000',
+          ws: true,
+          changeOrigin: true
+        }
+      }
     },
     build: {
       chunkSizeWarningLimit: 1600

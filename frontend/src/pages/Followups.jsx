@@ -14,6 +14,7 @@ import {
   IconEye, IconArrowUp, IconArrowDown, IconMessage, IconWriting, IconTrash,
 } from '@tabler/icons-react';
 import { followupsApi } from 'api/api';
+import { API_URL } from 'api/baseUrl';
 import PageCard from 'ui-component/PageCard';
 import PageTitle from 'ui-component/PageTitle';
 import FilterToolbar from 'ui-component/FilterToolbar';
@@ -33,7 +34,6 @@ import useAuth from 'hooks/useAuth';
 import useTranslation from 'hooks/useTranslation';
 import usePaginationLabels from 'hooks/usePaginationLabels';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const rowsPerPage = 6;
 
 const followupStatusColor = {

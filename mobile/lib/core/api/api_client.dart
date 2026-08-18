@@ -31,6 +31,12 @@ class ApiClient {
         message: 'Could not connect to the server. Check your network.',
         statusCode: 0,
       );
+    } on http.ClientException catch (e) {
+      if (kDebugMode) debugPrint('ApiClient client error: $e');
+      throw ApiException(
+        message: 'Could not connect to the server. Check your network.',
+        statusCode: 0,
+      );
     }
   }
 
@@ -50,8 +56,11 @@ class ApiClient {
     await prefs.remove('user_data');
   }
 
-  static Future<Map<String, String>> _headers({bool json = true}) async {
-    final token = await getToken();
+  static Future<Map<String, String>> _headers({
+    bool json = true,
+    bool auth = true,
+  }) async {
+    final token = auth ? await getToken() : null;
     return {
       if (json) 'Content-Type': 'application/json',
       if (json) 'Accept': 'application/json',
@@ -69,7 +78,10 @@ class ApiClient {
       final response = await _withTimeout(
         http.post(
           Uri.parse('$baseUrl/api/accounts/token/refresh/'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            if (ApiConfig.usesNgrok) 'ngrok-skip-browser-warning': 'true',
+          },
           body: jsonEncode({'refresh': refresh}),
         ),
       );
@@ -196,9 +208,7 @@ class ApiClient {
     Map<String, dynamic> body, {
     bool requiresAuth = true,
   }) async {
-    final headers = requiresAuth
-        ? await _headers()
-        : {'Content-Type': 'application/json', 'Accept': 'application/json'};
+    final headers = await _headers(auth: requiresAuth);
 
     final response = await _withTimeout(
       http.post(
