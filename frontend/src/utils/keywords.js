@@ -65,7 +65,6 @@ export function parseKeywords(raw) {
         );
       }
     });
-    return items;
   }
 
   KEYWORD_BUCKETS.forEach((bucket) => {
@@ -75,6 +74,16 @@ export function parseKeywords(raw) {
       if (typeof item === 'string') pushItem(item, bucket);
     });
   });
+
+  const categories = raw.categories;
+  if (categories && typeof categories === 'object' && !Array.isArray(categories)) {
+    Object.entries(categories).forEach(([category, list]) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((item) => {
+        if (typeof item === 'string') pushItem(item, 'neutral', category);
+      });
+    });
+  }
 
   return items;
 }

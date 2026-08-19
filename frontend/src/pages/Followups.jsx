@@ -416,14 +416,14 @@ export default function Followups() {
       <PageCard bordered>
           <PageTitle title={t('followups.title')} />
 
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 12, md: 4 }}>
+          <Grid container spacing={2} sx={{ mb: 3, width: '100%' }}>
+            <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
               <StatSummaryCard icon={<IconClipboardText size={20} />} label={t('followups.total')} value={visibleFollowups.length} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
               <StatSummaryCard icon={<IconClockHour4 size={20} />} label={t('followups.pending')} value={pendingCount} color="warning" />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
               <StatSummaryCard icon={<IconChecks size={20} />} label={t('followups.completed')} value={doneCount} color="success" />
             </Grid>
           </Grid>
@@ -463,10 +463,18 @@ export default function Followups() {
 
             <FormControl fullWidth size="small">
               <InputLabel>{t('followups.createdBy')}</InputLabel>
-              <Select value={createdByFilter} label={t('followups.createdBy')} onChange={(e) => setCreatedByFilter(e.target.value)}>
+              <Select
+                value={createdByFilter}
+                label={t('followups.createdBy')}
+                onChange={(e) => setCreatedByFilter(e.target.value)}
+                renderValue={(value) => value === 'all' ? t('common.all') : value}
+                MenuProps={{ PaperProps: { sx: { maxWidth: 320 } } }}
+              >
                 <MenuItem value="all">{t('common.all')}</MenuItem>
                 {uniqueCreators.map((name) => (
-                  <MenuItem key={name} value={name}>{name}</MenuItem>
+                  <MenuItem key={name} value={name}>
+                    <Typography noWrap>{name}</Typography>
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>

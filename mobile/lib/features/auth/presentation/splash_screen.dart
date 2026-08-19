@@ -104,7 +104,9 @@ Widget build(BuildContext context) {
                   child: Transform.scale(
                     scale: 0.65 + (_logoAnimation.value * 0.35),
                     child: Image.asset(
-                      'assets/images/vocalys_logo.png',
+                      Theme.of(context).brightness == Brightness.dark
+                          ? 'assets/images/vocalys_logo_dark.png'
+                          : 'assets/images/vocalys_logo.png',
                       width: 230,
                       fit: BoxFit.contain,
                     ),

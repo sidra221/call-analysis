@@ -2,11 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/backend_mappers.dart';
-import '../../../core/services/call_service.dart';
 import '../../../core/services/dashboard_service.dart';
-import '../../../shared/enums.dart';
 import '../../auth/domain/user_profile.dart';
-import '../../calls/domain/call.dart';
 import '../domain/dashboard_issue.dart';
 import '../domain/dashboard_summary.dart';
 
@@ -39,15 +36,6 @@ class DashboardRepository {
     );
     return issues
         .map((issue) => topicToIssue(issue, isPositive: true))
-        .toList();
-  }
-
-  Future<List<CallItem>> getPriorityFollowUpCalls() async {
-    final calls = await CallsService.getNegativeCalls();
-    return calls
-        .map(callModelToItem)
-        .where((call) => call.priority != PriorityLevel.low)
-        .take(5)
         .toList();
   }
 

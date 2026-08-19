@@ -19,7 +19,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Lege
 import { useState, useMemo, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { dashboardApi } from 'api/api';
-import { getSentimentChipColor, getPriorityChipSx, getPriorityCardStyle, getSentimentChipSx } from 'constants/status';
+import { getSentimentChipColor, getPriorityChipSx, getPriorityCardStyle, getSentimentChipSx, getReviewedChipSx } from 'constants/status';
 import { formatKeywords } from 'utils/keywords';
 import StatusChip from 'ui-component/StatusChip';
 import UserAvatarWithName from 'ui-component/UserAvatarWithName';
@@ -303,8 +303,8 @@ export default function Dashboard() {
     if (!Array.isArray(calls)) return [];
     return calls.map((call) => ({
       ...call,
-      sentiment: call.analysis?.sentiment || 'neutral',
-      priority: call.analysis?.priority || 'low',
+      sentiment: call.status === 'completed' ? (call.analysis?.sentiment || call.sentiment || null) : null,
+      priority: call.status === 'completed' ? (call.analysis?.priority || call.priority || null) : null,
       is_reviewed: call.analysis?.is_reviewed || false,
       issue: call.analysis?.main_issue || '',
       transcript: call.analysis?.transcript || '',
@@ -647,25 +647,42 @@ export default function Dashboard() {
                     <TableRow key={call.id} hover>
                       <TableCell sx={TABLE_BODY_CELL_SX}>#{call.id}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={priorityLabel(call.priority)}
-                          size="small"
-                          variant="outlined"
-                          sx={getPriorityChipSx(theme, call.priority)}
-                        />
+                        {call.status === 'failed' ? (
+                          <Chip label={t('calls.analysisFailed')} color="error" size="small" />
+                        ) : call.status === 'completed' && call.priority ? (
+                          <Chip
+                            label={priorityLabel(call.priority)}
+                            size="small"
+                            variant="outlined"
+                            sx={getPriorityChipSx(theme, call.priority)}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
+                        )}
                       </TableCell>
                       <TableCell><StatusChip status={call.status} /></TableCell>
                       <TableCell>
-                        <Chip
-                          label={sentimentLabel(call.sentiment)}
-                          size="small"
-                          variant="outlined"
-                          sx={getSentimentChipSx(theme, call.sentiment)}
-                        />
+                        {call.status === 'completed' && call.sentiment ? (
+                          <Chip
+                            label={sentimentLabel(call.sentiment)}
+                            size="small"
+                            variant="outlined"
+                            sx={getSentimentChipSx(theme, call.sentiment)}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
+                        )}
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{call.duration}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>{call.createdAt}</TableCell>
-                      <TableCell><Chip label={call.is_reviewed ? t('common.yes') : t('common.no')} color={call.is_reviewed ? 'success' : 'error'} size="small" /></TableCell>
+                      <TableCell>
+                        <Chip
+                          label={call.is_reviewed ? t('common.yes') : t('common.no')}
+                          size="small"
+                          variant="outlined"
+                          sx={getReviewedChipSx(call.is_reviewed, theme)}
+                        />
+                      </TableCell>
                       <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         <UserAvatarWithName username={call.uploadedBy} role={call.uploadedByRole} />
                       </TableCell>

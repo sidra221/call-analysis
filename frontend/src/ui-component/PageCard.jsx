@@ -5,6 +5,7 @@ export default function PageCard({ children, contentSX = {}, sx, bordered = fals
   return (
     <Card
       sx={{
+        overflow: 'hidden',
         ...(bordered && {
           border: '1px solid',
           borderColor: 'divider',

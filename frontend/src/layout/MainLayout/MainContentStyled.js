@@ -12,8 +12,9 @@ const MainContentStyled = styled('main', {
   backgroundColor: theme.palette.mode === 'dark'
     ? theme.palette.background.default
     : theme.palette.grey[100],
-  minWidth: '1%',
+  minWidth: 0,
   width: '100%',
+  overflowX: 'hidden',
   minHeight: 'calc(100vh - 88px)',
   flexGrow: 1,
   padding: 24,

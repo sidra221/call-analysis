@@ -396,7 +396,7 @@ export default function SearchSection() {
             px: 2,
             height: 48,
             borderRadius: '16px',
-            bgcolor: '#fff',
+            bgcolor: 'background.paper',
 
             '&:hover .MuiOutlinedInput-notchedOutline': {
               borderColor: '#90caf9'

@@ -1,142 +1,132 @@
 import os
 import json
-import torch
+import subprocess
+import tempfile
+
 import pandas as pd
 import whisperx
-
 from pyannote.audio import Pipeline
 
-# -----------------------------
-# الجهاز = CPU دائماً
-# -----------------------------
 device = "cpu"
+SAMPLE_RATE = 16000
 
 print("Device:", device)
 
 
-def transcribe_audio(audio_file):
+def _prepare_wav(src_path: str) -> str:
+    """Convert any input to 16 kHz mono WAV and pad a little silence.
 
-    # -----------------------------
-    # التحقق من الملف
-    # -----------------------------
+    MP3/M4A files are often a few milliseconds short of a round chunk
+    (e.g. 439895 vs 441000 samples). pyannote then raises and the
+    whole analysis fails after ASR already succeeded.
+    """
+    fd, dst = tempfile.mkstemp(suffix=".wav", prefix="vocalys_")
+    os.close(fd)
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-i", src_path,
+        "-ac", "1",
+        "-ar", str(SAMPLE_RATE),
+        "-c:a", "pcm_s16le",
+        "-af", "apad=pad_dur=0.3",
+        dst,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 or not os.path.exists(dst) or os.path.getsize(dst) == 0:
+        if os.path.exists(dst):
+            os.remove(dst)
+        raise RuntimeError(result.stderr.strip() or "ffmpeg failed to convert audio")
+    return dst
+
+
+def _annotation_from_diarization(diarization):
+    if hasattr(diarization, "speaker_diarization"):
+        return diarization.speaker_diarization
+    return diarization
+
+
+def transcribe_audio(audio_file):
     if not os.path.exists(audio_file):
         raise FileNotFoundError(f"Audio file not found: {audio_file}")
 
     print(f"Processing file: {audio_file}")
+    print("Normalizing audio to 16 kHz WAV...")
+    prepared = _prepare_wav(audio_file)
+    print(f"Prepared WAV: {prepared}")
 
-    # -----------------------------
-    # WhisperX ASR
-    # -----------------------------
-    print("Loading WhisperX model (CPU)...")
+    try:
+        print("Loading WhisperX model (CPU)...")
+        model = whisperx.load_model(
+            "small",
+            device,
+            compute_type="float32"
+        )
 
-    model = whisperx.load_model(
-        "small",
-        device,
-        compute_type="float32"
-    )
+        print("Transcribing...")
+        asr_result = model.transcribe(prepared)
+        print("ASR Done.")
 
-    print("Transcribing...")
+        duration = 0
+        if asr_result.get("segments"):
+            duration = asr_result["segments"][-1]["end"]
 
-    asr_result = model.transcribe(audio_file)
+        print("Loading alignment model...")
+        model_a, metadata = whisperx.load_align_model(
+            language_code=asr_result["language"],
+            device=device
+        )
 
-    print("ASR Done.")
+        print("Aligning words...")
+        aligned_result = whisperx.align(
+            asr_result["segments"],
+            model_a,
+            metadata,
+            prepared,
+            device
+        )
 
-    # -----------------------------
-    # مدة المكالمة
-    # -----------------------------
-    duration = 0
+        print("\nRunning diarization (CPU)...")
+        aligned_with_speakers = aligned_result
+        try:
+            token = os.getenv("HUGGINGFACE_TOKEN")
+            pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                token=token
+            )
+            diarization = pipeline(prepared)
+            annotation = _annotation_from_diarization(diarization)
 
-    if asr_result.get("segments"):
-        duration = asr_result["segments"][-1]["end"]
+            segments_list = []
+            for segment, _track, speaker in annotation.itertracks(yield_label=True):
+                segments_list.append({
+                    "start": segment.start,
+                    "end": segment.end,
+                    "speaker": speaker
+                })
 
-    # -----------------------------
-    # Alignment
-    # -----------------------------
-    print("Loading alignment model...")
+            if segments_list:
+                print("Assigning speakers to words...")
+                aligned_with_speakers = whisperx.assign_word_speakers(
+                    pd.DataFrame(segments_list),
+                    aligned_result
+                )
+        except Exception as exc:
+            print(f"Diarization failed ({exc}); continuing without speaker labels")
 
-    model_a, metadata = whisperx.load_align_model(
-        language_code=asr_result["language"],
-        device=device
-    )
+        output = {
+            "language": asr_result["language"],
+            "segments": aligned_with_speakers.get("segments", aligned_result.get("segments", [])),
+            "duration": duration
+        }
 
-    print("Aligning words...")
+        os.makedirs("outputs", exist_ok=True)
+        base_name = os.path.splitext(os.path.basename(audio_file))[0]
+        output_path = f"outputs/{base_name}.json"
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
 
-    aligned_result = whisperx.align(
-        asr_result["segments"],
-        model_a,
-        metadata,
-        audio_file,
-        device
-    )
-
-    # -----------------------------
-    # Diarization
-    # -----------------------------
-    print("\nRunning diarization (CPU)...")
-
-    token = os.getenv("HUGGINGFACE_TOKEN")
-
-    pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
-        token=token
-    )
-
-    diarization = pipeline(audio_file)
-
-    # -----------------------------
-    # مهم جداً:
-    # الإصدار الجديد يرجع speaker_diarization
-    # -----------------------------
-    annotation = diarization.speaker_diarization
-
-    # -----------------------------
-    # تحويل diarization إلى DataFrame
-    # -----------------------------
-    segments_list = []
-
-    for segment, track, speaker in annotation.itertracks(yield_label=True):
-
-        segments_list.append({
-            "start": segment.start,
-            "end": segment.end,
-            "speaker": speaker
-        })
-
-    diar_df = pd.DataFrame(segments_list)
-
-    # -----------------------------
-    # دمج المتحدثين مع الكلمات
-    # -----------------------------
-    print("Assigning speakers to words...")
-
-    aligned_with_speakers = whisperx.assign_word_speakers(
-        diar_df,
-        aligned_result
-    )
-
-    # -----------------------------
-    # النتيجة النهائية
-    # -----------------------------
-    output = {
-        "language": asr_result["language"],
-        "segments": aligned_with_speakers["segments"],
-        "duration": duration
-    }
-
-    # -----------------------------
-    # حفظ JSON
-    # -----------------------------
-    os.makedirs("outputs", exist_ok=True)
-
-    base_name = os.path.splitext(
-        os.path.basename(audio_file)
-    )[0]
-
-    output_path = f"outputs/{base_name}.json"
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
-
-    print(f"Saved → {output_path}")
-
-    return output
+        print(f"Saved → {output_path}")
+        return output
+    finally:
+        if os.path.exists(prepared):
+            os.remove(prepared)

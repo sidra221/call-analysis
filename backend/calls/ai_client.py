@@ -45,7 +45,7 @@ def analyze_audio_file(audio_path: str) -> Dict[str, Any]:
         return MOCK_RESPONSE.copy()
 
     url = analyze_call_url()
-    timeout = settings.AI_SERVICE_TIMEOUT
+    timeout = httpx.Timeout(settings.AI_SERVICE_TIMEOUT, connect=5.0)
 
     if not os.path.exists(audio_path):
         raise FileNotFoundError(

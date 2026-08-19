@@ -99,6 +99,7 @@ export default function NavItem({ item, level, isParents = false, setSelectedID 
         <ListItemButton
           component={Link}
           to={item.url}
+          state={item.url === '/calls' ? { reset: true } : null}
           target={itemTarget}
           disabled={item.disabled}
           disableRipple={!drawerOpen}

@@ -16,6 +16,7 @@ import MainContentStyled from './MainContentStyled';
 import Customization from '../Customization';
 import Loader from 'ui-component/Loader';
 import Breadcrumbs from 'ui-component/extended/Breadcrumbs';
+import UploadJobOverlay from 'ui-component/UploadJobOverlay';
 
 import useConfig from 'hooks/useConfig';
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
@@ -65,6 +66,7 @@ export default function MainLayout() {
           <Footer />
         </Box>
       </MainContentStyled>
+      <UploadJobOverlay />
     </Box>
   );
 }

@@ -123,9 +123,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get topPositiveFeedback => 'أهم الملاحظات الإيجابية';
 
   @override
-  String get priorityFollowUps => 'المتابعات ذات الأولوية';
-
-  @override
   String get viewAll => 'عرض الكل';
 
   @override

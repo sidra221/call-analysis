@@ -5,7 +5,6 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../shared/l10n/call_chip_labels.dart';
 import '../../../shared/widgets/ui.dart';
-import '../../../shared/widgets/call_tile.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/locale/locale_provider.dart';
@@ -46,7 +45,6 @@ class DashboardScreen extends ConsumerWidget {
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final negIssuesAsync = ref.watch(topNegativeIssuesProvider);
     final posIssuesAsync = ref.watch(topPositiveIssuesProvider);
-    final followUpCallsAsync = ref.watch(priorityFollowUpCallsProvider);
     final liveFeedAsync = ref.watch(liveFeedProvider);
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
@@ -57,7 +55,6 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(dashboardSummaryProvider);
             ref.invalidate(topNegativeIssuesProvider);
             ref.invalidate(topPositiveIssuesProvider);
-            ref.invalidate(priorityFollowUpCallsProvider);
             ref.invalidate(liveFeedProvider);
           },
           child: CustomScrollView(
@@ -221,7 +218,7 @@ IconButton(
                                   icon: Icons.warning_amber,
                                   title: l10n.criticalPriority,
                                   value: summary.criticalPriorityCount.toString(),
-                                  color: AppTheme.danger,
+                                  color: AppTheme.priorityCritical,
                                   onTap: () => _openCalls(
                                     context,
                                     ref,
@@ -235,7 +232,7 @@ IconButton(
                                   icon: Icons.arrow_upward,
                                   title: l10n.highPriority,
                                   value: summary.highPriorityCount.toString(),
-                                  color: AppTheme.orange,
+                                  color: AppTheme.priorityHigh,
                                   onTap: () => _openCalls(
                                     context,
                                     ref,
@@ -253,7 +250,7 @@ IconButton(
                                   icon: Icons.remove,
                                   title: l10n.mediumPriority,
                                   value: summary.mediumPriorityCount.toString(),
-                                  color: AppTheme.warningDark,
+                                  color: AppTheme.priorityMedium,
                                   onTap: () => _openCalls(
                                     context,
                                     ref,
@@ -267,7 +264,7 @@ IconButton(
                                   icon: Icons.arrow_downward,
                                   title: l10n.lowPriority,
                                   value: summary.lowPriorityCount.toString(),
-                                  color: AppTheme.success,
+                                  color: AppTheme.priorityLow,
                                   onTap: () => _openCalls(
                                     context,
                                     ref,
@@ -529,53 +526,6 @@ IconButton(
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                  loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                sliver: SliverToBoxAdapter(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        l10n.priorityFollowUps,
-                        style: GoogleFonts.roboto(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => _openCalls(context, ref),
-                        child: Text(
-                          l10n.viewAll,
-                          style: GoogleFonts.roboto(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                sliver: followUpCallsAsync.when(
-                  data: (calls) => SliverList.list(
-                    children: AnimationConfiguration.toStaggeredList(
-                      duration: const Duration(milliseconds: 375),
-                      childAnimationBuilder: (widget) => SlideAnimation(
-                        verticalOffset: 50,
-                        child: FadeInAnimation(child: widget),
-                      ),
-                      children: calls.map((call) => CallTile(item: call)).toList(),
                     ),
                   ),
                   error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),

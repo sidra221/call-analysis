@@ -27,7 +27,8 @@ import useConfig from 'hooks/useConfig';
 import useTranslation from 'hooks/useTranslation';
 import LogoutConfirmDialog from 'ui-component/LogoutConfirmDialog';
 import { alpha, useColorScheme, useTheme } from '@mui/material/styles';
-import { getAvatarInitial, getAvatarUrl, getRoleAvatarBorderSx } from 'utils/avatar';
+import { getAvatarInitial, getAvatarUrl } from 'utils/avatar';
+import { getHeaderIconColor } from 'constants/colors';
 
 export default function ProfileSection() {
   const { user } = useAuth();
@@ -54,7 +55,13 @@ export default function ProfileSection() {
 
   const avatarSrc = getAvatarUrl(user, displayName);
   const showInitial = !avatarSrc;
-  const avatarBorderSx = getRoleAvatarBorderSx(user?.role, 2, theme);
+  const headerIconSx = getHeaderIconColor(theme);
+  const avatarBorderSx = {
+    border: '2px solid',
+    borderColor: headerIconSx.color,
+    bgcolor: headerIconSx.bg,
+    color: headerIconSx.color,
+  };
 
   const handleClose = () => {
     setAnchorEl(null);
@@ -117,13 +124,13 @@ export default function ProfileSection() {
           '&:hover .MuiAvatar-root': {
             color: `${avatarBorderSx.color} !important`,
             backgroundColor: `${avatarBorderSx.bgcolor} !important`,
-            boxShadow: `0 6px 20px ${alpha(avatarBorderSx.color, 0.55)}`,
+            boxShadow: `0 6px 20px ${alpha(avatarBorderSx.color, 0.35)}`,
           },
 
           '&:active .MuiAvatar-root': {
             color: `${avatarBorderSx.color} !important`,
             backgroundColor: `${avatarBorderSx.bgcolor} !important`,
-            boxShadow: `0 3px 12px ${alpha(avatarBorderSx.color, 0.42)}`,
+            boxShadow: `0 3px 12px ${alpha(avatarBorderSx.color, 0.28)}`,
           }
         }}
         icon={

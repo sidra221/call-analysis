@@ -858,10 +858,10 @@ export default function Reports() {
           </DialogContent>
         )}
         <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-          <DialogCancelButton onClick={() => setOpenView(false)} />
+          <DialogCancelButton variant="contained" onClick={() => setOpenView(false)} />
           {role === 'qa' && selectedReport?.status === 'draft' && (
             <>
-              <Button variant="outlined" onClick={handleSaveDraft} disabled={saving}>
+              <Button variant="contained" color="inherit" onClick={handleSaveDraft} disabled={saving}>
                 {saving ? <CircularProgress size={16} /> : t('common.saveDraft')}
               </Button>
               <Button variant="contained" onClick={handlePublish}>{t('reports.publish')}</Button>
@@ -870,7 +870,7 @@ export default function Reports() {
           {role === 'manager' && selectedReport && (
             <>
               <Button
-                variant={isReviewed(selectedReport) ? 'contained' : 'outlined'}
+                variant="contained"
                 color="primary"
                 disabled={isReviewed(selectedReport) || reviewing}
                 onClick={handleReview}
@@ -880,7 +880,7 @@ export default function Reports() {
                   : isReviewed(selectedReport) ? t('common.reviewedCheck') : t('calls.markReviewed')}
               </Button>
               <Button
-                variant="outlined"
+                variant="contained"
                 color="secondary"
                 onClick={() => setOpenNotesDialog(true)}
               >
@@ -888,12 +888,17 @@ export default function Reports() {
               </Button>
               <Button
                 variant="contained"
-                color="success"
                 startIcon={downloadingId === selectedReport.id
                   ? <CircularProgress size={16} color="inherit" />
                   : <IconDownload size={16} />}
                 disabled={downloadingId === selectedReport.id}
                 onClick={() => handleDownload(selectedReport)}
+                sx={{
+                  bgcolor: '#2e7d32',
+                  color: '#fff',
+                  '&:hover': { bgcolor: '#1b5e20' },
+                  '&.Mui-disabled': { bgcolor: '#2e7d32', color: '#fff', opacity: 0.55 }
+                }}
               >
                 {t('reports.downloadPdfShort')}
               </Button>

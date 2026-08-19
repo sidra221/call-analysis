@@ -326,12 +326,6 @@ abstract class AppLocalizations {
   /// **'Top Positive Feedback'**
   String get topPositiveFeedback;
 
-  /// No description provided for @priorityFollowUps.
-  ///
-  /// In en, this message translates to:
-  /// **'Priority Follow-ups'**
-  String get priorityFollowUps;
-
   /// No description provided for @viewAll.
   ///
   /// In en, this message translates to:

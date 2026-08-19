@@ -1,9 +1,11 @@
 import Box from '@mui/material/Box';
-import logoAuth from 'assets/images/logo-auth.png';
+import { useTheme } from '@mui/material/styles';
 import { AUTH_CORNER_LOGO } from 'constants/authLogoLayout';
+import { brandLogoSrc } from 'constants/brand';
 import useSplash from 'hooks/useSplash';
 
 export default function AuthCornerLogo() {
+  const theme = useTheme();
   const { cornerLogoVisible } = useSplash();
 
   if (!cornerLogoVisible) {
@@ -13,7 +15,7 @@ export default function AuthCornerLogo() {
   return (
     <Box
       component="img"
-      src={logoAuth}
+      src={brandLogoSrc(theme, 'auth')}
       alt="Vocalys"
       sx={{
         position: 'fixed',

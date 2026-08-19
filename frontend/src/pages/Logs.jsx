@@ -268,7 +268,7 @@ export default function Logs() {
       />
 
       {hasFilters && (
-        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2, maxWidth: '100%' }}>
           {searchQuery && (
             <Chip
               label={`${t('logs.searchLabel')}: ${searchQuery}`}
@@ -287,6 +287,7 @@ export default function Logs() {
             <Chip
               label={`${t('logs.user')}: ${usernameFilter}`}
               size="small"
+              sx={{ maxWidth: '100%' }}
               onDelete={() => { setUsernameFilter(''); setDraftUsername(''); setPage(0); }}
             />
           )}
@@ -317,7 +318,10 @@ export default function Logs() {
             value={draftAction}
             label={t('logs.action')}
             onChange={(e) => setDraftAction(e.target.value)}
-            MenuProps={{ disablePortal: true }}
+            MenuProps={{
+              disablePortal: false,
+              PaperProps: { sx: { maxWidth: 320 } }
+            }}
           >
             {actionOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
@@ -345,19 +349,26 @@ export default function Logs() {
             const { key, ...optionProps } = props;
             return (
               <li key={key} {...optionProps}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Avatar sx={{ width: 24, height: 24, fontSize: 12 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, maxWidth: '100%' }}>
+                  <Avatar sx={{ width: 24, height: 24, fontSize: 12, flexShrink: 0 }}>
                     {option?.[0]?.toUpperCase()}
                   </Avatar>
-                  <span>{option}</span>
+                  <Typography noWrap>{option}</Typography>
                 </Stack>
               </li>
             );
           }}
           slotProps={{
             popper: {
-              disablePortal: true,
-              sx: { zIndex: 1400 }
+              sx: { zIndex: 1400, minWidth: '280px', maxWidth: 'min(360px, calc(100vw - 24px))' },
+              modifiers: [
+                { name: 'flip', enabled: true },
+                {
+                  name: 'preventOverflow',
+                  enabled: true,
+                  options: { boundary: 'viewport', padding: 8 }
+                }
+              ]
             }
           }}
         />

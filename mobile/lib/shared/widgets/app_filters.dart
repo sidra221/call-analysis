@@ -80,16 +80,25 @@ class _FilterDropdownButtonState extends State<_FilterDropdownButton> {
       child: OverlayPortal(
         controller: _overlay,
         overlayChildBuilder: (context) {
+          final size = MediaQuery.sizeOf(context);
+          final maxWidth = (size.width - 24).clamp(260.0, 320.0);
+          final maxHeight = (size.height * 0.6).clamp(280.0, 440.0);
+
           return Positioned.fill(
             child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: _overlay.hide,
-                  ),
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _overlay.hide,
                 ),
-                CompositedTransformFollower(
+              ),
+              // Pin layout origin to physical top-left so RTL does not
+              // double-shift the panel when the username list expands.
+              Positioned(
+                top: 0,
+                left: 0,
+                child: CompositedTransformFollower(
                   link: _link,
                   showWhenUnlinked: false,
                   targetAnchor:
@@ -104,10 +113,10 @@ class _FilterDropdownButtonState extends State<_FilterDropdownButton> {
                     borderRadius: BorderRadius.circular(16),
                     clipBehavior: Clip.antiAlias,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
+                      constraints: BoxConstraints(
                         minWidth: 260,
-                        maxWidth: 320,
-                        maxHeight: 440,
+                        maxWidth: maxWidth,
+                        maxHeight: maxHeight,
                       ),
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -116,7 +125,8 @@ class _FilterDropdownButtonState extends State<_FilterDropdownButton> {
                     ),
                   ),
                 ),
-              ],
+              ),
+            ],
             ),
           );
         },
@@ -206,6 +216,8 @@ class _AppExpandingSelectState<T> extends State<AppExpandingSelect<T>> {
             ),
             child: Text(
               _currentLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(fontSize: 14),
             ),
           ),
@@ -224,7 +236,11 @@ class _AppExpandingSelectState<T> extends State<AppExpandingSelect<T>> {
                   ListTile(
                     dense: true,
                     selected: widget.options[i].value == widget.value,
-                    title: Text(widget.options[i].label),
+                    title: Text(
+                      widget.options[i].label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     trailing: widget.options[i].value == widget.value
                         ? Icon(Icons.check, size: 18, color: scheme.primary)
                         : null,
@@ -362,7 +378,11 @@ class _AppUsernameAutocompleteState extends State<AppUsernameAutocomplete> {
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
-                    title: Text(user),
+                    title: Text(
+                      user,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onTap: () => _selectOption(user),
                   );
                 },

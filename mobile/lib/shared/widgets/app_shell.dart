@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../features/calls/application/calls_controller.dart';
 
 class AppShell extends ConsumerWidget {
   final Widget child;
@@ -35,6 +36,7 @@ class AppShell extends ConsumerWidget {
               context.go('/home');
               break;
             case 1:
+              ref.read(callsControllerProvider.notifier).applyFilter(const CallsFilter());
               context.go('/calls');
               break;
             case 2:

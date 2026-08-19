@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 
 import Box from '@mui/material/Box';
-import logoAuth from 'assets/images/logo-auth.png';
+import { useTheme } from '@mui/material/styles';
 import { AUTH_CORNER_LOGO, SPLASH_LOGO } from 'constants/authLogoLayout';
+import { brandLogoSrc } from 'constants/brand';
 
 const INTRO_DISPLAY_MS = 2200;
 const LOGOUT_HOLD_MS = 1600;
@@ -14,6 +15,7 @@ export default function SplashScreen({
   onComplete,
   onLogoutExitStart
 }) {
+  const theme = useTheme();
   const [phase, setPhase] = useState(() => {
     if (variant === 'logout') return 'enter-from-corner';
     return 'intro-center';
@@ -81,15 +83,15 @@ export default function SplashScreen({
 
       <Box
         component="img"
-        src={logoAuth}
-        alt="Vocalys"
-        sx={{
-          position: 'fixed',
-          zIndex: 9999,
-          height: 'auto',
-          objectFit: 'contain',
-          pointerEvents: 'none',
-          top: isAtCorner ? AUTH_CORNER_LOGO.top : '50%',
+          src={brandLogoSrc(theme, 'auth')}
+          alt="Vocalys"
+          sx={{
+            position: 'fixed',
+            zIndex: 9999,
+            height: 'auto',
+            objectFit: 'contain',
+            pointerEvents: 'none',
+            top: isAtCorner ? AUTH_CORNER_LOGO.top : '50%',
           left: isAtCorner ? AUTH_CORNER_LOGO.left : '50%',
           maxWidth: isAtCorner ? AUTH_CORNER_LOGO.maxWidth : SPLASH_LOGO.maxWidth,
           transform: isAtCorner ? 'translate(0, 0)' : 'translate(-50%, -50%)',

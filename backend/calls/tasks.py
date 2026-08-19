@@ -16,7 +16,7 @@ from channels.layers import get_channel_layer
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=5, max_retries=3)
+@shared_task(bind=True)
 def analyze_call(self, call_id: str, force: bool = False):
 
     channel_layer = get_channel_layer()
@@ -28,7 +28,7 @@ def analyze_call(self, call_id: str, force: bool = False):
 
             call = Call.objects.select_for_update().get(id=call_id)
 
-            if call.status == 'processing':
+            if call.status == 'processing' and not force:
                 logger.warning(
                     "Skipping duplicate analyze_call for call %s (already processing)",
                     call_id,
@@ -69,14 +69,15 @@ def analyze_call(self, call_id: str, force: bool = False):
             duration = float(info["duration"])
 
             call.duration = round(duration, 2)
-
             logger.info(f"CALL DURATION = {call.duration}")
+            call.save(update_fields=['duration', 'updated_at'])
 
         except Exception as e:
 
             logger.error(f"Duration error: {e}")
 
             call.duration = 0.0
+            call.save(update_fields=['duration', 'updated_at'])
 
         # -----------------------------------
         # تحليل AI
@@ -139,13 +140,20 @@ def analyze_call(self, call_id: str, force: bool = False):
             updated_at=timezone.now()
         )
 
-        async_to_sync(channel_layer.group_send)(
-            group,
-            {
-                "type": "analysis_failed",
-                "call_id": call_id,
-                "error": str(exc),
-            }
-        )
+        try:
+            async_to_sync(channel_layer.group_send)(
+                group,
+                {
+                    "type": "analysis_failed",
+                    "call_id": call_id,
+                    "error": str(exc),
+                }
+            )
+        except Exception:
+            logger.exception("Failed to notify websocket for call %s", call_id)
 
-        raise
+        return {
+            "call_id": call_id,
+            "status": "failed",
+            "error": str(exc),
+        }

@@ -14,12 +14,13 @@ export default function UserAvatarWithName({ username, role, avatar, avatarStyle
   const showInitial = !avatarSrc;
 
   return (
-    <Stack direction="row" spacing={1} alignItems="center">
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, maxWidth: '100%' }}>
       <Avatar
         src={avatarSrc}
         sx={{
           width: size,
           height: size,
+          flexShrink: 0,
           ...getRoleAvatarBorderSx(role, 2, theme),
           color: roleColor.color,
           fontSize: 12,
@@ -29,7 +30,9 @@ export default function UserAvatarWithName({ username, role, avatar, avatarStyle
       >
         {showInitial && getAvatarInitial(username)}
       </Avatar>
-      <Typography variant="body2">{username}</Typography>
+      <Typography variant="body2" noWrap title={username}>
+        {username}
+      </Typography>
     </Stack>
   );
 }

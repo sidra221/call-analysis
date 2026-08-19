@@ -1,19 +1,33 @@
+import managerColor from 'themes/theme/manager';
+import purpleColor from 'themes/theme/purple';
+
 const pick = (theme, group, shade) => theme?.palette?.[group]?.[shade];
+
+export const getHeaderIconColor = (theme) => ({
+  bg: pick(theme, 'primary', 'light') || '#ede7f6',
+  color: pick(theme, 'primary', 'dark') || '#4527a0',
+});
+
+const ROLE_PALETTES = {
+  manager: managerColor,
+  qa: purpleColor,
+};
 
 export const getRoleColor = (role, theme) => {
   const key = (role || '').toLowerCase();
   const isDark = theme?.palette?.mode === 'dark';
+  const palette = ROLE_PALETTES[key];
 
-  if (key === 'manager') {
+  if (palette) {
     return isDark
-      ? { bg: pick(theme, 'primary', 'dark') || 'primary.dark', color: pick(theme, 'primary', 'light') || 'primary.light' }
-      : { bg: pick(theme, 'primary', 'light') || 'primary.light', color: pick(theme, 'primary', 'dark') || 'primary.dark' };
-  }
-
-  if (key === 'qa') {
-    return isDark
-      ? { bg: pick(theme, 'secondary', 'dark') || 'secondary.dark', color: pick(theme, 'secondary', 'light') || 'secondary.light' }
-      : { bg: pick(theme, 'secondary', 'light') || 'secondary.light', color: pick(theme, 'secondary', 'dark') || 'secondary.dark' };
+      ? {
+          bg: palette.darkPrimaryDark || palette.primaryDark,
+          color: palette.darkPrimaryLight || palette.primaryLight,
+        }
+      : {
+          bg: palette.primaryLight,
+          color: palette.primaryDark,
+        };
   }
 
   return isDark

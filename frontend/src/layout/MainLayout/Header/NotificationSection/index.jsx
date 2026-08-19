@@ -32,14 +32,14 @@ import { IconBell } from '@tabler/icons-react';
 import { callsApi, followupsApi, reportsApi } from 'api/api';
 import useAuth from 'hooks/useAuth';
 import useTranslation from 'hooks/useTranslation';
-import { getRoleAvatarBorderSx } from 'utils/avatar';
+import { getHeaderIconColor } from 'constants/colors';
 
 export default function NotificationSection() {
   const theme = useTheme();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
   const { t, locale } = useTranslation();
-  const avatarRoleSx = getRoleAvatarBorderSx(user?.role, 2, theme);
+  const headerIconSx = getHeaderIconColor(theme);
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('all');
@@ -48,6 +48,7 @@ export default function NotificationSection() {
 
   const anchorRef = useRef(null);
   let intervalRef = useRef(null);
+  const fetchingRef = useRef(false);
 
   const timeAgo = (dateString) => {
     if (!dateString) return t('common.unknown');
@@ -120,6 +121,8 @@ export default function NotificationSection() {
 
   // Fetch real notifications from API
   const fetchNotifications = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       setLoading(true);
       const newNotifications = [];
@@ -278,6 +281,7 @@ export default function NotificationSection() {
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
+      fetchingRef.current = false;
       setLoading(false);
     }
   };
@@ -297,18 +301,23 @@ export default function NotificationSection() {
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
   };
 
-  // Auto-refresh every 30 seconds
+  const fetchNotificationsRef = useRef(fetchNotifications);
+  fetchNotificationsRef.current = fetchNotifications;
+
+  // Auto-refresh every 30 seconds. Do not depend on `t` — it used to
+  // change every render and flood the API until the browser hit
+  // "Failed to fetch".
   useEffect(() => {
-    fetchNotifications();
-    
+    fetchNotificationsRef.current();
+
     intervalRef.current = setInterval(() => {
-      fetchNotifications();
+      fetchNotificationsRef.current();
     }, 30000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, t, locale]);
+  }, [user?.id, locale]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -342,20 +351,20 @@ export default function NotificationSection() {
               width: 32,
               height: 32,
               cursor: 'pointer',
-              color: avatarRoleSx.color,
-              backgroundColor: avatarRoleSx.bgcolor,
+              color: headerIconSx.color,
+              backgroundColor: headerIconSx.bg,
               boxShadow: 'none',
               outline: 'none',
               transition: 'box-shadow 0.22s ease',
               '&:hover': {
-                color: `${avatarRoleSx.color} !important`,
-                backgroundColor: `${avatarRoleSx.bgcolor} !important`,
-                boxShadow: `0 6px 20px ${alpha(avatarRoleSx.color, 0.55)}`,
+                color: `${headerIconSx.color} !important`,
+                backgroundColor: `${headerIconSx.bg} !important`,
+                boxShadow: `0 6px 20px ${alpha(headerIconSx.color, 0.35)}`,
               },
               '&:active': {
-                color: `${avatarRoleSx.color} !important`,
-                backgroundColor: `${avatarRoleSx.bgcolor} !important`,
-                boxShadow: `0 3px 12px ${alpha(avatarRoleSx.color, 0.42)}`,
+                color: `${headerIconSx.color} !important`,
+                backgroundColor: `${headerIconSx.bg} !important`,
+                boxShadow: `0 3px 12px ${alpha(headerIconSx.color, 0.28)}`,
               },
             }}
             ref={anchorRef}

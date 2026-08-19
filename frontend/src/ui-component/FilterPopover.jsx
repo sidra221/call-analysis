@@ -25,8 +25,17 @@ export default function FilterPopover({
       anchorEl={anchorEl}
       onClose={onClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: isAr ? 'right' : 'left' }}
-      transformOrigin={{ vertical: 'top', horizontal: isAr ? 'left' : 'left' }}
-      PaperProps={{ sx: { p: 3, width, mt: 1.5 } }}
+      transformOrigin={{ vertical: 'top', horizontal: isAr ? 'right' : 'left' }}
+      marginThreshold={12}
+      PaperProps={{
+        sx: {
+          p: 3,
+          width,
+          maxWidth: 'calc(100vw - 24px)',
+          mt: 1.5,
+          overflow: 'visible'
+        }
+      }}
     >
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
         {title}

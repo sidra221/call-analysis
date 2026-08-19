@@ -20,7 +20,7 @@ class AppTheme {
   static const Color successLight = Color(0xFFB9F6CA);
   static const Color successDark = Color(0xFF00C853);
 
-  static const Color danger = Color(0xFFF44336);
+  static const Color danger = Color(0xFFE53935);
   static const Color errorLight = Color(0xFFEF9A9A);
   static const Color errorDark = Color(0xFFC62828);
 
@@ -28,7 +28,12 @@ class AppTheme {
   static const Color warningLight = Color(0xFFFFF8E1);
   static const Color warningDark = Color(0xFFFFC107);
 
-  /// High-priority accent (React `PRIORITY_HIGH_ORANGE`).
+  /// Priority colors — same hex as web `STATUS_COLORS` (independent of theme).
+  static const Color priorityCritical = Color(0xFFB71C1C);
+  static const Color priorityHigh = Color(0xFFF44336);
+  static const Color priorityMedium = Color(0xFFFB8C00);
+  static const Color priorityLow = Color(0xFF2E7D32);
+
   static const Color orange = Color(0xFFFF9800);
   static const Color orangeMain = orange;
   static const Color orangeDark = Color(0xFFE65100);
@@ -38,9 +43,9 @@ class AppTheme {
   static const Color accent = warningDark;
 
   /// Sentiment palette — balanced visual weight (neutral amber, not pale yellow).
-  static const Color sentimentPositive = success;
-  static const Color sentimentNeutral = Color(0xFFFF9800);
-  static const Color sentimentNegative = danger;
+  static const Color sentimentPositive = priorityLow;
+  static const Color sentimentNeutral = Color(0xFF757575);
+  static const Color sentimentNegative = priorityHigh;
 
   // ── Light surfaces & text (manager.js) ───────────────────────────────────
   static const Color paper = Color(0xFFFFFFFF);
@@ -88,17 +93,17 @@ class AppTheme {
         ),
       );
 
-  /// Critical uses [danger] when shown as its own tier (e.g. dashboard card).
+  /// Critical is strong red; high is red. Same as web `STATUS_COLORS`.
   static Color priorityColor(PriorityLevel priority) {
     switch (priority) {
       case PriorityLevel.critical:
-        return danger;
+        return priorityCritical;
       case PriorityLevel.low:
-        return success;
+        return priorityLow;
       case PriorityLevel.medium:
-        return warningDark;
+        return priorityMedium;
       case PriorityLevel.high:
-        return orange;
+        return priorityHigh;
     }
   }
 

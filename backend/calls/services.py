@@ -64,6 +64,15 @@ def _normalize_keywords(raw):
                     })
             result["display"] = cleaned_display
 
+        if not result["display"]:
+            for bucket in ("negative", "positive", "neutral"):
+                for item in result[bucket]:
+                    result["display"].append({
+                        "text": item,
+                        "polarity": bucket,
+                        "category": result.get("primary_issue_type") or "",
+                    })
+
         return result
 
     if isinstance(raw, list):

@@ -17,8 +17,8 @@ class NotificationService {
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'call_analysis_channel',
-    'Call Analysis Notifications',
-    description: 'Notifications for call analysis updates',
+    'Vocalys Notifications',
+    description: 'Notifications for Vocalys call analysis updates',
     importance: Importance.high,
   );
 

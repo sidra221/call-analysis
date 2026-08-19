@@ -14,13 +14,13 @@ import FilterToolbar from 'ui-component/FilterToolbar';
 import FilterPopover from 'ui-component/FilterPopover';
 import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
-import { stateColor, confidenceColor, getPriorityChipSx, getSentimentChipSx } from 'constants/status';
+import { stateColor, getPriorityChipSx, getSentimentChipSx, getReviewedChipSx, getConfidenceChipSx } from 'constants/status';
 import {
   Box, Button, Card, Chip, CircularProgress, Divider, Drawer,
   FormControl, IconButton, InputLabel, MenuItem, Select,
   Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, TablePagination, Typography, Menu, ListItemIcon, ListItemText,
-  Backdrop, Dialog, DialogTitle, DialogContent, DialogContentText,
+  Dialog, DialogTitle, DialogContent, DialogContentText,
   DialogActions, Alert, Checkbox, Tooltip, useTheme
 } from '@mui/material';
 import useAuth from 'hooks/useAuth';
@@ -86,22 +86,20 @@ function formatConfidenceScore(value) {
 function buildNormalizedCall(call) {
   if (!call) return null;
   const analysis = call.analysis || {};
-  const isFailed = call.status === 'failed';
+  const isComplete = call.status === 'completed';
 
   const keywordsRaw = analysis.keywords ?? call.keywords;
-  const keywordItems = call.keywordItems?.length
-    ? call.keywordItems
-    : parseKeywords(keywordsRaw);
+  const keywordItems = parseKeywords(keywordsRaw);
 
   return {
     ...call,
-    sentiment: isFailed ? null : (analysis.sentiment || call.sentiment || 'neutral'),
-    priority: isFailed ? null : (analysis.priority || call.priority || 'low'),
+    sentiment: isComplete ? (analysis.sentiment || call.sentiment || null) : null,
+    priority: isComplete ? (analysis.priority || call.priority || null) : null,
     is_reviewed: analysis.is_reviewed ?? call.is_reviewed ?? false,
     issue: analysis.main_issue || call.issue || '',
     transcript: analysis.transcript || call.transcript || '',
     keywordItems,
-    keywords: call.keywords || formatKeywords(keywordsRaw),
+    keywords: formatKeywords(keywordsRaw),
     uploadedBy: call.uploaded_by_username || call.uploadedBy || '',
     uploadedByRole: call.uploaded_by_role ?? call.uploadedByRole,
     uploadedByAvatar: call.uploaded_by_avatar ?? call.uploadedByAvatar ?? null,
@@ -139,8 +137,6 @@ export default function Calls() {
   const [isDirty, setIsDirty] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState(0);
 
   const [selectedCalls, setSelectedCalls] = useState([]);
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
@@ -158,7 +154,8 @@ export default function Calls() {
   const {
     calls, loading, error,
     fetchCalls, uploadCall, processCall,
-    updateCallFromWebSocket, markReviewed, patchCall, removeCall
+    updateCallFromWebSocket, markReviewed, patchCall, removeCall,
+    uploadJob, startUploadJob, updateUploadJob, finishUploadJob, watchUploadedCalls
   } = useCallsStore();
 
   const stopPolling = () => {
@@ -171,11 +168,8 @@ export default function Calls() {
   const finishProcessing = (callId) => {
     stopPolling();
     updateCallFromWebSocket(callId);
-    setProcessingProgress(100);
     setReanalyzingId(null);
     setTimeout(async () => {
-      setIsProcessing(false);
-      setProcessingProgress(0);
       await fetchCalls();
       try {
         const res = await callsApi.get(callId);
@@ -205,8 +199,6 @@ export default function Calls() {
           const data = JSON.parse(e.data);
           if (data.type === 'analysis_completed' || data.type === 'analysis_failed') {
             finishProcessing(callId);
-          } else if (data.type === 'analysis_started') {
-            setProcessingProgress(60);
           }
         } catch { }
       };
@@ -222,7 +214,6 @@ export default function Calls() {
 
     pollRef.current = setInterval(async () => {
       waited += 2;
-      setProcessingProgress((prev) => Math.min(prev + 2, 95));
 
       try {
         const res = await callsApi.get(callId);
@@ -236,40 +227,84 @@ export default function Calls() {
 
       if (waited >= maxWait) {
         stopPolling();
-        setIsProcessing(false);
-        setProcessingProgress(0);
         setReanalyzingId(null);
       }
     }, 2000);
   };
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+
+    const audioFiles = files.filter(
+      (file) => file.type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|flac|webm|aac)$/i.test(file.name)
+    );
+    if (!audioFiles.length) {
+      setUploadError(t('calls.uploadInvalidType'));
+      return;
+    }
+
     setUploadError('');
+    const initialLabel = audioFiles.length === 1
+      ? t('calls.processing')
+      : t('calls.uploadingCount', { current: 1, total: audioFiles.length });
+    startUploadJob(audioFiles.length, initialLabel);
+
+    const uploadedIds = [];
+    const failedNames = [];
 
     try {
-      setIsProcessing(true);
-      setProcessingProgress(10);
-      const formData = new FormData();
-      formData.append('audio_file', file);
-      const newCall = await uploadCall(formData);
-      setProcessingProgress(30);
-      const callId = newCall?.id || newCall?.call_id || newCall?.data?.id;
-      if (!callId) {
-        throw new Error(t('calls.uploadNoCallId'));
+      for (let i = 0; i < audioFiles.length; i++) {
+        const file = audioFiles[i];
+        updateUploadJob({
+          current: i + 1,
+          progress: Math.round((i / audioFiles.length) * 90) + 5,
+          label: t('calls.uploadingCount', { current: i + 1, total: audioFiles.length }),
+          phase: 'uploading'
+        });
+
+        try {
+          const formData = new FormData();
+          formData.append('audio_file', file);
+          const newCall = await uploadCall(formData);
+          const callId = newCall?.id || newCall?.call_id || newCall?.data?.id;
+          if (!callId) {
+            throw new Error(t('calls.uploadNoCallId'));
+          }
+          uploadedIds.push(callId);
+        } catch (err) {
+          console.error('UPLOAD ERROR:', file.name, err);
+          failedNames.push(file.name);
+        }
       }
-      connectWebSocket(callId);
-      setProcessingProgress(50);
-      startPolling(callId);
+
+      await fetchCalls();
+
+      if (failedNames.length) {
+        const message = t('calls.uploadPartialFailed', {
+          ok: uploadedIds.length,
+          failed: failedNames.join(', ')
+        });
+        setUploadError(message);
+        updateUploadJob({ error: message });
+      }
+
+      if (!uploadedIds.length) {
+        updateUploadJob({ phase: 'done', progress: 100, label: t('calls.uploadFailed') });
+        setTimeout(() => finishUploadJob(), 1500);
+        return;
+      }
+
+      await watchUploadedCalls(uploadedIds);
     } catch (err) {
       console.error('UPLOAD ERROR:', err);
-      setUploadError(err?.response?.data?.message || err?.message || t('calls.uploadFailed'));
-      setIsProcessing(false);
-      setProcessingProgress(0);
+      const message = err?.response?.data?.message || err?.message || t('calls.uploadFailed');
+      setUploadError(message);
+      updateUploadJob({ phase: 'error', error: message });
+      setTimeout(() => finishUploadJob(), 1500);
       stopPolling();
     }
-    e.target.value = '';
   };
 
   useEffect(() => {
@@ -380,24 +415,12 @@ export default function Calls() {
     );
   };
 
-  const canReanalyze = (call) => (
-    call?.status === 'completed' || call?.status === 'failed'
-  );
+  const canReanalyze = (call) => Boolean(call?.id);
 
   const renderDrawerActions = (call) => (
     <>
       <Typography variant="subtitle1" gutterBottom>{t('common.actions')}</Typography>
       <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-        {canReanalyze(call) && (
-          <Button
-            variant="contained"
-            disabled={reanalyzingId === call.id}
-            startIcon={reanalyzingId === call.id ? <CircularProgress size={18} color="inherit" /> : <IconRefresh size={18} />}
-            onClick={() => handleReanalyze(call.id)}
-          >
-            {t('calls.reanalyzeShort')}
-          </Button>
-        )}
         <Button
           variant="contained"
           color={call.is_reviewed ? 'success' : 'primary'}
@@ -452,12 +475,12 @@ export default function Calls() {
     if (!normalized) return;
     setEditableTranscript(normalized.transcript || '');
     setTranscriptExpanded(false);
-    if (normalized.status === 'failed') {
+    if (normalized.status === 'completed') {
+      setEditableSentiment(normalized.sentiment || '');
+      setEditablePriority(normalized.priority || '');
+    } else {
       setEditableSentiment('');
       setEditablePriority('');
-    } else {
-      setEditableSentiment(normalized.sentiment || 'neutral');
-      setEditablePriority(normalized.priority || 'low');
     }
     setEditableIssue(normalized.issue || '');
     setEditableKeywords(normalized.keywords || '');
@@ -548,13 +571,12 @@ export default function Calls() {
   }, [search, statusFilter, sentimentFilter, priorityFilter, reviewedFilter, needsFollowupFilter,
     startDate, endDate, normalizedCalls, sortByDate, sortByUploader]);
 
-  // Apply filter from navigation state (from Dashboard)
+  // Apply filter from Dashboard cards; reset when opening Calls from the nav.
   useEffect(() => {
     const filter = state?.filter;
     const filterValue = state?.value;
-    
-    if (filter && filterValue) {
-      // Reset all filters first
+
+    const resetFilters = () => {
       setStatusFilter('all');
       setSentimentFilter('all');
       setPriorityFilter('all');
@@ -563,8 +585,20 @@ export default function Calls() {
       setSearch('');
       setStartDate('');
       setEndDate('');
-      
-      // Apply the specific filter
+      setUserFilter('');
+      setPage(0);
+    };
+
+    if (state?.reset) {
+      resetFilters();
+      fetchCalls();
+      navigate('/calls', { replace: true, state: {} });
+      return;
+    }
+
+    if (filter && filterValue) {
+      resetFilters();
+
       if (filter === 'priority') {
         setPriorityFilter(filterValue);
       } else if (filter === 'sentiment') {
@@ -577,8 +611,6 @@ export default function Calls() {
         setUserFilter(filterValue);
         fetchCalls({ user: filterValue });
       }
-      // Clear the state after applying to avoid re-applying on re-render
-      window.history.replaceState({}, document.title);
     }
   }, [state]);
 
@@ -601,6 +633,7 @@ export default function Calls() {
   };
 
   const handleReanalyze = async (callId) => {
+    if (reanalyzingId === callId) return;
     try {
       setReanalyzingId(callId);
       setUploadError('');
@@ -609,7 +642,10 @@ export default function Calls() {
       startPolling(callId);
     } catch (err) {
       setReanalyzingId(null);
-      setUploadError(err?.message || t('calls.reanalysisFailed'));
+      const message = err?.message === 'Failed to fetch'
+        ? t('calls.reanalysisFailed')
+        : (err?.message || t('calls.reanalysisFailed'));
+      setUploadError(message);
     }
   };
 
@@ -707,6 +743,7 @@ export default function Calls() {
       <input
         type="file"
         accept="audio/*"
+        multiple
         ref={fileInputRef}
         style={{ display: 'none' }}
         onChange={handleFileUpload}
@@ -762,6 +799,7 @@ export default function Calls() {
                   variant="contained"
                   startIcon={<IconUpload size={18} />}
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadJob.active}
                 >
                   {t('calls.uploadCall')}
                 </Button>
@@ -901,26 +939,28 @@ export default function Calls() {
                       <TableCell>
                         {call.status === 'failed' ? (
                           <Chip label={t('calls.analysisFailed')} color="error" size="small" />
-                        ) : (
+                        ) : call.status === 'completed' && call.priority ? (
                           <Chip
                             label={priorityLabel(call.priority)}
                             size="small"
                             variant="outlined"
                             sx={getPriorityChipSx(theme, call.priority)}
                           />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
                         )}
                       </TableCell>
                       <TableCell><StatusChip status={call.status} /></TableCell>
                       <TableCell>
-                        {call.status === 'failed' ? (
-                          <Typography variant="body2" color="text.secondary">—</Typography>
-                        ) : (
+                        {call.status === 'completed' && call.sentiment ? (
                           <Chip
                             label={sentimentLabel(call.sentiment)}
                             size="small"
                             variant="outlined"
                             sx={getSentimentChipSx(theme, call.sentiment)}
                           />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
                         )}
                       </TableCell>
                       <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
@@ -936,8 +976,9 @@ export default function Calls() {
                       <TableCell>
                         <Chip
                           label={call.is_reviewed ? t('common.yes') : t('common.no')}
-                          color={call.is_reviewed ? 'success' : 'error'}
                           size="small"
+                          variant="outlined"
+                          sx={getReviewedChipSx(call.is_reviewed, theme)}
                         />
                       </TableCell>
                       <TableCell sx={{ ...CALLS_UPLOADED_BY_CELL_SX, paddingInlineStart: 1 }}>
@@ -1051,13 +1092,13 @@ export default function Calls() {
                       <span>
                         <IconButton
                           size="small"
-                          disabled={reanalyzingId === viewingCall.id || drawerLoading}
+                          color="primary"
+                          disabled={reanalyzingId === viewingCall.id}
                           onClick={() => handleReanalyze(viewingCall.id)}
-                          sx={{ color: 'primary.main' }}
                         >
                           {reanalyzingId === viewingCall.id
-                            ? <CircularProgress size={18} />
-                            : <IconRefresh size={18} />}
+                            ? <CircularProgress size={18} color="inherit" />
+                            : <IconRefresh size={18} color="currentColor" />}
                         </IconButton>
                       </span>
                     </Tooltip>
@@ -1100,9 +1141,9 @@ export default function Calls() {
               {viewingCall.summary && !isEditMode && (
                 <Box sx={{
                   mb: 2, p: 1.5, borderRadius: 1,
-                  bgcolor: viewingCall.sentiment === 'negative' ? 'rgba(211, 47, 47, 0.08)' : 'action.hover',
+                  bgcolor: 'action.hover',
                   border: '1px solid',
-                  borderColor: viewingCall.sentiment === 'negative' ? 'error.light' : 'divider',
+                  borderColor: 'divider',
                 }}>
                   <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('calls.summary')}</Typography>
                   <Typography variant="body2" color="text.primary" sx={{ lineHeight: 1.6 }}>
@@ -1117,6 +1158,8 @@ export default function Calls() {
               <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
                 {viewingCall.status === 'failed' ? (
                   <Chip label={t('calls.analysisFailed')} color="error" size="small" />
+                ) : viewingCall.status !== 'completed' ? (
+                  <Chip label={t('calls.awaitingAi')} color="info" size="small" />
                 ) : isEditMode ? (
                   <>
                     <Select fullWidth size="small" value={editableSentiment}
@@ -1150,8 +1193,9 @@ export default function Calls() {
                     {viewingCall.confidence_pct != null && (
                       <Chip
                         label={t('calls.confidence', { pct: viewingCall.confidence_pct })}
-                        color={confidenceColor(viewingCall.confidence_pct)}
                         size="small"
+                        variant="outlined"
+                        sx={getConfidenceChipSx(viewingCall.confidence_pct, theme)}
                       />
                     )}
                   </>
@@ -1192,9 +1236,7 @@ export default function Calls() {
               <Typography variant="subtitle1" gutterBottom>{t('calls.transcript')}</Typography>
               {viewingCall.issue === 'Analysis failed' && !editableTranscript && !drawerLoading && (
                 <Alert severity="warning" sx={{ mb: 1.5 }}>
-                  {t('calls.analysisFailedAlertBefore')}{' '}
-                  <strong>{t('calls.reanalyzeShort')}</strong>{' '}
-                  {t('calls.analysisFailedAlertAfter')}
+                  {t('calls.analysisFailedAlert')}
                 </Alert>
               )}
               {isEditMode ? (
@@ -1217,17 +1259,22 @@ export default function Calls() {
                   }}
                 />
               ) : (
-                <Box sx={{ mb: 2 }}>
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 1.5,
+                    pb: transcriptNeedsExpand ? 1 : 1.5,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'action.hover'
+                  }}
+                >
                   <Box
                     sx={{
                       position: 'relative',
                       maxHeight: transcriptExpanded ? 'none' : 156,
-                      overflow: 'hidden',
-                      p: 1.5,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      bgcolor: 'action.hover'
+                      overflow: 'hidden'
                     }}
                   >
                     <Typography
@@ -1260,7 +1307,7 @@ export default function Calls() {
                     <Button
                       size="small"
                       onClick={() => setTranscriptExpanded((prev) => !prev)}
-                      sx={{ mt: 0.5, px: 0, minWidth: 0 }}
+                      sx={{ mt: 0.75, px: 0, minWidth: 0 }}
                     >
                       {transcriptExpanded ? t('calls.showLess') : t('calls.showMore')}
                     </Button>
@@ -1300,53 +1347,6 @@ export default function Calls() {
           )}
         </Box>
       </Drawer>
-
-      {/* Processing Backdrop */}
-      <Backdrop
-        sx={{
-          color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1,
-          flexDirection: 'column', backdropFilter: 'blur(4px)',
-        }}
-        open={isProcessing}
-      >
-        <Card sx={{ p: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
-          <Stack spacing={3} alignItems="center">
-            {processingProgress < 100 ? (
-              <>
-                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                  <CircularProgress
-                    variant="determinate"
-                    value={processingProgress}
-                    size={80} thickness={4}
-                    sx={{ color: 'primary.main' }}
-                  />
-                  <Box sx={{
-                    top: 0, left: 0, bottom: 0, right: 0, position: 'absolute',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '1rem' }}>
-                      {`${Math.round(processingProgress)}%`}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>{t('calls.processing')}</Typography>
-              </>
-            ) : (
-              <>
-                <Box sx={{
-                  width: 90, height: 90, borderRadius: '50%', bgcolor: 'success.main',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <IconCheck size={50} stroke={3} />
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  {statusLabel('completed')}
-                </Typography>
-              </>
-            )}
-          </Stack>
-        </Card>
-      </Backdrop>
     </>
   );
 }

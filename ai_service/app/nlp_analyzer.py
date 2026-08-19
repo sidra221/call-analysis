@@ -894,6 +894,46 @@ def _finalize_keyword_buckets(
     display = _build_display_keywords(ranked, call_sentiment, primary_issue)
     top_neg, top_issue = _find_top_phrases(transcript)
 
+    if not display:
+        for _score, text, pol, cat in ranked:
+            if _is_reference_phrase(text):
+                continue
+            cat_label = cat or primary_issue or ""
+            display.append({
+                "text": text,
+                "polarity": _display_polarity(pol, call_sentiment, cat_label, primary_issue),
+                "category": cat_label,
+                "keyword_role": "problem",
+            })
+            if len(display) >= DISPLAY_KEYWORDS_MIN:
+                break
+
+    if not display:
+        for bucket, texts in (("negative", neg), ("positive", pos), ("neutral", neu)):
+            for text in texts:
+                if _is_reference_phrase(text):
+                    continue
+                display.append({
+                    "text": text,
+                    "polarity": bucket,
+                    "category": primary_issue or "",
+                    "keyword_role": "problem",
+                })
+                if len(display) >= DISPLAY_KEYWORDS_MIN:
+                    break
+            if len(display) >= DISPLAY_KEYWORDS_MIN:
+                break
+
+    if not display:
+        for phrase in (top_neg, top_issue):
+            if phrase and str(phrase).strip():
+                display.append({
+                    "text": str(phrase).strip(),
+                    "polarity": call_sentiment or "neutral",
+                    "category": primary_issue or "",
+                    "keyword_role": "problem",
+                })
+
     return {
         "negative":            neg,
         "positive":            pos,

@@ -132,21 +132,13 @@ export function buildPalette(presetColor) {
       light: colors.warningLight,
       main: colors.warningMain,
       dark: colors.warningDark,
-      contrastText: colors.grey700
+      contrastText: colors.darkTextTitle
     },
     success: {
       light: colors.successLight,
       200: colors.success200,
       main: colors.successMain,
       dark: colors.successDark
-    },
-    grey: {
-      50: colors.grey50,
-      100: colors.grey100,
-      500: colors.grey500,
-      600: colors.grey600,
-      700: colors.grey700,
-      900: colors.grey900
     },
     dark: {
       light: colors.darkTextPrimary,
@@ -156,11 +148,20 @@ export function buildPalette(presetColor) {
       900: colors.darkPaper
     },
     text: {
-      primary: colors.darkTextPrimary,
-      secondary: colors.darkTextSecondary,
-      dark: colors.grey900,
-      hint: colors.grey100,
+      primary: colors.darkTextTitle,
+      secondary: colors.darkTextPrimary,
+      dark: colors.darkTextTitle,
+      hint: colors.darkTextSecondary,
       heading: colors.darkTextTitle
+    },
+    grey: {
+      50: colors.darkLevel2,
+      100: colors.darkLevel1,
+      200: colors.darkLevel1,
+      500: colors.darkTextSecondary,
+      600: colors.darkTextSecondary,
+      700: colors.darkTextPrimary,
+      900: colors.darkTextTitle
     },
     divider: colors.darkLevel1,
     background: {

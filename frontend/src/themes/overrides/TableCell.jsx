@@ -5,12 +5,13 @@ export default function TableCell(theme) {
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderColor: theme.vars.palette.grey[200],
-          fontSize: '0.875rem'
+          borderColor: theme.vars.palette.divider,
+          fontSize: '0.875rem',
+          color: theme.vars.palette.text.primary
         },
         head: {
           fontSize: '0.875rem',
-          color: theme.vars.palette.grey[900],
+          color: theme.vars.palette.text.heading,
           fontWeight: 600,
           padding: '10px 12px',
           whiteSpace: 'nowrap',

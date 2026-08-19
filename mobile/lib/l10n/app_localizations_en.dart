@@ -123,9 +123,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get topPositiveFeedback => 'Top Positive Feedback';
 
   @override
-  String get priorityFollowUps => 'Priority Follow-ups';
-
-  @override
   String get viewAll => 'View all';
 
   @override
