@@ -14,7 +14,7 @@ class ApiConfig {
   /// LAN IP for physical devices — override: --dart-define=API_HOST=<IP>
   static const String host = String.fromEnvironment(
     'API_HOST',
-    defaultValue: '10.37.235.187',
+    defaultValue: '172.23.216.187',
   );
 
   static String get baseUrl {
@@ -29,11 +29,12 @@ class ApiConfig {
       return 'http://localhost:$backendPort';
     }
 
+    // Android emulator reaches the host machine at 10.0.2.2.
+    // Physical phones (Android + iOS) must use the laptop Wi‑Fi IP.
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://$host:$backendPort';
       case TargetPlatform.iOS:
-        return 'http://127.0.0.1:$backendPort';
+        return 'http://$host:$backendPort';
       default:
         return 'http://localhost:$backendPort';
     }

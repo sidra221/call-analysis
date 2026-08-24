@@ -13,14 +13,17 @@ ENV_FILE="${ROOT}/.env"
 URL_FILE="${ROOT}/.ngrok-url"
 
 detect_lan_ip() {
-  ip -4 addr show scope global 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | while read -r candidate; do
-    case "$candidate" in
-      127.*|10.2.0.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) continue ;;
-      10.*|192.168.*)
-        echo "$candidate"
-        return 0
-        ;;
+  # Prefer Wi‑Fi/Ethernet, skip Docker bridges, VPN, and loopback.
+  local iface candidate
+  for iface in $(ls /sys/class/net 2>/dev/null); do
+    case "$iface" in
+      lo|docker*|br-*|veth*|proton*|tun*|wg*|ipv6leak*|tailscale*) continue ;;
     esac
+    candidate="$(ip -4 addr show dev "$iface" scope global 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)"
+    if [[ -n "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
   done
 }
 
@@ -39,7 +42,7 @@ is_ipv4() {
 }
 
 DEFAULT_LAN_HOST="${API_HOST:-$(detect_lan_ip)}"
-DEFAULT_LAN_HOST="${DEFAULT_LAN_HOST:-10.37.235.187}"
+DEFAULT_LAN_HOST="${DEFAULT_LAN_HOST:-172.23.216.187}"
 
 read_env_value() {
   local key="$1"

@@ -17,11 +17,15 @@ if not SECRET_KEY:
 
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-# FIX: Docker-safe ALLOWED_HOSTS
-ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,web"
-).split(",")
+# Docker-safe ALLOWED_HOSTS. In DEBUG, allow any Host so a laptop Wi‑Fi
+# IP change (and physical phones) does not cause DisallowedHost 400s.
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,web").split(",")
+    if h.strip()
+]
+if DEBUG and "*" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("*")
 
 # -----------------------------
 # CORS SETTINGS
