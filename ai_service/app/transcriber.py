@@ -3,14 +3,42 @@ import json
 import subprocess
 import tempfile
 
+import torch
 import pandas as pd
 import whisperx
 from pyannote.audio import Pipeline
 
-device = "cpu"
+from app.device import compute_type, resolve_device
+
+device = resolve_device()
 SAMPLE_RATE = 16000
+_diarization_pipeline = None
 
 print("Device:", device)
+
+
+def _get_diarization_pipeline():
+    """pyannote speaker diarization — separate from Whisper ASR."""
+    global _diarization_pipeline
+    if _diarization_pipeline is None:
+        token = os.getenv("HUGGINGFACE_TOKEN")
+        print("Loading pyannote speaker-diarization-3.1...")
+        _diarization_pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+            token=token,
+        )
+        if device == "cuda":
+            _diarization_pipeline.to(torch.device("cuda"))
+    return _diarization_pipeline
+
+
+def _waveform_from_wav(path: str) -> dict:
+    """Load audio in-memory so pyannote does not need torchcodec AudioDecoder."""
+    audio_np = whisperx.load_audio(path)
+    waveform = torch.from_numpy(audio_np).to(dtype=torch.float32)
+    if waveform.ndim == 1:
+        waveform = waveform.unsqueeze(0)
+    return {"waveform": waveform, "sample_rate": SAMPLE_RATE}
 
 
 def _prepare_wav(src_path: str) -> str:
@@ -55,11 +83,11 @@ def transcribe_audio(audio_file):
     print(f"Prepared WAV: {prepared}")
 
     try:
-        print("Loading WhisperX model (CPU)...")
+        print(f"Loading WhisperX model ({device.upper()})...")
         model = whisperx.load_model(
             "small",
             device,
-            compute_type="float32"
+            compute_type=compute_type(device),
         )
 
         print("Transcribing...")
@@ -85,15 +113,11 @@ def transcribe_audio(audio_file):
             device
         )
 
-        print("\nRunning diarization (CPU)...")
+        print(f"\nRunning pyannote diarization ({device.upper()})...")
         aligned_with_speakers = aligned_result
         try:
-            token = os.getenv("HUGGINGFACE_TOKEN")
-            pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                token=token
-            )
-            diarization = pipeline(prepared)
+            pipeline = _get_diarization_pipeline()
+            diarization = pipeline(_waveform_from_wav(prepared))
             annotation = _annotation_from_diarization(diarization)
 
             segments_list = []
@@ -104,11 +128,15 @@ def transcribe_audio(audio_file):
                     "speaker": speaker
                 })
 
+            speakers_found = sorted({row["speaker"] for row in segments_list})
+            print(f"pyannote speakers: {speakers_found or 'none'}")
+
             if segments_list:
-                print("Assigning speakers to words...")
+                print("Assigning speakers to Whisper segments...")
                 aligned_with_speakers = whisperx.assign_word_speakers(
                     pd.DataFrame(segments_list),
-                    aligned_result
+                    aligned_result,
+                    fill_nearest=True,
                 )
         except Exception as exc:
             print(f"Diarization failed ({exc}); continuing without speaker labels")

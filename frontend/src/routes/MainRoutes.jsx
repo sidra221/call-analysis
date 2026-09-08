@@ -36,7 +36,7 @@ export default function getMainRoutes() {
         {
           path: 'followups',
           element: (
-            <ProtectedRoute allowedRoles={['qa']}>
+            <ProtectedRoute allowedRoles={['manager', 'qa']}>
               <FollowupsPage />
             </ProtectedRoute>
           )

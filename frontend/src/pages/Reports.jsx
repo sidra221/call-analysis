@@ -27,6 +27,7 @@ import StatSummaryCard from 'ui-component/StatSummaryCard';
 import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
 import { getSentimentChipSx } from 'constants/status';
+import { buildReportForm } from 'utils/reportPeriod';
 import {
   TABLE_LAYOUT_SX,
   TABLE_CHECKBOX_CELL_SX,
@@ -81,7 +82,7 @@ export default function Reports() {
   const [selected, setSelected] = useState([]);
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
 
-  const [form, setForm] = useState({ type: 'daily', from: '', to: '' });
+  const [form, setForm] = useState(() => buildReportForm('monthly'));
 
   useEffect(() => {
     loadReports();
@@ -240,6 +241,32 @@ export default function Reports() {
   const draftCount = reports.filter((r) => r.status === 'draft').length;
   const reviewedCount = reports.filter((r) => r.status === 'reviewed' || r.status === 'approved').length;
 
+  const openGenerateDialog = () => {
+    setForm(buildReportForm('monthly'));
+    setOpenForm(true);
+  };
+
+  const closeGenerateDialog = () => {
+    setOpenForm(false);
+    setGenerating(false);
+    setForm(buildReportForm('monthly'));
+  };
+
+  const handlePeriodTypeChange = (type) => {
+    setForm(buildReportForm(type, form.from));
+  };
+
+  const handlePeriodPickerChange = (value) => {
+    if (!value) return;
+    setForm(buildReportForm(form.type, value));
+  };
+
+  const periodHint = form.type === 'daily'
+    ? t('reports.rangeHintDaily', { date: form.from })
+    : form.type === 'weekly'
+      ? t('reports.rangeHintWeekly', { from: form.from, to: form.to })
+      : t('reports.rangeHintMonthly', { from: form.from, to: form.to });
+
   const handleGenerate = async () => {
     if (!form.from || !form.to) {
       setError(t('reports.selectDateRange'));
@@ -256,8 +283,7 @@ export default function Reports() {
         setReports((prev) => [res.data, ...prev]);
         setPage(0);
       }
-      setOpenForm(false);
-      setForm({ type: 'daily', from: '', to: '' });
+      closeGenerateDialog();
     } catch (err) {
       setError(err.message || t('reports.generationFailed'));
     } finally {
@@ -471,7 +497,7 @@ export default function Reports() {
           <PageTitle
             title={t('reports.title')}
             action={role === 'qa' ? (
-              <Button variant="contained" startIcon={<IconPlus />} onClick={() => setOpenForm(true)}>
+              <Button variant="contained" startIcon={<IconPlus />} onClick={openGenerateDialog}>
                 {t('common.generate')}
               </Button>
             ) : null}
@@ -545,6 +571,7 @@ export default function Reports() {
                 <MenuItem value="all">{t('common.all')}</MenuItem>
                 <MenuItem value="daily">{t('reports.daily')}</MenuItem>
                 <MenuItem value="weekly">{t('reports.weekly')}</MenuItem>
+                <MenuItem value="monthly">{t('reports.monthly')}</MenuItem>
               </Select>
             </FormControl>
           </FilterPopover>
@@ -690,26 +717,42 @@ export default function Reports() {
           </Box>
       </PageCard>
 
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} fullWidth maxWidth="sm">
+      <Dialog open={openForm} onClose={closeGenerateDialog} fullWidth maxWidth="sm">
         <DialogTitle>{t('reports.generateNewReport')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={2}>
-            <TextField select label={t('reports.reportType')} value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })} fullWidth>
-              <MenuItem value="daily">{t('reports.daily')}</MenuItem>
+            <TextField
+              select
+              label={t('reports.reportType')}
+              value={form.type}
+              onChange={(e) => handlePeriodTypeChange(e.target.value)}
+              fullWidth
+              helperText={t('reports.periodHelp')}
+            >
+              <MenuItem value="monthly">{t('reports.monthly')}</MenuItem>
               <MenuItem value="weekly">{t('reports.weekly')}</MenuItem>
+              <MenuItem value="daily">{t('reports.daily')}</MenuItem>
             </TextField>
-            <Stack direction="row" spacing={2}>
-              <TextField type="date" label={t('common.from')} InputLabelProps={{ shrink: true }} fullWidth
-                value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
-              <TextField type="date" label={t('common.to')} InputLabelProps={{ shrink: true }} fullWidth
-                value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
-            </Stack>
+            <TextField
+              type={form.type === 'monthly' ? 'month' : 'date'}
+              label={
+                form.type === 'daily'
+                  ? t('reports.pickDay')
+                  : form.type === 'weekly'
+                    ? t('reports.pickWeek')
+                    : t('reports.pickMonth')
+              }
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              value={form.picker}
+              onChange={(e) => handlePeriodPickerChange(e.target.value)}
+            />
+            <Alert severity="info">{periodHint}</Alert>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'flex-end', px: 3, pb: 3, gap: 1 }}>
-          <DialogCancelButton onClick={() => setOpenForm(false)} />
-          <Button variant="contained" onClick={handleGenerate} disabled={generating}>
+          <DialogCancelButton type="button" onClick={closeGenerateDialog} />
+          <Button type="button" variant="contained" onClick={handleGenerate} disabled={generating || !form.from || !form.to}>
             {generating ? <CircularProgress size={18} color="inherit" /> : t('common.generate')}
           </Button>
         </DialogActions>

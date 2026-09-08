@@ -129,12 +129,15 @@ async function request(path, options = {}, isFormData = false) {
       data
     });
 
-    throw new Error(
+    const message =
       data?.error?.message ||
       data?.message ||
       data?.detail ||
-      'Request failed'
-    );
+      'Request failed';
+    const err = new Error(message);
+    err.code = data?.error?.code;
+    err.callId = data?.error?.call_id;
+    throw err;
   }
 
   return data;

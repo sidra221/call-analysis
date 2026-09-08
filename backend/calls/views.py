@@ -6,7 +6,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, TextField, Count
+from django.db import IntegrityError
+from django.db.models import Q, TextField
 from django.db.models.functions import Cast
 from django.http import FileResponse
 
@@ -25,6 +26,7 @@ from accounts.permissions import IsManagerOrQA
 from config.responses import success_response, error_response
 from .tasks import analyze_call
 from logs.utils import create_log
+from .hashing import hash_file_obj
 
 
 logger = logging.getLogger(__name__)
@@ -128,6 +130,24 @@ class CallViewSet(viewsets.ModelViewSet):
     # ─────────────────────────────────────
     def create(self, request, *args, **kwargs):
 
+        audio = request.FILES.get('audio_file')
+        if not audio:
+            return error_response(
+                "audio_file is required",
+                code="validation_error",
+                status_code=400,
+            )
+
+        file_hash = hash_file_obj(audio)
+        existing = Call.objects.filter(file_hash=file_hash).first()
+        if existing:
+            return error_response(
+                f"This audio file already exists as call #{existing.id}",
+                code="duplicate_audio",
+                status_code=409,
+                extra={'call_id': existing.id},
+            )
+
         serializer = self.get_serializer(
             data=request.data
         )
@@ -136,9 +156,20 @@ class CallViewSet(viewsets.ModelViewSet):
             raise_exception=True
         )
 
-        call = serializer.save(
-            uploaded_by=request.user
-        )
+        try:
+            call = serializer.save(
+                uploaded_by=request.user,
+                file_hash=file_hash,
+            )
+        except IntegrityError:
+            existing = Call.objects.filter(file_hash=file_hash).first()
+            return error_response(
+                f"This audio file already exists as call #{existing.id}" if existing
+                else "This audio file already exists",
+                code="duplicate_audio",
+                status_code=409,
+                extra={'call_id': existing.id} if existing else None,
+            )
 
         # Trigger AI processing asynchronously
         analyze_call.delay(call.id)
@@ -172,6 +203,8 @@ class CallViewSet(viewsets.ModelViewSet):
         call = self.get_object()
         call_id = call.id
         create_log(request.user, 'delete_call', f'Deleted call #{call_id}')
+        if call.audio_file:
+            call.audio_file.delete(save=False)
         return super().destroy(request, *args, **kwargs)
 
     # ─────────────────────────────────────

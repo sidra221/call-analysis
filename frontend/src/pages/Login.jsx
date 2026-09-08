@@ -1,21 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  CircularProgress,
-  IconButton,
-  InputAdornment,
-  Alert
-} from '@mui/material';
+import { Box, Button, TextField, Typography, CircularProgress, IconButton, InputAdornment, Alert } from '@mui/material';
 
-import {
-  Visibility,
-  VisibilityOff
-} from '@mui/icons-material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 import useAuth from 'hooks/useAuth';
 import useTranslation from 'hooks/useTranslation';
@@ -68,84 +56,77 @@ export default function Login() {
       }}
     >
       <AuthCard>
-          <Typography
-            variant="h3"
-            sx={{
-              mb: 1,
-              fontWeight: 700,
-              color: 'primary.main',
-              textAlign: 'center'
+        <Typography
+          variant="h3"
+          sx={{
+            mb: 1,
+            fontWeight: 700,
+            color: 'primary.main',
+            textAlign: 'center'
+          }}
+        >
+          {t('auth.login')}
+        </Typography>
+
+        <Typography
+          variant="body2"
+          sx={{
+            mb: 4,
+            color: 'text.secondary',
+            textAlign: 'center'
+          }}
+        >
+          {t('auth.loginSubtitle')}
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            label={t('auth.username')}
+            type="text"
+            fullWidth
+            size="medium"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            sx={{ mb: 3 }}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+          />
+
+          <TextField
+            label={t('auth.password')}
+            type={showPassword ? 'text' : 'password'}
+            fullWidth
+            size="medium"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            sx={{ mb: 3 }}
+            autoComplete="new-password"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
+                    {showPassword ? <Visibility /> : <VisibilityOff />}
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
-          >
-            {t('auth.login')}
-          </Typography>
+          />
 
-          <Typography
-            variant="body2"
-            sx={{
-              mb: 4,
-              color: 'text.secondary',
-              textAlign: 'center'
-            }}
-          >
-            {t('auth.loginSubtitle')}
-          </Typography>
+          <Button fullWidth variant="contained" type="submit" disabled={loading} sx={{ py: 1.4 }}>
+            {loading ? <CircularProgress size={24} color="inherit" /> : t('auth.login')}
+          </Button>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              label={t('auth.username')}
-              type="text"
-              fullWidth
-              size="medium"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              sx={{ mb: 3 }}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-            />
-
-            <TextField
-              label={t('auth.password')}
-              type={showPassword ? 'text' : 'password'}
-              fullWidth
-              size="medium"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 3 }}
-              autoComplete="new-password"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      edge="end"
-                    >
-                      {showPassword ? <Visibility /> : <VisibilityOff />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-
-            <Button
-              fullWidth
-              variant="contained"
-              type="submit"
-              disabled={loading}
-              sx={{ py: 1.4 }}
-            >
-              {loading
-                ? <CircularProgress size={24} color="inherit" />
-                : t('auth.login')}
-            </Button>
-          </Box>
+          <Button fullWidth variant="outlined" type="button" onClick={() => navigate('/register')} sx={{ mt: 1.5, py: 1.4 }}>
+            {t('auth.register')}
+          </Button>
+        </Box>
       </AuthCard>
     </Box>
   );

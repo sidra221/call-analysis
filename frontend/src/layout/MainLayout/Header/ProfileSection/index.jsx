@@ -258,11 +258,11 @@ export default function ProfileSection() {
         onClose={handleLanguageClose}
         anchorOrigin={{
           vertical: 'top',
-          horizontal: 'right'
+          horizontal: language === 'ar' ? 'left' : 'right'
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left'
+          horizontal: language === 'ar' ? 'right' : 'left'
         }}
         PaperProps={{
           sx: {

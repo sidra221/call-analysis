@@ -14,6 +14,7 @@ class Report(models.Model):
     PERIOD_CHOICES = [
         ('daily', 'Daily'),
         ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
     ]
 
     STATUS_CHOICES = [
@@ -25,7 +26,7 @@ class Report(models.Model):
     # The QA user who generated and owns this report
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    # Whether this is a daily or weekly report
+    # Daily, weekly, or monthly coverage
     period = models.CharField(max_length=10, choices=PERIOD_CHOICES)
 
     # Current lifecycle status of the report

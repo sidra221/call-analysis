@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import re
 import logging
@@ -25,11 +24,16 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from transformers import pipeline as hf_pipeline
 from sentence_transformers import SentenceTransformer, util
 
+from app.device import hf_device, resolve_device
+
+_DEVICE = resolve_device()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
 )
 log = logging.getLogger("call_nlp_v8")
+log.info("NLP device: %s", _DEVICE)
 
 # ───────────────────────────────────────────────────────────────
 # Constants
@@ -452,7 +456,7 @@ try:
     _roberta = hf_pipeline(
         "sentiment-analysis",
         model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-        truncation=True, max_length=512, device="cpu",
+        truncation=True, max_length=512, device=hf_device(_DEVICE),
     )
     log.info("RoBERTa probe: %s", _roberta("test")[0]["label"])
 except Exception as exc:
@@ -464,7 +468,7 @@ try:
     _zero_shot = hf_pipeline(
         "zero-shot-classification",
         model="facebook/bart-large-mnli",
-        device="cpu",
+        device=hf_device(_DEVICE),
     )
     log.info("Zero-shot loaded.")
 except Exception as exc:
@@ -474,7 +478,7 @@ except Exception as exc:
 log.info("⏳ Loading sentence embedder …")
 try:
     _embedder = SentenceTransformer(
-        "sentence-transformers/all-MiniLM-L6-v2", device="cpu"
+        "sentence-transformers/all-MiniLM-L6-v2", device=_DEVICE
     )
     _anchor_embeddings: Dict[str, np.ndarray] = {
         cat: _embedder.encode(phrases, convert_to_numpy=True)
@@ -969,30 +973,116 @@ _COMPLAINT_SIGNALS = [
     "not received", "hasn't arrived", "tired of dealing",
 ]
 
+_AGENT_SIGNALS = [
+    "thank you for calling", "thanks for calling", "thanks for contacting",
+    "how can i help", "how may i help", "how can i assist",
+    "i'd be happy to help", "i would be happy to help",
+    "can i have your name", "can i have you verify",
+    "let me look", "i found your", "i located your",
+    "did you receive a mailer",
+    "كيف أقدر أساعدك", "كيف فيني أساعدك", "كيف أساعدك",
+    "صباح الخير", "أهلاً وسهلاً", "أهلاً فيك", "تفضل",
+]
+
 def _complaint_score(texts: List[str]) -> float:
     joined = " ".join(texts).lower()
     return sum(1 for sig in _COMPLAINT_SIGNALS if sig in joined)
 
-def get_customer_text(data: dict) -> str:
+def _agent_score(texts: List[str]) -> float:
+    joined = " ".join(texts).lower()
+    return sum(1 for sig in _AGENT_SIGNALS if sig in joined)
+
+def _speaker_turns(data: dict) -> Tuple[Dict[str, List[str]], Dict[str, float]]:
     speakers: Dict[str, List[str]] = {}
     speaker_start: Dict[str, float] = {}
-    for seg in data.get("segments", []):
-        spk   = seg.get("speaker", "")
-        txt   = seg.get("text", "").strip()
-        start = float(seg.get("start", 0))
-        if spk and txt:
-            if spk not in speaker_start:
-                speaker_start[spk] = start
-            speakers.setdefault(spk, []).append(txt)
+    for seg in data.get("segments", []) or []:
+        spk = seg.get("speaker") or ""
+        txt = (seg.get("text") or "").strip()
+        start = float(seg.get("start") or 0)
+        if not spk or not txt:
+            continue
+        if spk not in speaker_start:
+            speaker_start[spk] = start
+        speakers.setdefault(spk, []).append(txt)
+    return speakers, speaker_start
+
+def _role_labels(language: str) -> Dict[str, str]:
+    if (language or "").startswith("ar"):
+        return {"agent": "الموظف", "customer": "العميل", "speaker": "متحدث"}
+    return {"agent": "Agent", "customer": "Customer", "speaker": "Speaker"}
+
+def infer_speaker_roles(data: dict, language: str = "en") -> Dict[str, str]:
+    """Map pyannote SPEAKER_xx ids to Agent / Customer (not Whisper)."""
+    speakers, speaker_start = _speaker_turns(data)
+    if not speakers:
+        return {}
+    labels = _role_labels(language)
+    ordered = sorted(speakers, key=lambda s: speaker_start.get(s, 0))
+    if len(ordered) == 1:
+        only = ordered[0]
+        role = "agent" if _agent_score(speakers[only]) >= _complaint_score(speakers[only]) else "customer"
+        return {only: labels[role]}
+
+    agent = max(
+        ordered,
+        key=lambda s: (
+            _agent_score(speakers[s]),
+            1 if s == ordered[0] else 0,
+        ),
+    )
+    rest = [s for s in ordered if s != agent]
+    customer = max(rest, key=lambda s: _complaint_score(speakers[s]))
+    roles = {agent: labels["agent"], customer: labels["customer"]}
+    extra = 3
+    for spk in ordered:
+        if spk in roles:
+            continue
+        roles[spk] = f"{labels['speaker']} {extra}"
+        extra += 1
+    return roles
+
+def format_transcript_with_speakers(data: dict) -> str:
+    segs = data.get("segments") or []
+    language = _safe_get_language(data)
+    roles = infer_speaker_roles(data, language)
+    if not roles:
+        return extract_transcript(data)
+
+    lines: List[str] = []
+    current = None
+    parts: List[str] = []
+    fallback = _role_labels(language)["speaker"]
+
+    for seg in segs:
+        text = (seg.get("text") or "").strip()
+        if not text:
+            continue
+        spk = seg.get("speaker") or ""
+        label = roles.get(spk) or current or fallback
+        if label != current:
+            if parts and current:
+                lines.append(f"{current}: {_clean(' '.join(parts))}")
+            current = label
+            parts = [text]
+        else:
+            parts.append(text)
+    if parts and current:
+        lines.append(f"{current}: {_clean(' '.join(parts))}")
+    return "\n".join(lines) if lines else extract_transcript(data)
+
+def get_customer_text(data: dict) -> str:
+    speakers, _speaker_start = _speaker_turns(data)
     if not speakers:
         return extract_transcript(data)
     if len(speakers) == 1:
         return _clean(" ".join(list(speakers.values())[0]))
-    scores = {spk: _complaint_score(texts) for spk, texts in speakers.items()}
-    max_sc = max(scores.values())
-    candidates = [s for s, sc in scores.items() if sc == max_sc]
-    customer = min(candidates, key=lambda s: speaker_start.get(s, 0))
-    return _clean(" ".join(speakers[customer]))
+    language = _safe_get_language(data)
+    roles = infer_speaker_roles(data, language)
+    customer_label = _role_labels(language)["customer"]
+    for spk, label in roles.items():
+        if label == customer_label:
+            return _clean(" ".join(speakers.get(spk) or []))
+    return extract_transcript(data)
 
 
 # ───────────────────────────────────────────────────────────────
@@ -1897,13 +1987,13 @@ def analyze_call_nlp(data: dict) -> dict:
     issue_types       list   All detected categories (multi-label)
     priority          str    low | medium | high | critical
     needs_followup    bool
-    transcript        str    Full cleaned text
+    transcript        str    Full text, labeled Agent/Customer when diarized
     customer_text     str    Customer-only speech
     confidence_score  float  [0.0, 1.0]
     detected_language str
     model_used        str
     """
-    transcript    = extract_transcript(data)
+    transcript    = format_transcript_with_speakers(data)
     customer_text = get_customer_text(data)
 
     # Sentiment on customer text only

@@ -125,13 +125,15 @@ backend/staticfiles/
 outputs/
 *.json
 
-# Audio & Media files
-*.mp3
-*.wav
-*.m4a
-*.aac
-*.ogg
-*.flac
+# Local demo audio (not for the repo)
+analysis_test/
+
+# Runtime / process state (local only)
+*.pid
+.ai-service.pid
+nohup.out
+ai_service/temp_*
+temp_*
 
 # Model files (large binaries)
 *.bin

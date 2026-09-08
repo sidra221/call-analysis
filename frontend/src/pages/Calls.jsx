@@ -14,6 +14,7 @@ import FilterToolbar from 'ui-component/FilterToolbar';
 import FilterPopover from 'ui-component/FilterPopover';
 import StatusChip from 'ui-component/StatusChip';
 import DialogCancelButton from 'ui-component/DialogCancelButton';
+import AiWorkingAnimation from 'ui-component/AiWorkingAnimation';
 import { stateColor, getPriorityChipSx, getSentimentChipSx, getReviewedChipSx, getConfidenceChipSx } from 'constants/status';
 import {
   Box, Button, Card, Chip, CircularProgress, Divider, Drawer,
@@ -27,6 +28,7 @@ import useAuth from 'hooks/useAuth';
 import useTranslation from 'hooks/useTranslation';
 import usePaginationLabels from 'hooks/usePaginationLabels';
 import { formatKeywords, parseKeywords, getKeywordChipColor } from 'utils/keywords';
+import { hashFileSha256 } from 'utils/fileHash';
 import { callsApi } from 'api/api';
 import { API_URL, WS_URL } from 'api/baseUrl';
 import {
@@ -253,6 +255,8 @@ export default function Calls() {
 
     const uploadedIds = [];
     const failedNames = [];
+    const duplicateMessages = [];
+    const batchHashes = new Set();
 
     try {
       for (let i = 0; i < audioFiles.length; i++) {
@@ -265,6 +269,17 @@ export default function Calls() {
         });
 
         try {
+          const fileHash = await hashFileSha256(file);
+          const existingCall = calls.find((c) => c.file_hash === fileHash);
+          if (existingCall || batchHashes.has(fileHash)) {
+            duplicateMessages.push(
+              existingCall
+                ? t('calls.uploadDuplicate', { name: file.name, callId: existingCall.id })
+                : t('calls.uploadDuplicateBatch', { name: file.name })
+            );
+            continue;
+          }
+
           const formData = new FormData();
           formData.append('audio_file', file);
           const newCall = await uploadCall(formData);
@@ -273,26 +288,37 @@ export default function Calls() {
             throw new Error(t('calls.uploadNoCallId'));
           }
           uploadedIds.push(callId);
+          batchHashes.add(fileHash);
         } catch (err) {
           console.error('UPLOAD ERROR:', file.name, err);
-          failedNames.push(file.name);
+          if (err.code === 'duplicate_audio') {
+            duplicateMessages.push(t('calls.uploadDuplicate', {
+              name: file.name,
+              callId: err.callId || '—'
+            }));
+          } else {
+            failedNames.push(file.name);
+          }
         }
       }
 
       await fetchCalls();
 
+      const errorParts = [...duplicateMessages];
       if (failedNames.length) {
-        const message = t('calls.uploadPartialFailed', {
+        errorParts.push(t('calls.uploadPartialFailed', {
           ok: uploadedIds.length,
           failed: failedNames.join(', ')
-        });
+        }));
+      }
+      if (errorParts.length) {
+        const message = errorParts.join(' ');
         setUploadError(message);
         updateUploadJob({ error: message });
       }
 
       if (!uploadedIds.length) {
-        updateUploadJob({ phase: 'done', progress: 100, label: t('calls.uploadFailed') });
-        setTimeout(() => finishUploadJob(), 1500);
+        finishUploadJob();
         return;
       }
 
@@ -1120,8 +1146,15 @@ export default function Calls() {
               <Divider sx={{ my: 2 }} />
 
               {reanalyzingId === viewingCall.id && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  {t('calls.reanalyzingMessage')}
+                <Alert
+                  severity="info"
+                  icon={false}
+                  sx={{ mb: 2, display: 'flex', alignItems: 'center' }}
+                >
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <AiWorkingAnimation compact />
+                    <Typography variant="body2">{t('calls.reanalyzingMessage')}</Typography>
+                  </Stack>
                 </Alert>
               )}
 
