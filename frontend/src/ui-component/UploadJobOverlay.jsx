@@ -1,26 +1,49 @@
+import { useEffect, useState } from 'react';
 import {
-  Backdrop, Box, Button, Card, CircularProgress, Paper, Stack, Typography
+  Backdrop, Box, Button, Card, LinearProgress, Paper, Stack, Typography
 } from '@mui/material';
 import { IconArrowLeft, IconArrowRight, IconCheck } from '@tabler/icons-react';
 import useCallsStore from 'hooks/useCallsStore';
 import useTranslation from 'hooks/useTranslation';
+import AiWorkingAnimation from 'ui-component/AiWorkingAnimation';
 
 import { VOCALYS_CYAN, VOCALYS_CYAN_DARK } from 'constants/brand';
+
+const AI_STEP_KEYS = [
+  'calls.aiStepTranscribing',
+  'calls.aiStepSpeakers',
+  'calls.aiStepSentiment',
+  'calls.aiStepIssues'
+];
 
 export default function UploadJobOverlay() {
   const { t, isAr } = useTranslation();
   const { uploadJob, continueWorking } = useCallsStore();
+  const [stepIndex, setStepIndex] = useState(0);
+
+  const isAnalyzing = uploadJob.phase === 'analyzing';
+
+  useEffect(() => {
+    if (!uploadJob.active || uploadJob.phase === 'done') return undefined;
+    const timer = setInterval(() => {
+      setStepIndex((prev) => (prev + 1) % AI_STEP_KEYS.length);
+    }, 2200);
+    return () => clearInterval(timer);
+  }, [uploadJob.active, uploadJob.phase]);
 
   if (!uploadJob.active) return null;
 
   const isDone = uploadJob.phase === 'done';
   const progressLabel = isDone
     ? t('calls.uploadComplete')
-    : uploadJob.phase === 'analyzing'
+    : isAnalyzing
       ? (uploadJob.total > 1
         ? t('calls.analyzingCount', { current: uploadJob.current, total: uploadJob.total })
-        : t('calls.processing'))
+        : t('calls.aiWorking'))
       : (uploadJob.label || t('calls.processing'));
+  const stepLabel = isDone
+    ? t('calls.uploadComplete')
+    : t(isAnalyzing ? AI_STEP_KEYS[stepIndex] : 'calls.aiStepUploading');
 
   return (
     <>
@@ -33,30 +56,34 @@ export default function UploadJobOverlay() {
         }}
         open={uploadJob.overlayVisible}
       >
-        <Card sx={{ p: 4, boxShadow: 24, width: 400, textAlign: 'center' }}>
-          <Stack spacing={3} alignItems="center">
+        <Card sx={{ p: 4, boxShadow: 24, width: 420, textAlign: 'center' }}>
+          <Stack spacing={2.5} alignItems="center">
             {!isDone ? (
               <>
-                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                  <CircularProgress
+                <AiWorkingAnimation />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.75 }}>
+                    {progressLabel}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ minHeight: 24 }}>
+                    {stepLabel}
+                  </Typography>
+                </Box>
+                <Box sx={{ width: '100%' }}>
+                  <LinearProgress
                     variant="determinate"
                     value={uploadJob.progress}
-                    size={80}
-                    thickness={4}
-                    sx={{ color: VOCALYS_CYAN }}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      bgcolor: `${VOCALYS_CYAN}22`,
+                      '& .MuiLinearProgress-bar': { bgcolor: VOCALYS_CYAN, borderRadius: 4 }
+                    }}
                   />
-                  <Box sx={{
-                    top: 0, left: 0, bottom: 0, right: 0, position: 'absolute',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '1rem' }}>
-                      {`${Math.round(uploadJob.progress)}%`}
-                    </Typography>
-                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+                    {`${Math.round(uploadJob.progress)}%`}
+                  </Typography>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {progressLabel}
-                </Typography>
                 <Button
                   fullWidth
                   variant="contained"
@@ -108,10 +135,10 @@ export default function UploadJobOverlay() {
           {isDone ? (
             <IconCheck size={22} color={VOCALYS_CYAN} />
           ) : (
-            <CircularProgress size={22} sx={{ color: VOCALYS_CYAN }} />
+            <AiWorkingAnimation compact />
           )}
           <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
-            {isDone ? t('calls.uploadComplete') : (progressLabel || t('calls.uploadInBackground'))}
+            {isDone ? t('calls.uploadComplete') : (stepLabel || progressLabel || t('calls.uploadInBackground'))}
           </Typography>
         </Paper>
       )}

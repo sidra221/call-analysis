@@ -60,7 +60,7 @@ class CallSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'uploaded_by', 'uploaded_by_username', 'uploaded_by_role',
             'uploaded_by_avatar', 'uploaded_by_avatar_style',
-            'audio_file', 'file_path', 'status', 'duration',
+            'audio_file', 'file_path', 'file_hash', 'status', 'duration',
             'created_at', 'updated_at', 'analysis',
         ]
         read_only_fields = ['uploaded_by', 'status', 'created_at', 'updated_at']
@@ -106,7 +106,7 @@ class CallListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'uploaded_by_username', 'uploaded_by_role',
             'uploaded_by_avatar', 'uploaded_by_avatar_style',
-            'audio_file', 'file_path',
+            'audio_file', 'file_path', 'file_hash',
             'status', 'duration', 'sentiment', 'priority',
             'is_reviewed', 'created_at', 'updated_at', 'analysis',
         ]
@@ -220,9 +220,5 @@ class FollowUpSerializer(serializers.ModelSerializer):
         if status == 'done' and not (assignee_notes or '').strip():
             raise serializers.ValidationError({
                 'assignee_notes': 'Follow-up notes are required before marking as done.',
-            })
-        if instance and 'creator_notes' in attrs:
-            raise serializers.ValidationError({
-                'creator_notes': 'Creator notes cannot be changed after creation.',
             })
         return attrs

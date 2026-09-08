@@ -24,6 +24,8 @@ class Call(models.Model):
 
     file_path = models.CharField(max_length=500, blank=True, null=True)
 
+    file_hash = models.CharField(max_length=64, blank=True, null=True, unique=True, db_index=True)
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     duration = models.FloatField(default=0)

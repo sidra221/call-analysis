@@ -9,6 +9,7 @@ export const STATUS_COLORS = {
   negative: '#E53935',
   positive: '#2E7D32',
   neutral: '#757575',
+  inProgress: '#1565C0',
 };
 
 /** Brighter variants so chip text stays readable on dark surfaces. */
@@ -20,6 +21,7 @@ export const STATUS_COLORS_DARK = {
   negative: '#EF5350',
   positive: '#81C784',
   neutral: '#C5CAE9',
+  inProgress: '#64B5F6',
 };
 
 export const statusPalette = (theme) => (
@@ -116,8 +118,9 @@ export const getCallStatusChipColor = (theme, status) => {
     case 'draft':
       return palette.medium;
     case 'processing':
+      return theme?.palette?.primary?.main || palette.inProgress;
     case 'in_progress':
-      return theme?.palette?.primary?.light || theme?.palette?.primary?.main || '#90CAF9';
+      return palette.inProgress;
     default:
       return palette.neutral;
   }

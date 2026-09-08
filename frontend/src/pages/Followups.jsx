@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Dialog, DialogActions,
   DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem,
@@ -13,7 +13,7 @@ import {
   IconClockHour4, IconX, IconEdit, IconDeviceFloppy,
   IconEye, IconArrowUp, IconArrowDown, IconMessage, IconWriting, IconTrash,
 } from '@tabler/icons-react';
-import { followupsApi } from 'api/api';
+import { followupsApi, callsApi } from 'api/api';
 import { API_URL } from 'api/baseUrl';
 import PageCard from 'ui-component/PageCard';
 import PageTitle from 'ui-component/PageTitle';
@@ -36,10 +36,25 @@ import usePaginationLabels from 'hooks/usePaginationLabels';
 
 const rowsPerPage = 6;
 
-const followupStatusColor = {
-  pending: 'warning',
-  in_progress: 'info',
-  done: 'success',
+const formatCallOptionLabel = (call) => {
+  if (!call) return '';
+  const issue = call.analysis?.main_issue?.trim();
+  const status = call.status || '';
+  const date = call.created_at ? call.created_at.split('T')[0] : '';
+  const parts = [`#${call.id}`];
+  if (issue) {
+    parts.push(issue.length > 45 ? `${issue.slice(0, 45)}…` : issue);
+  } else if (status) {
+    parts.push(status);
+  }
+  if (date) parts.push(date);
+  return parts.join(' · ');
+};
+
+const followupStatusDot = {
+  pending: '#FB8C00',
+  in_progress: '#1565C0',
+  done: '#2E7D32',
 };
 
 const creatorNotesBoxSx = {
@@ -62,6 +77,7 @@ const assigneeNotesBoxSx = {
 
 export default function Followups() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
   const paginationLabels = usePaginationLabels();
@@ -80,6 +96,7 @@ export default function Followups() {
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [createdByFilter, setCreatedByFilter] = useState('all');
+  const [assignedToFilter, setAssignedToFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
 
   // Sorting states
@@ -89,8 +106,11 @@ export default function Followups() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [assignedTo, setAssignedTo] = useState('');
   const [creatorNotes, setCreatorNotes] = useState('');
-  const [callIdInput, setCallIdInput] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [calls, setCalls] = useState([]);
+  const [loadingCalls, setLoadingCalls] = useState(false);
+  const [selectedCall, setSelectedCall] = useState(null);
+  const [pendingCallId, setPendingCallId] = useState(null);
+  const [pendingAssigneeUsername, setPendingAssigneeUsername] = useState('');
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [selectedFollowup, setSelectedFollowup] = useState(null);
@@ -143,14 +163,16 @@ export default function Followups() {
     let count = 0;
     if (statusFilter !== 'all') count++;
     if (createdByFilter !== 'all') count++;
+    if (assignedToFilter !== 'all') count++;
     if (dateFilter) count++;
     return count;
-  }, [statusFilter, createdByFilter, dateFilter]);
+  }, [statusFilter, createdByFilter, assignedToFilter, dateFilter]);
 
   // Reset all filters
   const handleReset = () => {
     setStatusFilter('all');
     setCreatedByFilter('all');
+    setAssignedToFilter('all');
     setDateFilter('');
     setSortBy('created_at');
     setSortOrder('desc');
@@ -165,28 +187,50 @@ export default function Followups() {
   }, [canCreateFollowup]);
 
   useEffect(() => {
-    if (location.state?.openCreateFollowup) {
+    const state = location.state;
+    if (!state?.openCreateFollowup && state?.filter !== 'assignee') return;
+
+    if (state.openCreateFollowup) {
       setOpenCreateDialog(true);
-      setCallIdInput(location.state.callId ? String(location.state.callId) : '');
-      if (location.state.creatorNotes) {
-        setCreatorNotes(location.state.creatorNotes);
-      }
-      if (location.state.assignedToUsername && users.length) {
-        const match = users.find(
-          (u) => (u.username || '').toLowerCase() === location.state.assignedToUsername.toLowerCase()
-        );
-        if (match) setAssignedTo(match.id);
-      } else if (isQA && currentUserId && !assignedTo) {
+      if (state.callId) setPendingCallId(state.callId);
+      if (state.creatorNotes) setCreatorNotes(state.creatorNotes);
+      if (state.assignedToUsername) {
+        setPendingAssigneeUsername(state.assignedToUsername);
+      } else if (isQA && currentUserId) {
         setAssignedTo(currentUserId);
       }
-      window.history.replaceState({}, document.title);
     }
-    if (location.state?.filter === 'assignee' && location.state?.value) {
-      setCreatedByFilter(location.state.value);
+
+    if (state.filter === 'assignee' && state.value) {
+      setAssignedToFilter(state.value);
       setPage(0);
-      window.history.replaceState({}, document.title);
     }
-  }, [location.state, users, isQA, currentUserId, assignedTo]);
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate, isQA, currentUserId]);
+
+  useEffect(() => {
+    if (!pendingAssigneeUsername || !users.length) return;
+    const match = users.find(
+      (u) => (u.username || '').toLowerCase() === pendingAssigneeUsername.toLowerCase()
+    );
+    if (match) setAssignedTo(match.id);
+    setPendingAssigneeUsername('');
+  }, [pendingAssigneeUsername, users]);
+
+  useEffect(() => {
+    if (!openCreateDialog || !canCreateFollowup) return;
+    loadCalls();
+  }, [openCreateDialog, canCreateFollowup]);
+
+  useEffect(() => {
+    if (!pendingCallId || !calls.length) return;
+    const match = calls.find((c) => String(c.id) === String(pendingCallId));
+    if (match) {
+      setSelectedCall(match);
+      setPendingCallId(null);
+    }
+  }, [pendingCallId, calls]);
 
   const handleMarkDone = async () => {
     if (!selectedFollowup || !isFollowupAssignee(selectedFollowup)) return;
@@ -230,6 +274,52 @@ export default function Followups() {
     }
   };
 
+  const loadCalls = async () => {
+    try {
+      setLoadingCalls(true);
+      const res = await callsApi.list({ page_size: 100 });
+      const payload = res?.data ?? res;
+      const results = payload?.results || (Array.isArray(payload) ? payload : []);
+      setCalls(Array.isArray(results) ? results : []);
+    } catch (err) {
+      console.error('Failed to load calls:', err);
+      setCalls([]);
+    } finally {
+      setLoadingCalls(false);
+    }
+  };
+
+  const resetCreateForm = () => {
+    setAssignedTo('');
+    setCreatorNotes('');
+    setSelectedCall(null);
+    setPendingCallId(null);
+  };
+
+  const closeCreateDialog = () => {
+    setOpenCreateDialog(false);
+    resetCreateForm();
+  };
+
+  const handleCreateFollowup = async () => {
+    if (!assignedTo || !selectedCall?.id) return;
+    const payload = {
+      call_id: selectedCall.id,
+      assigned_to: parseInt(assignedTo, 10),
+      creator_notes: creatorNotes.trim(),
+    };
+    closeCreateDialog();
+    try {
+      const res = await followupsApi.create(payload);
+      if (res?.data) {
+        setFollowups((prev) => [res.data, ...prev]);
+      }
+      await loadFollowups();
+    } catch (err) {
+      setError(err.message || t('followups.createFailed'));
+    }
+  };
+
   const loadUsers = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -268,10 +358,12 @@ export default function Followups() {
     let result = visibleFollowups.filter((f) => {
       const matchesStatus = statusFilter === 'all' || f.status === statusFilter;
       const creatorName = f.created_by_username || '';
+      const assigneeName = f.assigned_to_username || '';
       const matchesCreatedBy = createdByFilter === 'all' || creatorName === createdByFilter;
+      const matchesAssignedTo = assignedToFilter === 'all' || assigneeName === assignedToFilter;
       const createdDate = f.created_at ? f.created_at.split('T')[0] : '';
       const matchesDate = !dateFilter || createdDate === dateFilter;
-      return matchesStatus && matchesCreatedBy && matchesDate;
+      return matchesStatus && matchesCreatedBy && matchesAssignedTo && matchesDate;
     });
 
     // Then sort
@@ -303,36 +395,12 @@ export default function Followups() {
     });
 
     return result;
-  }, [visibleFollowups, statusFilter, createdByFilter, dateFilter, sortBy, sortOrder]);
+  }, [visibleFollowups, statusFilter, createdByFilter, assignedToFilter, dateFilter, sortBy, sortOrder]);
 
   const paginatedFollowups = filteredAndSorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const pendingCount = visibleFollowups.filter((f) => f.status === 'pending').length;
   const doneCount = visibleFollowups.filter((f) => f.status === 'done').length;
-
-  const handleCreateFollowup = async () => {
-    if (!assignedTo || !callIdInput) return;
-    try {
-      setCreating(true);
-      const res = await followupsApi.create({
-        call_id: parseInt(callIdInput, 10),
-        assigned_to: parseInt(assignedTo, 10),
-        creator_notes: creatorNotes.trim(),
-      });
-      if (res?.data) {
-        setFollowups((prev) => [res.data, ...prev]);
-      }
-      await loadFollowups();
-      setOpenCreateDialog(false);
-      setAssignedTo('');
-      setCreatorNotes('');
-      setCallIdInput('');
-    } catch (err) {
-      setError(err.message || t('followups.createFailed'));
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleSaveFollowup = async () => {
     if (!selectedFollowup || isManager || selectedFollowup.status === 'done') return;
@@ -400,6 +468,7 @@ export default function Followups() {
   };
 
   const uniqueCreators = [...new Set(visibleFollowups.map((f) => f.created_by_username).filter(Boolean))];
+  const uniqueAssignees = [...new Set(visibleFollowups.map((f) => f.assigned_to_username).filter(Boolean))];
 
   return (
     <>
@@ -407,6 +476,11 @@ export default function Followups() {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
       )}
 
+      {assignedToFilter !== 'all' && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {t('followups.showingAssignedTo', { name: assignedToFilter })}
+        </Alert>
+      )}
       {createdByFilter !== 'all' && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {t('followups.showingCreatedBy', { name: createdByFilter })}
@@ -472,6 +546,24 @@ export default function Followups() {
               >
                 <MenuItem value="all">{t('common.all')}</MenuItem>
                 {uniqueCreators.map((name) => (
+                  <MenuItem key={name} value={name}>
+                    <Typography noWrap>{name}</Typography>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>{t('followups.assignedTo')}</InputLabel>
+              <Select
+                value={assignedToFilter}
+                label={t('followups.assignedTo')}
+                onChange={(e) => setAssignedToFilter(e.target.value)}
+                renderValue={(value) => value === 'all' ? t('common.all') : value}
+                MenuProps={{ PaperProps: { sx: { maxWidth: 320 } } }}
+              >
+                <MenuItem value="all">{t('common.all')}</MenuItem>
+                {uniqueAssignees.map((name) => (
                   <MenuItem key={name} value={name}>
                     <Typography noWrap>{name}</Typography>
                   </MenuItem>
@@ -627,18 +719,38 @@ export default function Followups() {
           </Box>
       </PageCard>
 
-      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullWidth maxWidth="sm">
+      <Dialog open={openCreateDialog} onClose={closeCreateDialog} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 700 }}>{t('followups.createFollowup')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label={t('followups.callId')} size="small" value={callIdInput} type="number"
-                onChange={(e) => setCallIdInput(e.target.value)}
-                fullWidth
+            <Grid size={{ xs: 12 }}>
+              <Autocomplete
+                options={calls}
+                getOptionLabel={formatCallOptionLabel}
+                value={selectedCall}
+                onChange={(event, newValue) => setSelectedCall(newValue)}
+                loading={loadingCalls}
+                disabled={!loadingCalls && calls.length === 0}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={t('followups.selectCall')}
+                    size="small"
+                    placeholder={t('followups.selectCallPlaceholder')}
+                    fullWidth
+                    helperText={!loadingCalls && calls.length === 0 ? t('followups.noCallsForFollowup') : undefined}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.id}>
+                    <Typography variant="body2">{formatCallOptionLabel(option)}</Typography>
+                  </li>
+                )}
+                isOptionEqualToValue={(option, value) => option.id === value?.id}
+                size="small"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12 }}>
               <Autocomplete
                 options={users}
                 getOptionLabel={(option) => option.username || ''}
@@ -681,11 +793,15 @@ export default function Followups() {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <DialogCancelButton onClick={() => setOpenCreateDialog(false)} />
-          <Button variant="contained" onClick={handleCreateFollowup}
-            disabled={!assignedTo || !callIdInput || creating}
-            sx={{ px: 2.5 }}>
-            {creating ? <CircularProgress size={18} color="inherit" /> : t('common.create')}
+          <DialogCancelButton type="button" onClick={closeCreateDialog} />
+          <Button
+            type="button"
+            variant="contained"
+            onClick={handleCreateFollowup}
+            disabled={!assignedTo || !selectedCall?.id}
+            sx={{ px: 2.5 }}
+          >
+            {t('common.create')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -701,7 +817,8 @@ export default function Followups() {
                     width: 10,
                     height: 10,
                     borderRadius: '50%',
-                    backgroundColor: (theme) => theme.palette[followupStatusColor[selectedFollowup.status] || 'grey']?.main || theme.palette.text.disabled,
+                    backgroundColor: followupStatusDot[selectedFollowup.status]
+                      || ((theme) => theme.palette.text.disabled),
                   }} />
                   <Typography variant="h5">
                     {t('followups.followUpTitle', { id: selectedFollowup.id })}

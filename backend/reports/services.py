@@ -1,4 +1,5 @@
 import logging
+import calendar
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -64,6 +65,11 @@ def period_date_range(period: str, *, reference: date | None = None) -> tuple[da
         last_monday = today - timedelta(days=today.weekday() + 7)
         last_sunday = last_monday + timedelta(days=6)
         return last_monday, last_sunday
+
+    if period == 'monthly':
+        first = today.replace(day=1)
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        return first, today.replace(day=last_day)
 
     raise ValueError(f"Unsupported report period: {period}")
 

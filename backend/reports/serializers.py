@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserProfile
 from .models import Report
+import calendar
 
 
 class ReportSerializer(serializers.ModelSerializer):
@@ -62,14 +63,38 @@ class ReportGenerateSerializer(serializers.Serializer):
     QA provides the period type and date range — the AI fills in the content.
     """
 
-    period = serializers.ChoiceField(choices=['daily', 'weekly'])
+    period = serializers.ChoiceField(choices=['daily', 'weekly', 'monthly'])
     date_from = serializers.DateField()
     date_to = serializers.DateField()
 
     def validate(self, data):
-        """Ensure the date range is valid (start must be before end)."""
-        if data['date_from'] > data['date_to']:
+        """Ensure the date range matches the selected period type."""
+        date_from = data['date_from']
+        date_to = data['date_to']
+        period = data['period']
+
+        if date_from > date_to:
             raise serializers.ValidationError("date_from must be before date_to.")
+
+        if period == 'daily' and date_from != date_to:
+            raise serializers.ValidationError(
+                "Daily reports must cover a single day."
+            )
+
+        if period == 'weekly':
+            if date_from.weekday() != 0 or (date_to - date_from).days != 6:
+                raise serializers.ValidationError(
+                    "Weekly reports must cover Monday through Sunday."
+                )
+
+        if period == 'monthly':
+            last_day = calendar.monthrange(date_from.year, date_from.month)[1]
+            expected_end = date_from.replace(day=last_day)
+            if date_from.day != 1 or date_to != expected_end:
+                raise serializers.ValidationError(
+                    "Monthly reports must cover a full calendar month."
+                )
+
         return data
 
 

@@ -64,7 +64,9 @@ export default function ThemeCustomization({ children }) {
   const themeTypography = useMemo(() => Typography(resolvedFontFamily), [resolvedFontFamily]);
 
   const direction = language === 'ar' ? 'rtl' : 'ltr';
-  const emotionCache = useMemo(() => createEmotionCache(direction), [direction]);
+  const ltrCache = useMemo(() => createEmotionCache('ltr'), []);
+  const rtlCache = useMemo(() => createEmotionCache('rtl'), []);
+  const emotionCache = direction === 'rtl' ? rtlCache : ltrCache;
 
   const themeOptions = useMemo(
     () => ({
@@ -98,17 +100,19 @@ export default function ThemeCustomization({ children }) {
         colorSchemeSelector: 'data-color-scheme'
       }
     }),
-    [themeTypography, palette, direction]
+    [themeTypography, palette, direction, borderRadius]
   );
 
-  const themes = createTheme(themeOptions);
-  themes.components = useMemo(() => componentsOverrides(themes, borderRadius, outlinedFilled), [themes, borderRadius, outlinedFilled]);
+  const themes = useMemo(() => {
+    const nextTheme = createTheme(themeOptions);
+    nextTheme.components = componentsOverrides(nextTheme, borderRadius, outlinedFilled);
+    return nextTheme;
+  }, [themeOptions, borderRadius, outlinedFilled]);
 
   return (
-    <CacheProvider key={direction} value={emotionCache}>
+    <CacheProvider value={emotionCache}>
       <StyledEngineProvider injectFirst>
         <ThemeProvider
-          key={`${activePreset}-${direction}`}
           disableTransitionOnChange
           theme={themes}
           modeStorageKey="theme-mode"

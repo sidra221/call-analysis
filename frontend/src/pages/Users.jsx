@@ -49,17 +49,6 @@ const formatMemberSince = (dateStr) => {
   });
 };
 
-const formatLastLogin = (dateStr, neverLabel) => {
-  if (!dateStr) return neverLabel;
-  return new Date(dateStr).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
 const STAT_CARDS = [
   { key: 'calls_uploaded', labelKey: 'users.callsUploaded', Icon: IconPhone },
   { key: 'followups_created', labelKey: 'users.followupsCreated', Icon: IconClipboardText },
@@ -799,20 +788,12 @@ export default function UsersPage() {
                   </Box>
                 )}
 
-                <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" color="text.secondary">{t('users.memberSince')}</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.25 }}>
-                      {formatMemberSince(selectedUser.created_at)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" color="text.secondary">{t('users.lastLogin')}</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.25 }}>
-                      {formatLastLogin(selectedUser.last_login, t('common.never'))}
-                    </Typography>
-                  </Box>
-                </Stack>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">{t('users.memberSince')}</Typography>
+                  <Typography variant="body2" sx={{ mt: 0.25 }}>
+                    {formatMemberSince(selectedUser.created_at)}
+                  </Typography>
+                </Box>
 
                 <Divider sx={{ mb: 2 }} />
 

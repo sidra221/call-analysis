@@ -26,9 +26,10 @@ logging.basicConfig(
 logger = logging.getLogger("report_service")
 
 # ─────────────────────────────────────────
-# OpenAI Client
+# OpenAI Client (optional — reports fall back without a key)
 # ─────────────────────────────────────────
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+client = OpenAI(api_key=_api_key) if _api_key else None
 
 # ─────────────────────────────────────────
 # Constants
@@ -104,6 +105,10 @@ def generate_report_from_analyses(analyses: List[Dict[str, Any]]) -> Dict[str, A
         logger.info(f"Normalized analyses count: {len(normalized)}")
 
         if not normalized:
+            return FALLBACK_RESPONSE
+
+        if client is None:
+            logger.warning("OPENAI_API_KEY not set; returning fallback report")
             return FALLBACK_RESPONSE
 
         normalized = normalized[:MAX_ANALYSES]

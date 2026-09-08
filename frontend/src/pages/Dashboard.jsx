@@ -228,7 +228,7 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [topicsData, setTopicsData] = useState(null);
   const [dashLoading, setDashLoading] = useState(true);
-  const [chartTimeRange, setChartTimeRange] = useState('week');
+  const [chartTimeRange, setChartTimeRange] = useState('month');
   
   const [sortByDate, setSortByDate] = useState('desc');
   const [sortByUploader, setSortByUploader] = useState(null);

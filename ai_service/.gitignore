@@ -44,3 +44,6 @@ outputs/
 *.tmp
 *.bak
 *.backup
+*.pid
+.ai-service.pid
+temp_*
